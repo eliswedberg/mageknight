@@ -1,0 +1,217 @@
+@using MageKnightOnline.Models
+@using MageKnightOnline.Services
+@inject MageKnightGameService GameService
+
+<div class="player-hand-container">
+    <div class="hand-header mb-4">
+        <h3 class="text-xl font-bold text-white">Your Hand</h3>
+        <div class="flex gap-4 text-sm text-gray-300">
+            <span>Cards: @(playerHand?.Count ?? 0)</span>
+            <span>Mana: @(currentPlayer?.Mana ?? 0)</span>
+            <span>Crystals: @(currentPlayer?.Crystals ?? 0)</span>
+        </div>
+    </div>
+    
+    @if (playerHand != null && playerHand.Any())
+    {
+        <div class="hand-cards flex gap-2 overflow-x-auto pb-2">
+            @foreach (var card in playerHand)
+            {
+                <div class="card-container flex-shrink-0">
+                    <div class="card w-24 h-32 bg-gray-800 rounded-lg border-2 border-gray-600 cursor-pointer hover:border-yellow-400 hover:scale-105 transition-all duration-200 @(card.IsPlayed ? "opacity-50" : "")"
+                         @onclick="() => OnCardClick(card)">
+                        
+                        <!-- Card Image -->
+                        <div class="card-image w-full h-20 rounded-t-lg" 
+                             style="background-image: url('@(card.Card?.ImageUrl ?? "/images/deed_back.jpg")'); background-size: cover; background-position: center;">
+                        </div>
+                        
+                        <!-- Card Info -->
+                        <div class="card-info p-1 text-xs text-white">
+                            <div class="font-bold truncate">@(card.Card?.Name ?? "Unknown")</div>
+                            <div class="flex justify-between">
+                                <span class="text-yellow-400">@(card.Card?.Cost ?? 0)</span>
+                                @if (card.Card?.Attack > 0)
+                                {
+                                    <span class="text-red-400">⚔️ @card.Card.Attack</span>
+                                }
+                                @if (card.Card?.Block > 0)
+                                {
+                                    <span class="text-blue-400">🛡️ @card.Card.Block</span>
+                                }
+                                @if (card.Card?.Move > 0)
+                                {
+                                    <span class="text-green-400">🏃 @card.Card.Move</span>
+                                }
+                                @if (card.Card?.Influence > 0)
+                                {
+                                    <span class="text-purple-400">💎 @card.Card.Influence</span>
+                                }
+                            </div>
+                        </div>
+                        
+                        <!-- Played Indicator -->
+                        @if (card.IsPlayed)
+                        {
+                            <div class="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center">
+                                <span class="text-white font-bold">PLAYED</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-gray-400 py-8">
+            <p>No cards in hand</p>
+        </div>
+    }
+    
+    <!-- Action Buttons -->
+    <div class="hand-actions mt-4 flex gap-2">
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                @onclick="DrawCards">
+            Draw Cards
+        </button>
+        <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                @onclick="EndTurn">
+            End Turn
+        </button>
+        <button class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                @onclick="PassTurn">
+            Pass
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int PlayerId { get; set; }
+    [Parameter] public EventCallback<Models.PlayerHand> OnCardPlayed { get; set; }
+    
+    private List<Models.PlayerHand>? playerHand;
+    private GamePlayer? currentPlayer;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlayerHand();
+    }
+    
+    private async Task LoadPlayerHand()
+    {
+        // This would load the actual player hand from the service
+        // For now, we'll create a mock hand
+        playerHand = new List<Models.PlayerHand>
+        {
+            new Models.PlayerHand
+            {
+                Id = 1,
+                GamePlayerId = PlayerId,
+                Card = new MageKnightCard
+                {
+                    Name = "March",
+                    Cost = 0,
+                    Move = 1,
+                    ImageUrl = "/images/deed_basic_march.jpg"
+                },
+                IsPlayed = false
+            },
+            new Models.PlayerHand
+            {
+                Id = 2,
+                GamePlayerId = PlayerId,
+                Card = new MageKnightCard
+                {
+                    Name = "Rage",
+                    Cost = 0,
+                    Attack = 1,
+                    ImageUrl = "/images/deed_basic_rage.jpg"
+                },
+                IsPlayed = false
+            },
+            new Models.PlayerHand
+            {
+                Id = 3,
+                GamePlayerId = PlayerId,
+                Card = new MageKnightCard
+                {
+                    Name = "Stamina",
+                    Cost = 0,
+                    Block = 1,
+                    ImageUrl = "/images/deed_basic_stamina.jpg"
+                },
+                IsPlayed = false
+            },
+            new Models.PlayerHand
+            {
+                Id = 4,
+                GamePlayerId = PlayerId,
+                Card = new MageKnightCard
+                {
+                    Name = "Noble Manners",
+                    Cost = 0,
+                    Influence = 1,
+                    ImageUrl = "/images/deed_basic_noble_manners.jpg"
+                },
+                IsPlayed = false
+            },
+            new Models.PlayerHand
+            {
+                Id = 5,
+                GamePlayerId = PlayerId,
+                Card = new MageKnightCard
+                {
+                    Name = "Swiftness",
+                    Cost = 1,
+                    Move = 2,
+                    ImageUrl = "/images/deed_basic_swiftness.jpg"
+                },
+                IsPlayed = false
+            }
+        };
+        
+        currentPlayer = new GamePlayer
+        {
+            Id = PlayerId,
+            Mana = 3,
+            Crystals = 2,
+            Level = 1,
+            Fame = 0,
+            Reputation = 0
+        };
+    }
+    
+    private async Task OnCardClick(Models.PlayerHand card)
+    {
+        if (card.IsPlayed) return;
+        
+        // Check if player has enough mana/crystals
+        if (card.Card?.Cost > (currentPlayer?.Mana + currentPlayer?.Crystals))
+        {
+            // Show error message
+            return;
+        }
+        
+        // Play the card
+        await OnCardPlayed.InvokeAsync(card);
+    }
+    
+    private async Task DrawCards()
+    {
+        // Implement card drawing
+        await Task.CompletedTask;
+    }
+    
+    private async Task EndTurn()
+    {
+        // Implement end turn
+        await Task.CompletedTask;
+    }
+    
+    private async Task PassTurn()
+    {
+        // Implement pass turn
+        await Task.CompletedTask;
+    }
+}

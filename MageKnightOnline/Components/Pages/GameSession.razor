@@ -1,0 +1,225 @@
+@page "/game/{GameId:int}"
+@using MageKnightOnline.Services
+@using MageKnightOnline.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject GameService GameService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+
+<PageTitle>Game Session - @(currentGame?.Name ?? "Loading...")</PageTitle>
+
+@if (currentGame == null)
+{
+    <div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+            <p class="text-white mt-4">Loading game...</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div class="container mx-auto px-4 py-8">
+            <!-- Game Header -->
+            <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 mb-8 shadow-xl">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold text-white mb-2">@currentGame.Name</h1>
+                        @if (!string.IsNullOrEmpty(currentGame.Description))
+                        {
+                            <p class="text-gray-300">@currentGame.Description</p>
+                        }
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400 mb-2">
+                            <p>Host: @currentGame.HostUser.UserName</p>
+                            <p>Status: <span class="text-green-400">@currentGame.Status</span></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @onclick="RefreshGame" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Refresh
+                            </button>
+                            <button @onclick="LeaveGame" 
+                                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Leave Game
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Players Panel -->
+                <div class="lg:col-span-1">
+                    <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl">
+                        <h2 class="text-xl font-bold text-white mb-4">Players (@currentGame.CurrentPlayers/@currentGame.MaxPlayers)</h2>
+                        <div class="space-y-3">
+                            @foreach (var player in currentGame.Players.OrderBy(p => p.PlayerNumber))
+                            {
+                                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg @(player.IsCurrentPlayer ? "ring-2 ring-yellow-400" : "")">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                            @player.PlayerNumber
+                                        </div>
+                                        <div>
+                                            <p class="text-white font-semibold">@player.User.UserName</p>
+                                            @if (!string.IsNullOrEmpty(player.KnightName))
+                                            {
+                                                <p class="text-gray-400 text-sm">@player.KnightName</p>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-400">@player.Status</p>
+                                        @if (player.IsCurrentPlayer)
+                                        {
+                                            <p class="text-xs text-yellow-400">Current Turn</p>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Area -->
+                <div class="lg:col-span-2">
+                    @if (currentGame.Status == GameStatus.WaitingForPlayers)
+                    {
+                        <div class="bg-gray-800 bg-opacity-70 rounded-lg p-8 shadow-xl text-center">
+                            <h2 class="text-2xl font-bold text-white mb-4">Waiting for Players</h2>
+                            <p class="text-gray-300 mb-6">
+                                @if (currentGame.CurrentPlayers < currentGame.MaxPlayers)
+                                {
+                                    <span>Waiting for @(currentGame.MaxPlayers - currentGame.CurrentPlayers) more player(s) to join...</span>
+                                }
+                                else
+                                {
+                                    <span>All players have joined! The host can start the game.</span>
+                                }
+                            </p>
+                            @if (currentGame.HostUserId == currentUserId && currentGame.CurrentPlayers >= 2)
+                            {
+                                <button @onclick="StartGame" 
+                                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200">
+                                    Start Game
+                                </button>
+                            }
+                        </div>
+                    }
+                    else if (currentGame.Status == GameStatus.InProgress)
+                    {
+                        <!-- Game Board -->
+                        <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mb-6">
+                            <GameBoard GameSessionId="currentGame.Id" />
+                        </div>
+                        
+                        <!-- Player Hand -->
+                        @if (currentGame.Players.FirstOrDefault(p => p.IsCurrentPlayer) is var currentPlayer && currentPlayer != null)
+                        {
+                            <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl">
+                                <PlayerHand PlayerId="currentPlayer.Id" OnCardPlayed="OnCardPlayed" />
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Game Log -->
+            <div class="mt-8">
+                <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-xl font-bold text-white mb-4">Game Log</h2>
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                        @if (gameActions?.Any() == true)
+                        {
+                            @foreach (var action in gameActions.OrderBy(a => a.Timestamp))
+                            {
+                                <div class="flex items-start space-x-3 p-2 bg-gray-700 rounded">
+                                    <span class="text-gray-400 text-sm">@action.Timestamp.ToString("HH:mm:ss")</span>
+                                    <span class="text-white">@action.Description</span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-gray-400">No actions yet...</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int GameId { get; set; }
+    
+    private Models.GameSession? currentGame;
+    private List<GameAction>? gameActions;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        await LoadGame();
+    }
+
+    private async Task LoadGame()
+    {
+        currentGame = await GameService.GetGameSessionAsync(GameId);
+        if (currentGame != null)
+        {
+            gameActions = await GameService.GetGameActionsAsync(GameId, 50);
+        }
+    }
+
+    private async Task RefreshGame()
+    {
+        await LoadGame();
+        StateHasChanged();
+    }
+
+    private async Task StartGame()
+    {
+        if (currentUserId != null)
+        {
+            var result = await GameService.StartGameAsync(GameId, currentUserId);
+            if (result)
+            {
+                await LoadGame();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LeaveGame()
+    {
+        if (currentUserId != null)
+        {
+            var result = await GameService.LeaveGameSessionAsync(GameId, currentUserId);
+            if (result)
+            {
+                Navigation.NavigateTo("/");
+            }
+        }
+    }
+
+    private async Task OnCardPlayed(Models.PlayerHand card)
+    {
+        // Handle card play
+        if (currentUserId != null)
+        {
+            var result = await GameService.PlayCardAsync(card.GamePlayerId, card.CardId);
+            if (result)
+            {
+                await LoadGame();
+                StateHasChanged();
+            }
+        }
+    }
+}

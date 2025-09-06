@@ -1,0 +1,156 @@
+﻿@page "/"
+@using MageKnightOnline.Services
+@using MageKnightOnline.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject GameService GameService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+
+<PageTitle>Mage Knight Online</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                Mage Knight Online
+            </h1>
+            <p class="text-xl text-gray-300 mb-8">
+                The Ultimate Edition - Play Online
+            </p>
+            <div class="flex justify-center gap-4">
+                <button @onclick="CreateNewGame" 
+                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200">
+                    Create New Game
+                </button>
+                <button @onclick="RefreshGames" 
+                        class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200">
+                    Refresh Games
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Sessions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @if (gameSessions == null)
+            {
+                <div class="col-span-full text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+                    <p class="text-white mt-4">Loading games...</p>
+                </div>
+            }
+            else if (!gameSessions.Any())
+            {
+                <div class="col-span-full text-center">
+                    <div class="bg-gray-800 bg-opacity-50 rounded-lg p-8">
+                        <h3 class="text-2xl font-bold text-white mb-4">No Games Available</h3>
+                        <p class="text-gray-300">Be the first to create a new game session!</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @foreach (var game in gameSessions)
+                {
+                    <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-bold text-white">@game.Name</h3>
+                            <span class="px-3 py-1 bg-green-500 text-white text-sm rounded-full">
+                                @game.CurrentPlayers/@game.MaxPlayers players
+                            </span>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(game.Description))
+                        {
+                            <p class="text-gray-300 mb-4">@game.Description</p>
+                        }
+                        
+                        <div class="text-sm text-gray-400 mb-4">
+                            <p>Host: @game.HostUser.UserName</p>
+                            <p>Created: @game.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button @onclick="() => JoinGame(game.Id)" 
+                                    class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                Join Game
+                            </button>
+                            @if (game.HostUserId == currentUserId)
+                            {
+                                <button @onclick="() => StartGame(game.Id)" 
+                                        class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                    Start
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Models.GameSession>? gameSessions;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        await LoadGames();
+    }
+
+    private async Task LoadGames()
+    {
+        gameSessions = await GameService.GetAvailableGameSessionsAsync();
+    }
+
+    private async Task RefreshGames()
+    {
+        await LoadGames();
+        StateHasChanged();
+    }
+
+    private async Task CreateNewGame()
+    {
+        if (currentUserId != null)
+        {
+            // For now, create a simple game. Later we'll add a modal for game creation
+            var game = await GameService.CreateGameSessionAsync(currentUserId, "New Mage Knight Game", "A new game of Mage Knight Ultimate Edition");
+            if (game != null)
+            {
+                await LoadGames();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task JoinGame(int gameId)
+    {
+        if (currentUserId != null)
+        {
+            var result = await GameService.JoinGameSessionAsync(gameId, currentUserId);
+            if (result != null)
+            {
+                await LoadGames();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task StartGame(int gameId)
+    {
+        if (currentUserId != null)
+        {
+            var result = await GameService.StartGameAsync(gameId, currentUserId);
+            if (result)
+            {
+                await LoadGames();
+                StateHasChanged();
+            }
+        }
+    }
+}

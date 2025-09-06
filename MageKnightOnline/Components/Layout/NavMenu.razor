@@ -1,0 +1,73 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<div class="bg-gray-900 shadow-lg">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center py-4">
+            <div class="flex items-center space-x-8">
+                <NavLink href="" Match="NavLinkMatch.All" class="text-2xl font-bold text-white hover:text-yellow-400 transition-colors">
+                    Mage Knight Online
+                </NavLink>
+                
+                <nav class="hidden md:flex space-x-6">
+                    <NavLink href="" Match="NavLinkMatch.All" class="text-gray-300 hover:text-white transition-colors">
+                        Home
+                    </NavLink>
+                    <AuthorizeView>
+                        <Authorized>
+                            <NavLink href="Account/Manage" class="text-gray-300 hover:text-white transition-colors">
+                                Profile
+                            </NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </nav>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="text-gray-300">Welcome, @context.User.Identity?.Name</span>
+                        <form action="Account/Logout" method="post" class="inline">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                Logout
+                            </button>
+                        </form>
+                    </Authorized>
+                    <NotAuthorized>
+                        <NavLink href="Account/Register" class="text-gray-300 hover:text-white transition-colors">
+                            Register
+                        </NavLink>
+                        <NavLink href="Account/Login" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                            Login
+                        </NavLink>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
+
