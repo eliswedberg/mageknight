@@ -20,6 +20,7 @@ public class GameService
     {
         try
         {
+            _logger.LogInformation("CreateGameSessionAsync started for user {UserId} with name {Name}", hostUserId, name);
             var gameSession = new GameSession
             {
                 Name = name,
@@ -35,11 +36,12 @@ public class GameService
             // Add host as first player
             await JoinGameSessionAsync(gameSession.Id, hostUserId);
 
+            _logger.LogInformation("CreateGameSessionAsync succeeded for user {UserId}, session {SessionId}", hostUserId, gameSession.Id);
             return gameSession;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating game session for user {UserId}", hostUserId);
+            _logger.LogError(ex, "Error creating game session for user {UserId}: {Message}", hostUserId, ex.Message);
             return null;
         }
     }

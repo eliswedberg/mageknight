@@ -6,6 +6,7 @@
 @inject GameService GameService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
 @attribute [Authorize]
 
 <PageTitle>Mage Knight Online</PageTitle>
@@ -20,15 +21,48 @@
             <p class="text-xl text-gray-300 mb-8">
                 The Ultimate Edition - Play Online
             </p>
-            <div class="flex justify-center gap-4">
-                <button @onclick="CreateNewGame" 
-                        class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200">
-                    Create New Game
-                </button>
-                <button @onclick="RefreshGames" 
-                        class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200">
-                    Refresh Games
-                </button>
+            <div class="max-w-3xl mx-auto bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mb-8">
+                <h2 class="text-2xl font-bold text-white mb-4">Create a New Game</h2>
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="mb-4 p-3 rounded bg-red-600 text-white">@formError</div>
+                }
+                @if (!string.IsNullOrEmpty(formSuccess))
+                {
+                    <div class="mb-4 p-3 rounded bg-emerald-600 text-white">@formSuccess</div>
+                }
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1" for="gameName">Name</label>
+                        <input id="gameName" class="w-full px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                               @bind="newGameName" placeholder="Game name" />
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1" for="maxPlayers">Max Players</label>
+                        <input id="maxPlayers" type="number" min="2" max="5" class="w-full px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                               @bind="newGameMaxPlayers" />
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1" for="scenario">Scenario</label>
+                        <select id="scenario" class="w-full px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                @bind="newGameScenario">
+                            <option value="Standard">Standard</option>
+                            <option value="Introductory">Introductory</option>
+                            <option value="Blitz">Blitz</option>
+                            <option value="Custom">Custom</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-4">
+                    <button @onclick="RefreshGames" disabled="@isBusy"
+                            class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-200">
+                        Refresh Games
+                    </button>
+                    <button @onclick="CreateNewGame" disabled="@isBusy"
+                            class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-200">
+                        @(isBusy ? "Creating..." : "Create Game")
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -54,6 +88,11 @@
             {
                 @foreach (var game in gameSessions)
                 {
+                    var isHost = game.HostUserId == currentUserId;
+                    var alreadyInGame = game.Players.Any(p => p.UserId == currentUserId);
+                    var canJoin = !isHost && !alreadyInGame && game.CurrentPlayers < game.MaxPlayers && game.Status == Models.GameStatus.WaitingForPlayers;
+                    var canStart = isHost && game.Players.Count >= 2 && game.Status == Models.GameStatus.WaitingForPlayers;
+
                     <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700">
                         <div class="flex justify-between items-start mb-4">
                             <h3 class="text-xl font-bold text-white">@game.Name</h3>
@@ -61,26 +100,30 @@
                                 @game.CurrentPlayers/@game.MaxPlayers players
                             </span>
                         </div>
-                        
+
                         @if (!string.IsNullOrEmpty(game.Description))
                         {
                             <p class="text-gray-300 mb-4">@game.Description</p>
                         }
-                        
+
                         <div class="text-sm text-gray-400 mb-4">
                             <p>Host: @game.HostUser.UserName</p>
                             <p>Created: @game.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
                         </div>
-                        
-                        <div class="flex gap-2">
-                            <button @onclick="() => JoinGame(game.Id)" 
-                                    class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
-                                Join Game
+
+                        <div class="flex gap-2 items-center">
+                            <button @onclick="() => TryJoinGame(game, canJoin, isHost, alreadyInGame)" 
+                                    disabled="@(!canJoin)"
+                                    title="@GetJoinTooltip(canJoin, isHost, alreadyInGame, game)"
+                                    class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                @(alreadyInGame ? "Joined" : "Join Game")
                             </button>
-                            @if (game.HostUserId == currentUserId)
+                            @if (isHost)
                             {
-                                <button @onclick="() => StartGame(game.Id)" 
-                                        class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                <button @onclick="() => TryStartGame(game, canStart)" 
+                                        disabled="@(!canStart)"
+                                        title="@GetStartTooltip(canStart, game)"
+                                        class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
                                     Start
                                 </button>
                             }
@@ -95,6 +138,12 @@
 @code {
     private List<Models.GameSession>? gameSessions;
     private string? currentUserId;
+    private string? formError;
+    private string? formSuccess;
+    private bool isBusy;
+    private string newGameName = "New Mage Knight Game";
+    private int newGameMaxPlayers = 4;
+    private string newGameScenario = "Standard";
 
     protected override async Task OnInitializedAsync()
     {
@@ -116,40 +165,154 @@
 
     private async Task CreateNewGame()
     {
-        if (currentUserId != null)
+        formError = null;
+        formSuccess = "Creating game...";
+        await InvokeAsync(StateHasChanged);
+        try { await JS.InvokeVoidAsync("console.log", "CreateNewGame clicked"); } catch {}
+
+        if (string.IsNullOrWhiteSpace(newGameName))
         {
-            // For now, create a simple game. Later we'll add a modal for game creation
-            var game = await GameService.CreateGameSessionAsync(currentUserId, "New Mage Knight Game", "A new game of Mage Knight Ultimate Edition");
+            formError = "Please provide a game name.";
+            return;
+        }
+        if (newGameMaxPlayers < 2 || newGameMaxPlayers > 5)
+        {
+            formError = "Max players must be between 2 and 5.";
+            return;
+        }
+
+        isBusy = true;
+        await InvokeAsync(StateHasChanged);
+
+        // Ensure we have the current user id at click time
+        if (currentUserId == null)
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        if (currentUserId == null)
+        {
+            formError = "You must be logged in to create a game.";
+            isBusy = false;
+            return;
+        }
+
+        try
+        {
+            var description = $"Scenario: {newGameScenario}";
+            var game = await GameService.CreateGameSessionAsync(
+                currentUserId,
+                string.IsNullOrWhiteSpace(newGameName) ? "New Mage Knight Game" : newGameName,
+                description,
+                newGameMaxPlayers);
             if (game != null)
             {
-                await LoadGames();
-                StateHasChanged();
+                formSuccess = "Game created successfully! Redirecting...";
+                await Task.Delay(600);
+                Navigation.NavigateTo($"/game/{game.Id}");
+                return;
             }
+            formError = "Failed to create game. Please try again.";
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error creating game: {ex.Message}";
+            try { await JS.InvokeVoidAsync("alert", formError); } catch {}
+        }
+        finally
+        {
+            isBusy = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async Task JoinGame(int gameId)
+    private string GetJoinTooltip(bool canJoin, bool isHost, bool alreadyInGame, Models.GameSession game)
     {
+        if (canJoin) return "Join this game";
+        if (isHost) return "You are the host and already in the game";
+        if (alreadyInGame) return "You have already joined this game";
+        if (game.CurrentPlayers >= game.MaxPlayers) return "Game is full";
+        if (game.Status != Models.GameStatus.WaitingForPlayers) return "Game is not open for joining";
+        return "Cannot join";
+    }
+
+    private string GetStartTooltip(bool canStart, Models.GameSession game)
+    {
+        if (canStart) return "Start the game";
+        if (game.Players.Count < 2) return "Need at least 2 players to start";
+        if (game.Status != Models.GameStatus.WaitingForPlayers) return "Game already started";
+        return "Cannot start";
+    }
+
+    private async Task TryJoinGame(Models.GameSession game, bool canJoin, bool isHost, bool alreadyInGame)
+    {
+        formError = null;
+        formSuccess = null;
+        if (!canJoin)
+        {
+            if (isHost || alreadyInGame)
+            {
+                formError = "You are already part of this game.";
+            }
+            else if (game.CurrentPlayers >= game.MaxPlayers)
+            {
+                formError = "This game is full.";
+            }
+            else
+            {
+                formError = "You cannot join this game.";
+            }
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
         if (currentUserId != null)
         {
-            var result = await GameService.JoinGameSessionAsync(gameId, currentUserId);
+            var result = await GameService.JoinGameSessionAsync(game.Id, currentUserId);
             if (result != null)
             {
+                formSuccess = "Joined game.";
                 await LoadGames();
                 StateHasChanged();
+            }
+            else
+            {
+                formError = "Failed to join game.";
             }
         }
     }
 
-    private async Task StartGame(int gameId)
+    private async Task TryStartGame(Models.GameSession game, bool canStart)
     {
+        formError = null;
+        formSuccess = null;
+        if (!canStart)
+        {
+            if (game.Players.Count < 2)
+            {
+                formError = "Need at least 2 players to start.";
+            }
+            else
+            {
+                formError = "Cannot start this game.";
+            }
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
         if (currentUserId != null)
         {
-            var result = await GameService.StartGameAsync(gameId, currentUserId);
+            var result = await GameService.StartGameAsync(game.Id, currentUserId);
             if (result)
             {
+                formSuccess = "Game started!";
                 await LoadGames();
                 StateHasChanged();
+            }
+            else
+            {
+                formError = "Failed to start game.";
             }
         }
     }

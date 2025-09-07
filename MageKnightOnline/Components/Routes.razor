@@ -8,4 +8,16 @@
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="container mx-auto px-4 py-8">
+                <h1 class="text-2xl font-bold mb-4">Not found</h1>
+                <p>The requested page could not be found.</p>
+                <p>
+                    <a href="/Account/Login" class="text-blue-600" data-navigate="false">Go to Login</a>
+                    or <a href="/" class="text-blue-600" data-navigate="false">Go Home</a>
+                </p>
+            </div>
+        </LayoutView>
+    </NotFound>
 </Router>
