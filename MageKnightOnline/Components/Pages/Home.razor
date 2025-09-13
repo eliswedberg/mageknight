@@ -7,7 +7,6 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
-@attribute [Authorize]
 
 <PageTitle>Mage Knight Online</PageTitle>
 
@@ -21,8 +20,11 @@
             <p class="text-xl text-gray-300 mb-8">
                 The Ultimate Edition - Play Online
             </p>
-            <div class="max-w-3xl mx-auto bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mb-8">
-                <h2 class="text-2xl font-bold text-white mb-4">Create a New Game</h2>
+            
+            <AuthorizeView>
+                <Authorized>
+                    <div class="max-w-3xl mx-auto bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mb-8">
+                        <h2 class="text-2xl font-bold text-white mb-4">Create a New Game</h2>
                 @if (!string.IsNullOrEmpty(formError))
                 {
                     <div class="mb-4 p-3 rounded bg-red-600 text-white">@formError</div>
@@ -63,11 +65,32 @@
                         @(isBusy ? "Creating..." : "Create Game")
                     </button>
                 </div>
-            </div>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <div class="max-w-3xl mx-auto bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mb-8">
+                        <h2 class="text-2xl font-bold text-white mb-4">Welcome to Mage Knight Online</h2>
+                        <p class="text-gray-300 mb-6">
+                            Experience the ultimate Mage Knight: The Board Game experience online. 
+                            Create and join game sessions with players from around the world.
+                        </p>
+                        <div class="flex gap-4 justify-center">
+                            <a href="/Account/Login" class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-200">
+                                Login
+                            </a>
+                            <a href="/Account/Register" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all duration-200">
+                                Register
+                            </a>
+                        </div>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
 
         <!-- Game Sessions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <AuthorizeView>
+            <Authorized>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @if (gameSessions == null)
             {
                 <div class="col-span-full text-center">
@@ -131,7 +154,9 @@
                     </div>
                 }
             }
-        </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -149,7 +174,11 @@
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        await LoadGames();
+        
+        if (currentUserId != null)
+        {
+            await LoadGames();
+        }
     }
 
     private async Task LoadGames()

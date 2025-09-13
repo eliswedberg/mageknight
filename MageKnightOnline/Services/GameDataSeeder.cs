@@ -1,6 +1,7 @@
 using MageKnightOnline.Data;
 using MageKnightOnline.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace MageKnightOnline.Services;
 
@@ -8,17 +9,22 @@ public class GameDataSeeder
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<GameDataSeeder> _logger;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public GameDataSeeder(ApplicationDbContext context, ILogger<GameDataSeeder> logger)
+    public GameDataSeeder(ApplicationDbContext context, ILogger<GameDataSeeder> logger, UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _logger = logger;
+        _userManager = userManager;
     }
 
     public async Task SeedAsync()
     {
         try
         {
+            // Seed test user
+            await SeedTestUserAsync();
+            
             // Seed Mage Knight Cards
             await SeedMageKnightCardsAsync();
             
@@ -37,6 +43,30 @@ public class GameDataSeeder
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error seeding game data");
+        }
+    }
+
+    private async Task SeedTestUserAsync()
+    {
+        var testUser = await _userManager.FindByEmailAsync("test@example.com");
+        if (testUser == null)
+        {
+            testUser = new ApplicationUser
+            {
+                UserName = "test@example.com",
+                Email = "test@example.com",
+                EmailConfirmed = true
+            };
+            
+            var result = await _userManager.CreateAsync(testUser, "Test123!");
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("Test user created successfully");
+            }
+            else
+            {
+                _logger.LogError("Failed to create test user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
         }
     }
 

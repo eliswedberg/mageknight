@@ -87,16 +87,23 @@
 
     public async Task LoginUser()
     {
+        Logger.LogInformation("Login attempt for email: {Email}", Input.Email);
+        
         // This doesn't count login failures towards account lockout
         // To enable password failures to trigger account lockout, set lockoutOnFailure: true
         var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        
+        Logger.LogInformation("Login result: Succeeded={Succeeded}, RequiresTwoFactor={RequiresTwoFactor}, IsLockedOut={IsLockedOut}", 
+            result.Succeeded, result.RequiresTwoFactor, result.IsLockedOut);
+            
         if (result.Succeeded)
         {
-            Logger.LogInformation("User logged in.");
+            Logger.LogInformation("User logged in successfully.");
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.RequiresTwoFactor)
         {
+            Logger.LogInformation("Login requires two factor authentication.");
             RedirectManager.RedirectTo(
                 "Account/LoginWith2fa",
                 new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
@@ -108,6 +115,7 @@
         }
         else
         {
+            Logger.LogWarning("Login failed for email: {Email}", Input.Email);
             errorMessage = "Error: Invalid login attempt.";
         }
     }
