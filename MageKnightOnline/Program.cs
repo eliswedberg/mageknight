@@ -23,7 +23,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => 
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+        // Relax password requirements for development
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequiredLength = 4;
+    })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
@@ -69,6 +78,35 @@ using (var scope = app.Services.CreateScope())
     finally
     {
         try { await context.Database.CloseConnectionAsync(); } catch { }
+    }
+
+    // Create test user
+    try
+    {
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var testUser = await userManager.FindByEmailAsync("eliwe1@hotmail.com");
+        if (testUser == null)
+        {
+            testUser = new ApplicationUser
+            {
+                UserName = "eliwe1@hotmail.com",
+                Email = "eliwe1@hotmail.com",
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(testUser, "elis123");
+            if (result.Succeeded)
+            {
+                Console.WriteLine("Test user created: eliwe1@hotmail.com / elis123");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to create test user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Could not create test user: {ex.Message}");
     }
 
     // Seed data after database is created

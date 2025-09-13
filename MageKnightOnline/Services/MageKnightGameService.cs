@@ -332,21 +332,21 @@ public class MageKnightGameService
     {
         var tiles = new List<BoardTile>();
         
-        for (int x = 0; x < 7; x++)
+        // According to Mage Knight rules, start with only the starting tile revealed
+        // Create the starting tile (center position)
+        var startingTile = new BoardTile
         {
-            for (int y = 0; y < 7; y++)
-            {
-                var tile = new BoardTile
-                {
-                    GameBoardId = gameBoardId,
-                    X = x,
-                    Y = y,
-                    Type = TileType.Empty,
-                    MovementCost = 1
-                };
-                tiles.Add(tile);
-            }
-        }
+            GameBoardId = gameBoardId,
+            X = 0, // Use 0,0 as center in hex coordinate system
+            Y = 0,
+            Type = TileType.Starting,
+            IsExplored = true,
+            IsRevealed = true,
+            Terrain = "Mixed", // Starting tile has multiple terrains
+            MovementCost = 1,
+            TileImageName = "MK_map_tiles_01-A" // Starting tile A side
+        };
+        tiles.Add(startingTile);
         
         _context.BoardTiles.AddRange(tiles);
         return Task.CompletedTask;
@@ -354,17 +354,78 @@ public class MageKnightGameService
 
     private Task CreateSitesAsync(int gameBoardId)
     {
+        // According to Mage Knight rules, sites are placed on tiles when they are revealed
+        // For the starting tile, we can place some basic sites
         var sites = new List<Site>
         {
-            new Site { GameBoardId = gameBoardId, X = 1, Y = 1, Type = SiteType.Ruins, Name = "Ancient Ruins", AttackCost = 2, FameReward = 1 },
-            new Site { GameBoardId = gameBoardId, X = 5, Y = 1, Type = SiteType.Dungeon, Name = "Dark Dungeon", AttackCost = 3, FameReward = 2 },
-            new Site { GameBoardId = gameBoardId, X = 1, Y = 5, Type = SiteType.Keep, Name = "Orc Keep", AttackCost = 4, FameReward = 3 },
-            new Site { GameBoardId = gameBoardId, X = 5, Y = 5, Type = SiteType.MageTower, Name = "Mage Tower", AttackCost = 5, FameReward = 4 },
-            new Site { GameBoardId = gameBoardId, X = 3, Y = 3, Type = SiteType.City, Name = "Capital City", AttackCost = 6, FameReward = 5 }
+            // Starting tile typically has villages or basic sites
+            new Site { GameBoardId = gameBoardId, X = 0, Y = 0, Type = SiteType.Village, Name = "Starting Village", AttackCost = 1, FameReward = 1 }
         };
         
         _context.Sites.AddRange(sites);
         return Task.CompletedTask;
+    }
+
+    public async Task<GameBoard?> GetGameBoardAsync(int gameSessionId)
+    {
+        return await _context.GameBoards
+            .Include(gb => gb.Tiles)
+            .Include(gb => gb.Sites)
+            .Include(gb => gb.PlayerPositions)
+            .FirstOrDefaultAsync(gb => gb.GameSessionId == gameSessionId);
+    }
+
+    public async Task<bool> ExploreTileAsync(int gameSessionId, int x, int y)
+    {
+        try
+        {
+            var gameBoard = await GetGameBoardAsync(gameSessionId);
+            if (gameBoard == null) return false;
+
+            // Check if there's already a tile at this position
+            var existingTile = gameBoard.Tiles.FirstOrDefault(t => t.X == x && t.Y == y);
+            if (existingTile != null) return false;
+
+            // Draw a random tile from the tile deck
+            var newTile = await DrawRandomTileAsync(gameBoard.Id, x, y);
+            if (newTile == null) return false;
+
+            _context.BoardTiles.Add(newTile);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Explored new tile at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exploring tile at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
+            return false;
+        }
+    }
+
+    private async Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
+    {
+        // For now, create a simple random tile
+        // In a full implementation, this would draw from the actual tile deck
+        var random = new Random();
+        var tileTypes = new[] { "01-1", "01-2", "01-3", "01-4", "01-5", "01-6", "01-7", "01-8", "01-9", "01-10", "01-11" };
+        var terrainTypes = new[] { "Forest", "Mountain", "Desert", "Plains", "Hills" };
+        
+        var selectedTile = tileTypes[random.Next(tileTypes.Length)];
+        var selectedTerrain = terrainTypes[random.Next(terrainTypes.Length)];
+        
+        return new BoardTile
+        {
+            GameBoardId = gameBoardId,
+            X = x,
+            Y = y,
+            Type = TileType.Countryside,
+            IsExplored = false,
+            IsRevealed = true,
+            Terrain = selectedTerrain,
+            MovementCost = selectedTerrain == "Mountain" ? 3 : selectedTerrain == "Forest" ? 2 : 1,
+            TileImageName = $"MK_map_tiles_{selectedTile}"
+        };
     }
 
     private Task InitializePlayerPositionsAsync(int gameBoardId, List<GamePlayer> players)
@@ -377,8 +438,8 @@ public class MageKnightGameService
             {
                 GameBoardId = gameBoardId,
                 PlayerId = players[i].Id,
-                X = 3, // Start in center
-                Y = 3
+                X = 0, // Start in center (starting tile)
+                Y = 0
             };
             positions.Add(position);
         }

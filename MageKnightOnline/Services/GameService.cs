@@ -160,6 +160,30 @@ public class GameService
         }
     }
 
+    public async Task<List<GameSession>> GetUserRelatedGameSessionsAsync(string userId)
+    {
+        try
+        {
+            // Get games where user is host or player, and show different statuses
+            return await _context.GameSessions
+                .Include(gs => gs.HostUser)
+                .Include(gs => gs.Players)
+                .Where(gs => 
+                    // Show games user is involved in
+                    (gs.HostUserId == userId || gs.Players.Any(p => p.UserId == userId && p.Status != PlayerStatus.Left)) ||
+                    // Show available games user can join
+                    (gs.Status == GameStatus.WaitingForPlayers && gs.CurrentPlayers < gs.MaxPlayers && !gs.Players.Any(p => p.UserId == userId))
+                )
+                .OrderByDescending(gs => gs.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user related game sessions");
+            return new List<GameSession>();
+        }
+    }
+
     public async Task<GameSession?> GetGameSessionAsync(int gameSessionId)
     {
         try

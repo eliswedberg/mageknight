@@ -82,7 +82,7 @@
 
         externalLoginInfo = info;
 
-        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        if (HttpContext?.Request != null && HttpMethods.IsGet(HttpContext.Request.Method))
         {
             if (Action == LoginCallbackAction)
             {

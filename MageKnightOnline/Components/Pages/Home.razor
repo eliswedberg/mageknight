@@ -112,15 +112,36 @@
                 @foreach (var game in gameSessions)
                 {
                     var isHost = game.HostUserId == currentUserId;
-                    var alreadyInGame = game.Players.Any(p => p.UserId == currentUserId);
+                    var alreadyInGame = game.Players.Any(p => p.UserId == currentUserId && p.Status != Models.PlayerStatus.Left);
                     var canJoin = !isHost && !alreadyInGame && game.CurrentPlayers < game.MaxPlayers && game.Status == Models.GameStatus.WaitingForPlayers;
                     var canStart = isHost && game.Players.Count >= 2 && game.Status == Models.GameStatus.WaitingForPlayers;
+                    var canContinue = alreadyInGame && game.Status == Models.GameStatus.InProgress;
+                    
+                    var statusColor = game.Status switch
+                    {
+                        Models.GameStatus.WaitingForPlayers => "bg-yellow-500",
+                        Models.GameStatus.InProgress => "bg-green-500",
+                        Models.GameStatus.Completed => "bg-gray-500",
+                        Models.GameStatus.Cancelled => "bg-red-500",
+                        Models.GameStatus.Paused => "bg-orange-500",
+                        _ => "bg-blue-500"
+                    };
+                    
+                    var statusText = game.Status switch
+                    {
+                        Models.GameStatus.WaitingForPlayers => $"{game.CurrentPlayers}/{game.MaxPlayers} players",
+                        Models.GameStatus.InProgress => "In Progress",
+                        Models.GameStatus.Completed => "Completed",
+                        Models.GameStatus.Cancelled => "Cancelled",
+                        Models.GameStatus.Paused => "Paused",
+                        _ => "Unknown"
+                    };
 
                     <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700">
                         <div class="flex justify-between items-start mb-4">
                             <h3 class="text-xl font-bold text-white">@game.Name</h3>
-                            <span class="px-3 py-1 bg-green-500 text-white text-sm rounded-full">
-                                @game.CurrentPlayers/@game.MaxPlayers players
+                            <span class="px-3 py-1 @statusColor text-white text-sm rounded-full">
+                                @statusText
                             </span>
                         </div>
 
@@ -135,19 +156,50 @@
                         </div>
 
                         <div class="flex gap-2 items-center">
-                            <button @onclick="() => TryJoinGame(game, canJoin, isHost, alreadyInGame)" 
-                                    disabled="@(!canJoin)"
-                                    title="@GetJoinTooltip(canJoin, isHost, alreadyInGame, game)"
-                                    class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
-                                @(alreadyInGame ? "Joined" : "Join Game")
-                            </button>
-                            @if (isHost)
+                            @if (canContinue)
                             {
-                                <button @onclick="() => TryStartGame(game, canStart)" 
-                                        disabled="@(!canStart)"
-                                        title="@GetStartTooltip(canStart, game)"
-                                        class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
-                                    Start
+                                <button @onclick="() => ContinueGame(game.Id)"
+                                        class="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                    Continue Game
+                                </button>
+                            }
+                            else if (game.Status == Models.GameStatus.WaitingForPlayers)
+                            {
+                                <button @onclick="() => TryJoinGame(game, canJoin, isHost, alreadyInGame)" 
+                                        disabled="@(!canJoin)"
+                                        title="@GetJoinTooltip(canJoin, isHost, alreadyInGame, game)"
+                                        class="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                    @(alreadyInGame ? "Joined" : "Join Game")
+                                </button>
+                                @if (isHost)
+                                {
+                                    <button @onclick="() => TryStartGame(game, canStart)" 
+                                            disabled="@(!canStart)"
+                                            title="@GetStartTooltip(canStart, game)"
+                                            class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                        Start
+                                    </button>
+                                }
+                            }
+                            else if (game.Status == Models.GameStatus.Completed)
+                            {
+                                <button disabled
+                                        class="flex-1 bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg opacity-50 cursor-not-allowed">
+                                    Game Completed
+                                </button>
+                            }
+                            else if (game.Status == Models.GameStatus.Cancelled)
+                            {
+                                <button disabled
+                                        class="flex-1 bg-red-500 text-white font-semibold py-2 px-4 rounded-lg opacity-50 cursor-not-allowed">
+                                    Game Cancelled
+                                </button>
+                            }
+                            else if (game.Status == Models.GameStatus.Paused)
+                            {
+                                <button @onclick="() => ContinueGame(game.Id)"
+                                        class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200">
+                                    Resume Game
                                 </button>
                             }
                         </div>
@@ -183,7 +235,14 @@
 
     private async Task LoadGames()
     {
-        gameSessions = await GameService.GetAvailableGameSessionsAsync();
+        if (currentUserId != null)
+        {
+            gameSessions = await GameService.GetUserRelatedGameSessionsAsync(currentUserId);
+        }
+        else
+        {
+            gameSessions = await GameService.GetAvailableGameSessionsAsync();
+        }
     }
 
     private async Task RefreshGames()
@@ -335,14 +394,21 @@
             var result = await GameService.StartGameAsync(game.Id, currentUserId);
             if (result)
             {
-                formSuccess = "Game started!";
-                await LoadGames();
-                StateHasChanged();
+                formSuccess = "Game started! Redirecting to game...";
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(600);
+                Navigation.NavigateTo($"/game/{game.Id}");
             }
             else
             {
                 formError = "Failed to start game.";
+                await InvokeAsync(StateHasChanged);
             }
         }
+    }
+
+    private void ContinueGame(int gameId)
+    {
+        Navigation.NavigateTo($"/game/{gameId}");
     }
 }

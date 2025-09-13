@@ -41,16 +41,23 @@ public class BoardTile
     public string? Terrain { get; set; } // Forest, Mountain, Desert, etc.
     
     public int MovementCost { get; set; } = 1;
+    
+    public string? TileImageName { get; set; } // Name of the image file for this tile
 }
 
 public enum TileType
 {
     Empty,
+    Starting,       // Starting tile (A or B side)
+    Countryside,    // Green back tiles (drawn randomly)
+    Core,          // Brown back tiles (cities and non-cities)
     Forest,
     Mountain,
     Desert,
     Swamp,
     Water,
+    Hills,
+    Plains,
     Ruins,
     Dungeon,
     Keep,

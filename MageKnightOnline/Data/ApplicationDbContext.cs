@@ -46,6 +46,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<GameState> GameStates { get; set; }
     public DbSet<GameEvent> GameEvents { get; set; }
     
+    // Tile System
+    public DbSet<TileDeck> TileDecks { get; set; }
+    public DbSet<MapTile> MapTiles { get; set; }
+    public DbSet<TileTerrainSection> TileTerrainSections { get; set; }
+    public DbSet<TileSite> TileSites { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -342,5 +348,31 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(ge => ge.PlayerId)
             .OnDelete(DeleteBehavior.SetNull);
+        
+        // Configure TileDeck relationships
+        builder.Entity<TileDeck>()
+            .HasOne(td => td.GameSession)
+            .WithMany()
+            .HasForeignKey(td => td.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<TileDeck>()
+            .HasMany(td => td.Tiles)
+            .WithOne(mt => mt.TileDeck)
+            .HasForeignKey(mt => mt.TileDeckId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
+        // Configure MapTile relationships
+        builder.Entity<MapTile>()
+            .HasMany(mt => mt.TerrainSections)
+            .WithOne(tts => tts.MapTile)
+            .HasForeignKey(tts => tts.MapTileId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<MapTile>()
+            .HasMany(mt => mt.Sites)
+            .WithOne(ts => ts.MapTile)
+            .HasForeignKey(ts => ts.MapTileId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
