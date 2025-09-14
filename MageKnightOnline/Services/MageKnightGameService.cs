@@ -238,11 +238,10 @@ public class MageKnightGameService
             var combat = new Combat
             {
                 GameSessionId = player.GameSessionId,
-                AttackingPlayerId = playerId,
-                DefendingSiteId = siteId,
+                SiteId = siteId,
                 Type = CombatType.SiteAttack,
-                Status = CombatStatus.Preparation,
-                TurnNumber = await GetCurrentTurnNumberAsync(player.GameSessionId)
+                Status = CombatStatus.Preparing,
+                CurrentTurn = await GetCurrentTurnNumberAsync(player.GameSessionId)
             };
             _context.Combats.Add(combat);
 

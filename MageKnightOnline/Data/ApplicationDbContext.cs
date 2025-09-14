@@ -14,6 +14,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PlayerDeck> PlayerDecks { get; set; }
     public DbSet<PlayerDiscard> PlayerDiscards { get; set; }
     
+    // Enhanced card system
+    public DbSet<PlayerCardAcquisition> PlayerCardAcquisitions { get; set; }
+    public DbSet<EnhancedPlayerHand> EnhancedPlayerHands { get; set; }
+    
     // Game Turn Management
     public DbSet<GameTurn> GameTurns { get; set; }
     public DbSet<TurnAction> TurnActions { get; set; }
@@ -29,6 +33,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Combat> Combats { get; set; }
     public DbSet<CombatAction> CombatActions { get; set; }
     public DbSet<CombatParticipant> CombatParticipants { get; set; }
+    public DbSet<Enemy> Enemies { get; set; }
     
     // Spells
     public DbSet<Spell> Spells { get; set; }
@@ -136,6 +141,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(pd => pd.CardId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        // Configure PlayerCardAcquisition relationships
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.Player)
+            .WithMany()
+            .HasForeignKey(pca => pca.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.Card)
+            .WithMany()
+            .HasForeignKey(pca => pca.CardId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.GameSession)
+            .WithMany()
+            .HasForeignKey(pca => pca.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
         // Configure GameTurn relationships
         builder.Entity<GameTurn>()
             .HasOne(gt => gt.GameSession)
@@ -229,21 +253,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .OnDelete(DeleteBehavior.Cascade);
             
         builder.Entity<Combat>()
-            .HasOne(c => c.AttackingPlayer)
+            .HasOne(c => c.Site)
             .WithMany()
-            .HasForeignKey(c => c.AttackingPlayerId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        builder.Entity<Combat>()
-            .HasOne(c => c.DefendingSite)
-            .WithMany()
-            .HasForeignKey(c => c.DefendingSiteId)
-            .OnDelete(DeleteBehavior.SetNull);
-            
-        builder.Entity<Combat>()
-            .HasOne(c => c.DefendingPlayer)
-            .WithMany()
-            .HasForeignKey(c => c.DefendingPlayerId)
+            .HasForeignKey(c => c.SiteId)
             .OnDelete(DeleteBehavior.SetNull);
             
         builder.Entity<Combat>()
@@ -260,16 +272,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         
         // Configure CombatAction relationships
         builder.Entity<CombatAction>()
-            .HasOne(ca => ca.Player)
+            .HasOne(ca => ca.Participant)
             .WithMany()
-            .HasForeignKey(ca => ca.PlayerId)
+            .HasForeignKey(ca => ca.ParticipantId)
             .OnDelete(DeleteBehavior.Cascade);
-            
-        builder.Entity<CombatAction>()
-            .HasOne(ca => ca.Card)
-            .WithMany()
-            .HasForeignKey(ca => ca.CardId)
-            .OnDelete(DeleteBehavior.SetNull);
         
         // Configure CombatParticipant relationships
         builder.Entity<CombatParticipant>()
@@ -373,6 +379,70 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasMany(mt => mt.Sites)
             .WithOne(ts => ts.MapTile)
             .HasForeignKey(ts => ts.MapTileId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure GameTurn relationships
+        builder.Entity<GameTurn>()
+            .HasOne(gt => gt.GameSession)
+            .WithMany()
+            .HasForeignKey(gt => gt.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<GameTurn>()
+            .HasOne(gt => gt.CurrentPlayer)
+            .WithMany()
+            .HasForeignKey(gt => gt.CurrentPlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<GameTurn>()
+            .HasMany(gt => gt.Actions)
+            .WithOne(ta => ta.GameTurn)
+            .HasForeignKey(ta => ta.GameTurnId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure TurnAction relationships
+        builder.Entity<TurnAction>()
+            .HasOne(ta => ta.Player)
+            .WithMany()
+            .HasForeignKey(ta => ta.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<TurnAction>()
+            .HasOne(ta => ta.Card)
+            .WithMany()
+            .HasForeignKey(ta => ta.CardId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
+        // Configure PlayerCardAcquisition relationships
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.Player)
+            .WithMany()
+            .HasForeignKey(pca => pca.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.GameSession)
+            .WithMany()
+            .HasForeignKey(pca => pca.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<PlayerCardAcquisition>()
+            .HasOne(pca => pca.Card)
+            .WithMany()
+            .HasForeignKey(pca => pca.CardId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure EnhancedPlayerHand relationships
+        builder.Entity<EnhancedPlayerHand>()
+            .HasOne(eph => eph.Player)
+            .WithMany()
+            .HasForeignKey(eph => eph.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<EnhancedPlayerHand>()
+            .HasOne(eph => eph.GameSession)
+            .WithMany()
+            .HasForeignKey(eph => eph.GameSessionId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

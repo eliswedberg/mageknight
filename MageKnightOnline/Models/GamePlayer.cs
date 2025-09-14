@@ -34,6 +34,24 @@ public class GamePlayer
     public int DiscardSize { get; set; } = 0;
     public int Wounds { get; set; } = 0;
     
+    // Enhanced leveling properties
+    public int Experience { get; set; } = 0;
+    public int ExperienceToNextLevel { get; set; } = 100;
+    public int MaxHealth { get; set; } = 10;
+    public int CurrentHealth { get; set; } = 10;
+    public int MaxMana { get; set; } = 5;
+    public int CurrentMana { get; set; } = 5;
+    public int MaxCrystals { get; set; } = 10;
+    public int CurrentCrystals { get; set; } = 0;
+    
+    // Character progression
+    public string? UnlockedAbilities { get; set; } // JSON string
+    public string? EquippedArtifacts { get; set; } // JSON string
+    public int TotalFameEarned { get; set; } = 0;
+    public int TotalReputationEarned { get; set; } = 0;
+    public int SitesConquered { get; set; } = 0;
+    public int EnemiesDefeated { get; set; } = 0;
+    
     public bool IsCurrentPlayer { get; set; } = false;
     public bool HasPassed { get; set; } = false;
     

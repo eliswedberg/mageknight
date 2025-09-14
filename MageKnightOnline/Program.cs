@@ -42,6 +42,8 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<MageKnightGameService>();
 builder.Services.AddScoped<GameDataSeeder>();
+builder.Services.AddScoped<TurnManagementService>();
+builder.Services.AddScoped<CardManagementService>();
 
 var app = builder.Build();
 

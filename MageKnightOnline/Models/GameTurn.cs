@@ -28,6 +28,30 @@ public class GameTurn
     
     public bool IsActive { get; set; } = true;
     
+    // Action Point System
+    public int ActionPoints { get; set; } = 0;
+    public int MaxActionPoints { get; set; } = 0;
+    public int UsedActionPoints { get; set; } = 0;
+    
+    public int MovementPoints { get; set; } = 0;
+    public int MaxMovementPoints { get; set; } = 0;
+    public int UsedMovementPoints { get; set; } = 0;
+    
+    public int InfluencePoints { get; set; } = 0;
+    public int MaxInfluencePoints { get; set; } = 0;
+    public int UsedInfluencePoints { get; set; } = 0;
+    
+    public int AttackPoints { get; set; } = 0;
+    public int MaxAttackPoints { get; set; } = 0;
+    public int UsedAttackPoints { get; set; } = 0;
+    
+    public int BlockPoints { get; set; } = 0;
+    public int MaxBlockPoints { get; set; } = 0;
+    public int UsedBlockPoints { get; set; } = 0;
+    
+    public bool HasPassed { get; set; } = false;
+    public bool IsCompleted { get; set; } = false;
+    
     public ICollection<TurnAction> Actions { get; set; } = new List<TurnAction>();
 }
 
@@ -35,7 +59,9 @@ public enum TurnPhase
 {
     Preparation,    // Draw cards, reset mana
     Main,          // Play cards, move, attack, explore
-    End,           // Discard hand, check victory conditions
+    Combat,        // Combat resolution
+    EndOfTurn,     // End of turn cleanup
+    Completed,     // Turn is fully completed
     Night          // Night phase (if applicable)
 }
 
@@ -53,6 +79,15 @@ public class TurnAction
     
     public string Description { get; set; } = string.Empty;
     
+    public int ActionPointsCost { get; set; } = 0;
+    public int MovementPointsCost { get; set; } = 0;
+    public int InfluencePointsCost { get; set; } = 0;
+    public int AttackPointsCost { get; set; } = 0;
+    public int BlockPointsCost { get; set; } = 0;
+    
+    public int? CardId { get; set; }
+    public MageKnightCard? Card { get; set; }
+    
     public string? Data { get; set; } // JSON data for complex actions
     
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
@@ -60,4 +95,7 @@ public class TurnAction
     public int ActionSequence { get; set; }
     
     public bool IsUndoable { get; set; } = true;
+    public bool IsResolved { get; set; } = false;
+    public string? Result { get; set; }
 }
+

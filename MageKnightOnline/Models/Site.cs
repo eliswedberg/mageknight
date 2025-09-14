@@ -14,6 +14,15 @@ public class Site
     
     public SiteType Type { get; set; }
     
+    // Enhanced site properties
+    public SiteSubType SiteSubType { get; set; }
+    public int DifficultyLevel { get; set; } = 1;
+    public int RequiredLevel { get; set; } = 1;
+    public bool IsRepeatable { get; set; } = false;
+    public string? SpecialRequirements { get; set; } // JSON string
+    public string? EnemyIds { get; set; } // JSON string
+    public string? LootTable { get; set; } // JSON string
+    
     public string Name { get; set; } = string.Empty;
     
     public string? Description { get; set; }
@@ -55,6 +64,21 @@ public enum SiteType
     City,
     Volkaire,
     Krang,
+    Portal,
+    Tomb,
+    Library,
+    Laboratory
+}
+
+public enum SiteSubType
+{
+    Village,
+    Keep,
+    MageTower,
+    Monastery,
+    Dungeon,
+    Ruins,
+    City,
     Portal,
     Tomb,
     Library,
