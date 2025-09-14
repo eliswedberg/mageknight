@@ -328,7 +328,7 @@ public class MageKnightGameService
     }
 
     // Helper Methods
-    private Task CreateBoardTilesAsync(int gameBoardId)
+    private async Task CreateBoardTilesAsync(int gameBoardId)
     {
         var tiles = new List<BoardTile>();
         
@@ -349,10 +349,10 @@ public class MageKnightGameService
         tiles.Add(startingTile);
         
         _context.BoardTiles.AddRange(tiles);
-        return Task.CompletedTask;
+        await _context.SaveChangesAsync();
     }
 
-    private Task CreateSitesAsync(int gameBoardId)
+    private async Task CreateSitesAsync(int gameBoardId)
     {
         // According to Mage Knight rules, sites are placed on tiles when they are revealed
         // For the starting tile, we can place some basic sites
@@ -363,7 +363,7 @@ public class MageKnightGameService
         };
         
         _context.Sites.AddRange(sites);
-        return Task.CompletedTask;
+        await _context.SaveChangesAsync();
     }
 
     public async Task<GameBoard?> GetGameBoardAsync(int gameSessionId)
@@ -428,7 +428,7 @@ public class MageKnightGameService
         };
     }
 
-    private Task InitializePlayerPositionsAsync(int gameBoardId, List<GamePlayer> players)
+    private async Task InitializePlayerPositionsAsync(int gameBoardId, List<GamePlayer> players)
     {
         var positions = new List<PlayerPosition>();
         
@@ -445,7 +445,7 @@ public class MageKnightGameService
         }
         
         _context.PlayerPositions.AddRange(positions);
-        return Task.CompletedTask;
+        await _context.SaveChangesAsync();
     }
 
     private async Task InitializePlayerDeckAsync(int playerId)
@@ -470,6 +470,7 @@ public class MageKnightGameService
         }
         
         _context.PlayerDecks.AddRange(deck);
+        await _context.SaveChangesAsync();
     }
 
     private async Task DrawInitialHandAsync(int playerId)
@@ -494,6 +495,7 @@ public class MageKnightGameService
         }
         
         _context.PlayerHands.AddRange(hand);
+        await _context.SaveChangesAsync();
     }
 
     private async Task DrawCardsForTurnAsync(int playerId, int count)
@@ -518,6 +520,7 @@ public class MageKnightGameService
         }
         
         _context.PlayerHands.AddRange(hand);
+        await _context.SaveChangesAsync();
     }
 
     private async Task ApplyCardEffectsAsync(GamePlayer player, MageKnightCard card, string? targetData)

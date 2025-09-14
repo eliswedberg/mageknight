@@ -100,7 +100,7 @@
             {
                 Logger.LogInformation("User logged in successfully.");
                 // Use JavaScript to navigate to avoid cookie issues
-                await JS.InvokeVoidAsync("window.location.href", ReturnUrl ?? "/");
+                await JS.InvokeVoidAsync("eval", $"window.location.href = '{ReturnUrl ?? "/"}';");
                 return;
             }
             else if (result.RequiresTwoFactor)
@@ -118,9 +118,36 @@
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("Headers are read-only"))
         {
-            Logger.LogInformation("Headers read-only, using JavaScript redirect for: {Email}", Input.Email);
-            // Assume login succeeded and redirect with JavaScript
-            await JS.InvokeVoidAsync("window.location.href", ReturnUrl ?? "/");
+            Logger.LogInformation("Headers read-only, validating credentials and using JavaScript redirect for: {Email}", Input.Email);
+            
+            // Validate credentials without signing in (since headers are read-only)
+            try
+            {
+                var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+                if (user != null)
+                {
+                    var isValidPassword = await SignInManager.UserManager.CheckPasswordAsync(user, Input.Password);
+                    if (isValidPassword)
+                    {
+                        Logger.LogInformation("Credentials valid, redirecting with JavaScript for: {Email}", Input.Email);
+                        // Use a different approach - redirect to a special login handler
+                        await JS.InvokeVoidAsync("eval", $"window.location.href = '/Account/LoginHandler?email={Uri.EscapeDataString(Input.Email)}&rememberMe={Input.RememberMe}&returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}';");
+                    }
+                    else
+                    {
+                        errorMessage = "Error: Invalid login attempt.";
+                    }
+                }
+                else
+                {
+                    errorMessage = "Error: Invalid login attempt.";
+                }
+            }
+            catch (Exception validationEx)
+            {
+                Logger.LogError(validationEx, "Failed to validate credentials after headers read-only exception");
+                errorMessage = "Error: Login failed due to technical issues.";
+            }
         }
         catch (Exception ex)
         {

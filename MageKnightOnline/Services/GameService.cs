@@ -8,11 +8,13 @@ public class GameService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<GameService> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
-    public GameService(ApplicationDbContext context, ILogger<GameService> logger)
+    public GameService(ApplicationDbContext context, ILogger<GameService> logger, IServiceProvider serviceProvider)
     {
         _context = context;
         _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     // Game Session Management
@@ -90,7 +92,7 @@ public class GameService
             };
 
             _context.GamePlayers.Add(gamePlayer);
-            gameSession.CurrentPlayers = gameSession.Players.Count + 1;
+            gameSession.CurrentPlayers = gameSession.Players.Count;
             
             await _context.SaveChangesAsync();
 
@@ -221,10 +223,59 @@ public class GameService
         }
     }
 
+    // Debug method to see all games in database
+    public async Task<List<GameSession>> GetAllGameSessionsAsync()
+    {
+        try
+        {
+            return await _context.GameSessions
+                .Include(gs => gs.HostUser)
+                .Include(gs => gs.Players)
+                .OrderByDescending(gs => gs.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all game sessions");
+            return new List<GameSession>();
+        }
+    }
+
+    // Fix player count for existing games
+    public async Task FixPlayerCountsAsync()
+    {
+        try
+        {
+            var games = await _context.GameSessions
+                .Include(gs => gs.Players)
+                .ToListAsync();
+
+            foreach (var game in games)
+            {
+                var actualPlayerCount = game.Players.Count(p => p.Status != PlayerStatus.Left);
+                if (game.CurrentPlayers != actualPlayerCount)
+                {
+                    _logger.LogInformation("Fixing player count for game {GameId}: {Current} -> {Actual}", 
+                        game.Id, game.CurrentPlayers, actualPlayerCount);
+                    game.CurrentPlayers = actualPlayerCount;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Player counts fixed for all games");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fixing player counts");
+        }
+    }
+
     public async Task<bool> StartGameAsync(int gameSessionId, string userId)
     {
         try
         {
+            _logger.LogInformation("StartGameAsync called for game {GameSessionId} by user {UserId}", gameSessionId, userId);
+            
             var gameSession = await _context.GameSessions
                 .Include(gs => gs.Players)
                 .FirstOrDefaultAsync(gs => gs.Id == gameSessionId);
@@ -250,6 +301,29 @@ public class GameService
             firstPlayer.Status = PlayerStatus.Playing;
 
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Game session {GameSessionId} status updated to InProgress", gameSessionId);
+
+            // Initialize the game (create board, tiles, etc.)
+            _logger.LogInformation("Initializing game {GameSessionId}", gameSessionId);
+            bool initResult = false;
+            try
+            {
+                var mageKnightService = _serviceProvider.GetRequiredService<MageKnightGameService>();
+                _logger.LogInformation("MageKnightGameService resolved successfully");
+                initResult = await mageKnightService.InitializeGameAsync(gameSessionId);
+                _logger.LogInformation("Game initialization result: {Result}", initResult);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during game initialization for {GameSessionId}", gameSessionId);
+                return false;
+            }
+            
+            if (!initResult)
+            {
+                _logger.LogError("Failed to initialize game {GameSessionId}", gameSessionId);
+                return false;
+            }
 
             // Log the action
             await LogGameActionAsync(gameSessionId, userId, ActionType.GameStarted, "Game started");

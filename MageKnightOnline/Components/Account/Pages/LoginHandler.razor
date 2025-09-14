@@ -1,0 +1,64 @@
+@page "/Account/LoginHandler"
+@using Microsoft.AspNetCore.Identity
+@using MageKnightOnline.Data
+@using Microsoft.AspNetCore.Authentication
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<LoginHandler> Logger
+@inject NavigationManager NavigationManager
+
+<PageTitle>Logging in...</PageTitle>
+
+<div class="text-center">
+    <h1>Logging in...</h1>
+    <p>Please wait while we complete your login.</p>
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    private bool RememberMe { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Email))
+        {
+            try
+            {
+                var user = await SignInManager.UserManager.FindByEmailAsync(Email);
+                if (user != null)
+                {
+                    // Sign in the user
+                    await SignInManager.SignInAsync(user, RememberMe);
+                    Logger.LogInformation("User {Email} signed in successfully via LoginHandler", Email);
+                    
+                    // Redirect to the return URL or home
+                    NavigationManager.NavigateTo(ReturnUrl ?? "/", forceLoad: true);
+                }
+                else
+                {
+                    Logger.LogWarning("User {Email} not found in LoginHandler", Email);
+                    NavigationManager.NavigateTo("/Account/Login?error=UserNotFound", forceLoad: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error in LoginHandler for user {Email}", Email);
+                NavigationManager.NavigateTo("/Account/Login?error=LoginFailed", forceLoad: true);
+            }
+        }
+        else
+        {
+            Logger.LogWarning("No email provided to LoginHandler");
+            NavigationManager.NavigateTo("/Account/Login?error=NoEmail", forceLoad: true);
+        }
+    }
+}

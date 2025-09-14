@@ -68,6 +68,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/eliwe/repos/mageknight/MageKnightOnline/Components/Account/Pages/LoginHandler.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luSGFuZGxlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/eliwe/repos/mageknight/MageKnightOnline/Components/Account/Pages/LoginNew.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBY2NvdW50XFBhZ2VzXExvZ2luTmV3LnJhem9y
 build_metadata.AdditionalFiles.CssScope = 

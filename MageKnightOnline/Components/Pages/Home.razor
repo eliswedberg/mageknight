@@ -227,6 +227,9 @@
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         
+        // Fix player counts for existing games
+        await GameService.FixPlayerCountsAsync();
+        
         if (currentUserId != null)
         {
             await LoadGames();
@@ -238,6 +241,14 @@
         if (currentUserId != null)
         {
             gameSessions = await GameService.GetUserRelatedGameSessionsAsync(currentUserId);
+            
+            // Debug: Log all games in database
+            var allGames = await GameService.GetAllGameSessionsAsync();
+            Console.WriteLine($"DEBUG: Total games in database: {allGames.Count}");
+            foreach (var game in allGames)
+            {
+                Console.WriteLine($"DEBUG: Game {game.Id} - {game.Name} - Host: {game.HostUser?.Email} - Status: {game.Status} - Players: {game.CurrentPlayers}/{game.MaxPlayers}");
+            }
         }
         else
         {

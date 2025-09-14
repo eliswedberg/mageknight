@@ -5,89 +5,130 @@
 
 <div class="game-board-container">
     <div class="game-board-header mb-4">
-        <h2 class="text-2xl font-bold text-white">Game Board</h2>
-        <div class="flex gap-4 text-sm text-gray-300">
-            <span>Round: 1</span>
-            <span>Turn: 1</span>
-            <span>Phase: Preparation</span>
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="text-2xl font-bold text-white">Game Board</h2>
+                <div class="flex gap-4 text-sm text-gray-300">
+                    <span>Round: 1</span>
+                    <span>Turn: 1</span>
+                    <span>Phase: Preparation</span>
+                </div>
+            </div>
+            
+            <!-- Zoom Controls -->
+            <div class="flex items-center gap-2">
+                <button @onclick="ZoomOut" 
+                        class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">
+                    -
+                </button>
+                <span class="text-white text-sm min-w-16 text-center">
+                    @((zoomLevel * 100).ToString("F0"))%
+                </span>
+                <button @onclick="ZoomIn" 
+                        class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">
+                    +
+                </button>
+                <button @onclick="ResetZoom" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                    Reset
+                </button>
+            </div>
         </div>
     </div>
     
-    <div class="game-board flex flex-col items-center bg-gray-800 p-4 rounded-lg min-h-96">
-        @if (gameBoard?.Tiles?.Any() == true)
-        {
-            <div class="hex-grid relative">
-                @foreach (var tile in gameBoard.Tiles.Where(t => t.IsRevealed))
-                {
-                    <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200"
-                         style="@GetHexPositionStyle(tile.X, tile.Y)"
-                         @onclick="() => OnTileClick(tile.X, tile.Y)">
-                        
-                        <!-- Hex Background -->
-                        <div class="hex-shape relative w-24 h-24">
-                            @if (!string.IsNullOrEmpty(tile.TileImageName))
-                            {
-                                <img src="/images/@(tile.TileImageName).png" 
-                                     alt="Map Tile" 
-                                     class="w-full h-full object-cover rounded-lg" />
-                            }
-                            else
-                            {
-                                <div class="w-full h-full bg-green-600 rounded-lg flex items-center justify-center">
-                                    <span class="text-white text-xs">@tile.Type</span>
-                                </div>
-                            }
-                        </div>
-                        
-                        <!-- Player markers -->
-                        @if (tile.X == 0 && tile.Y == 0) // Starting position
+    <div class="game-board-wrapper bg-gray-800 rounded-lg overflow-hidden" 
+         style="height: 600px; position: relative;">
+        <div class="game-board-container-inner" 
+             @onmousedown="OnMouseDown"
+             @onmousemove="OnMouseMove"
+             @onmouseup="OnMouseUp"
+             @onmouseleave="OnMouseUp"
+             @onwheel="OnWheel"
+             @ontouchstart="OnTouchStart"
+             @ontouchmove="OnTouchMove"
+             @ontouchend="OnTouchEnd"
+             style="width: 100%; height: 100%; overflow: hidden; cursor: grab;"
+             @ref="gameBoardRef">
+            
+            <div class="game-board-content" 
+                 style="@GetTransformStyle()">
+                <div class="hex-grid relative" style="min-width: 800px; min-height: 600px; transform: translateZ(0);">
+                    @if (gameBoard?.Tiles?.Any() == true)
+                    {
+                        @foreach (var tile in gameBoard.Tiles.Where(t => t.IsRevealed))
                         {
-                            <div class="absolute inset-0 flex items-center justify-center">
-                                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold z-10">
-                                    P1
+                            <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200"
+                                 style="@GetHexPositionStyle(tile.X, tile.Y)"
+                                 @onclick="() => OnTileClick(tile.X, tile.Y)">
+                                
+                                <!-- Hex Background -->
+                                <div class="hex-shape relative w-24 h-24">
+                                    @if (!string.IsNullOrEmpty(tile.TileImageName))
+                                    {
+                                        <img src="/images/@(tile.TileImageName).png" 
+                                             alt="Map Tile" 
+                                             class="w-full h-full object-cover rounded-lg"
+                                             style="transform: translateZ(0);" />
+                                    }
+                                    else
+                                    {
+                                        <div class="w-full h-full bg-green-600 rounded-lg flex items-center justify-center">
+                                            <span class="text-white text-xs">@tile.Type</span>
+                                        </div>
+                                    }
                                 </div>
+                                
+                                <!-- Player markers -->
+                                @if (tile.X == 0 && tile.Y == 0) // Starting position
+                                {
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold z-10">
+                                            P1
+                                        </div>
+                                    </div>
+                                }
+                                
+                                <!-- Coordinates -->
+                                <div class="absolute bottom-0 right-0 text-xs text-gray-300 bg-black bg-opacity-70 px-1 rounded">
+                                    @tile.X,@tile.Y
+                                </div>
+                                
+                                <!-- Exploration indicator -->
+                                @if (!tile.IsExplored)
+                                {
+                                    <div class="absolute top-0 left-0 w-3 h-3 bg-yellow-400 rounded-full"></div>
+                                }
                             </div>
                         }
                         
-                        <!-- Coordinates -->
-                        <div class="absolute bottom-0 right-0 text-xs text-gray-300 bg-black bg-opacity-70 px-1 rounded">
-                            @tile.X,@tile.Y
-                        </div>
-                        
-                        <!-- Exploration indicator -->
-                        @if (!tile.IsExplored)
+                        <!-- Placeholder tiles for exploration -->
+                        @foreach (var pos in GetAdjacentPositions())
                         {
-                            <div class="absolute top-0 left-0 w-3 h-3 bg-yellow-400 rounded-full"></div>
-                        }
-                    </div>
-                }
-                
-                <!-- Placeholder tiles for exploration -->
-                @foreach (var pos in GetAdjacentPositions())
-                {
-                    <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200 opacity-50"
-                         style="@GetHexPositionStyle(pos.X, pos.Y)"
-                         @onclick="() => OnExploreClick(pos.X, pos.Y)">
-                        
-                        <div class="hex-shape relative w-24 h-24">
-                            <div class="w-full h-full bg-gray-600 rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center">
-                                <span class="text-gray-300 text-xs">?</span>
+                            <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200 opacity-50"
+                                 style="@GetHexPositionStyle(pos.X, pos.Y)"
+                                 @onclick="() => OnExploreClick(pos.X, pos.Y)">
+                                
+                                <div class="hex-shape relative w-24 h-24">
+                                    <div class="w-full h-full bg-gray-600 rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center">
+                                        <span class="text-gray-300 text-xs">?</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="absolute bottom-0 right-0 text-xs text-gray-400 bg-black bg-opacity-70 px-1 rounded">
+                                    @pos.X,@pos.Y
+                                </div>
                             </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-gray-400 text-center">
+                            <p>Loading game board...</p>
                         </div>
-                        
-                        <div class="absolute bottom-0 right-0 text-xs text-gray-400 bg-black bg-opacity-70 px-1 rounded">
-                            @pos.X,@pos.Y
-                        </div>
-                    </div>
-                }
+                    }
+                </div>
             </div>
-        }
-        else
-        {
-            <div class="text-gray-400 text-center">
-                <p>Loading game board...</p>
-            </div>
-        }
+        </div>
     </div>
     
     <!-- Sites Legend -->
@@ -129,6 +170,26 @@
     private Models.GameBoard? gameBoard;
     private List<(int X, int Y)> adjacentPositions = new();
     
+    // Zoom and pan variables
+    private double zoomLevel = 1.0;
+    private double minZoom = 1.0;
+    private double maxZoom = 3.0;
+    private double zoomStep = 1.0;
+    
+    private double panX = 0;
+    private double panY = 0;
+    
+    private bool isDragging = false;
+    private double lastMouseX = 0;
+    private double lastMouseY = 0;
+    
+    private ElementReference gameBoardRef;
+    
+    // Touch support
+    private bool isTouchDragging = false;
+    private double lastTouchX = 0;
+    private double lastTouchY = 0;
+    
     protected override async Task OnInitializedAsync()
     {
         await LoadGameBoard();
@@ -138,7 +199,31 @@
     {
         try
         {
+            Console.WriteLine($"Loading game board for session {GameSessionId}");
             gameBoard = await GameService.GetGameBoardAsync(GameSessionId);
+            Console.WriteLine($"Game board loaded: {gameBoard != null}");
+            
+            // If no game board exists, initialize it
+            if (gameBoard == null)
+            {
+                Console.WriteLine("No game board found, initializing game...");
+                var initResult = await GameService.InitializeGameAsync(GameSessionId);
+                Console.WriteLine($"Game initialization result: {initResult}");
+                
+                if (initResult)
+                {
+                    // Reload the game board after initialization
+                    gameBoard = await GameService.GetGameBoardAsync(GameSessionId);
+                    Console.WriteLine($"Game board loaded after initialization: {gameBoard != null}");
+                }
+            }
+            
+            if (gameBoard != null)
+            {
+                Console.WriteLine($"Tiles count: {gameBoard.Tiles?.Count ?? 0}");
+                Console.WriteLine($"Sites count: {gameBoard.Sites?.Count ?? 0}");
+                Console.WriteLine($"Player positions count: {gameBoard.PlayerPositions?.Count ?? 0}");
+            }
             UpdateAdjacentPositions();
             StateHasChanged();
         }
@@ -210,5 +295,129 @@
         Console.WriteLine($"Exploring new area at ({x}, {y})");
         await GameService.ExploreTileAsync(GameSessionId, x, y);
         await LoadGameBoard(); // Refresh board
+    }
+    
+    // Zoom methods
+    private void ZoomIn()
+    {
+        Console.WriteLine($"ZoomIn called - current zoom: {zoomLevel}, max: {maxZoom}");
+        if (zoomLevel == 1.0)
+        {
+            zoomLevel = 2.0; // Jump to 200%
+        }
+        else if (zoomLevel == 2.0)
+        {
+            zoomLevel = 3.0; // Jump to 300%
+        }
+        Console.WriteLine($"ZoomIn - new zoom level: {zoomLevel}");
+        StateHasChanged();
+    }
+
+    private void ZoomOut()
+    {
+        Console.WriteLine($"ZoomOut called - current zoom: {zoomLevel}, min: {minZoom}");
+        if (zoomLevel == 3.0)
+        {
+            zoomLevel = 2.0; // Jump to 200%
+        }
+        else if (zoomLevel == 2.0)
+        {
+            zoomLevel = 1.0; // Jump to 100%
+        }
+        Console.WriteLine($"ZoomOut - new zoom level: {zoomLevel}");
+        StateHasChanged();
+    }
+    
+    private void ResetZoom()
+    {
+        Console.WriteLine($"ResetZoom called - resetting to 1.0");
+        zoomLevel = 1.0;
+        panX = 0;
+        panY = 0;
+        StateHasChanged();
+    }
+    
+    // Mouse event handlers
+    private void OnMouseDown(MouseEventArgs e)
+    {
+        isDragging = true;
+        lastMouseX = e.ClientX;
+        lastMouseY = e.ClientY;
+    }
+    
+    private void OnMouseMove(MouseEventArgs e)
+    {
+        if (isDragging)
+        {
+            var deltaX = e.ClientX - lastMouseX;
+            var deltaY = e.ClientY - lastMouseY;
+            
+            panX += deltaX;
+            panY += deltaY;
+            
+            lastMouseX = e.ClientX;
+            lastMouseY = e.ClientY;
+            
+            StateHasChanged();
+        }
+    }
+    
+    private void OnMouseUp(MouseEventArgs e)
+    {
+        isDragging = false;
+    }
+    
+    // Mouse wheel zoom
+    private void OnWheel(WheelEventArgs e)
+    {
+        var delta = e.DeltaY > 0 ? -zoomStep : zoomStep;
+        var newZoom = Math.Max(minZoom, Math.Min(maxZoom, zoomLevel + delta));
+        
+        if (newZoom != zoomLevel)
+        {
+            // Simple zoom without mouse position calculation for now
+            zoomLevel = newZoom;
+            StateHasChanged();
+        }
+    }
+    
+    // Touch event handlers
+    private void OnTouchStart(TouchEventArgs e)
+    {
+        if (e.Touches.Length == 1)
+        {
+            isTouchDragging = true;
+            lastTouchX = e.Touches[0].ClientX;
+            lastTouchY = e.Touches[0].ClientY;
+        }
+    }
+    
+    private void OnTouchMove(TouchEventArgs e)
+    {
+        if (isTouchDragging && e.Touches.Length == 1)
+        {
+            var deltaX = e.Touches[0].ClientX - lastTouchX;
+            var deltaY = e.Touches[0].ClientY - lastTouchY;
+            
+            panX += deltaX;
+            panY += deltaY;
+            
+            lastTouchX = e.Touches[0].ClientX;
+            lastTouchY = e.Touches[0].ClientY;
+            
+            StateHasChanged();
+        }
+    }
+    
+    private void OnTouchEnd(TouchEventArgs e)
+    {
+        isTouchDragging = false;
+    }
+    
+    // Transform style for zoom and pan
+    private string GetTransformStyle()
+    {
+        Console.WriteLine($"GetTransformStyle called - zoom: {zoomLevel}, panX: {panX}, panY: {panY}");
+        return $"transform: translate3d({panX:F0}px, {panY:F0}px, 0) scale({zoomLevel:F0}); transform-origin: 0 0; will-change: transform;";
     }
 }
