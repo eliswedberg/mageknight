@@ -16,20 +16,20 @@
             </div>
             
             <!-- Zoom Controls -->
-            <div class="flex items-center gap-2">
+            <div class="zoom-controls">
                 <button @onclick="ZoomOut" 
-                        class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">
+                        class="zoom-button">
                     -
                 </button>
                 <span class="text-white text-sm min-w-16 text-center">
                     @((zoomLevel * 100).ToString("F0"))%
                 </span>
                 <button @onclick="ZoomIn" 
-                        class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">
+                        class="zoom-button">
                     +
                 </button>
                 <button @onclick="ResetZoom" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                        class="zoom-button" style="background: #3182ce;">
                     Reset
                 </button>
             </div>
@@ -52,28 +52,26 @@
             
             <div class="game-board-content" 
                  style="@GetTransformStyle()">
-                <div class="hex-grid relative" style="min-width: 800px; min-height: 600px; transform: translateZ(0);">
+                <div class="hex-grid relative" style="min-width: 1600px; min-height: 1400px; transform: translateZ(0);">
                     @if (gameBoard?.Tiles?.Any() == true)
                     {
                         @foreach (var tile in gameBoard.Tiles.Where(t => t.IsRevealed))
                         {
-                            <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200"
+                            <div class="hex-tile absolute cursor-pointer transition-transform duration-200"
                                  style="@GetHexPositionStyle(tile.X, tile.Y)"
                                  @onclick="() => OnTileClick(tile.X, tile.Y)">
                                 
                                 <!-- Hex Background -->
-                                <div class="hex-shape relative w-24 h-21">
+                                <div class="hex-shape">
                                     @if (!string.IsNullOrEmpty(tile.TileImageName))
                                     {
                                         <img src="/images/@(tile.TileImageName).png" 
-                                             alt="Map Tile" 
-                                             class="w-full h-full object-cover rounded-lg"
-                                             style="transform: translateZ(0);" />
+                                             alt="Map Tile" />
                                     }
                                     else
                                     {
-                                        <div class="w-full h-full bg-green-600 rounded-lg flex items-center justify-center">
-                                            <span class="text-white text-xs">@tile.Type</span>
+                                        <div class="w-full h-full flex items-center justify-center">
+                                            <span class="text-white text-sm font-bold bg-black bg-opacity-50 px-2 py-1 rounded">@GetTileTypeAbbreviation(tile.Type)</span>
                                         </div>
                                     }
                                 </div>
@@ -81,22 +79,20 @@
                                 <!-- Player markers -->
                                 @if (tile.X == 0 && tile.Y == 0) // Starting position
                                 {
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold z-10">
-                                            P1
-                                        </div>
+                                    <div class="player-marker">
+                                        P1
                                     </div>
                                 }
                                 
                                 <!-- Coordinates -->
-                                <div class="absolute bottom-0 right-0 text-xs text-gray-300 bg-black bg-opacity-70 px-1 rounded">
+                                <div class="coordinate-label">
                                     @tile.X,@tile.Y
                                 </div>
                                 
                                 <!-- Exploration indicator -->
                                 @if (!tile.IsExplored)
                                 {
-                                    <div class="absolute top-0 left-0 w-3 h-3 bg-yellow-400 rounded-full"></div>
+                                    <div class="exploration-indicator"></div>
                                 }
                             </div>
                         }
@@ -104,17 +100,17 @@
                         <!-- Placeholder tiles for exploration -->
                         @foreach (var pos in GetAdjacentPositions())
                         {
-                            <div class="hex-tile absolute cursor-pointer hover:scale-105 transition-transform duration-200 opacity-50"
+                            <div class="hex-tile exploration-hex absolute cursor-pointer transition-transform duration-200"
                                  style="@GetHexPositionStyle(pos.X, pos.Y)"
                                  @onclick="() => OnExploreClick(pos.X, pos.Y)">
                                 
-                                <div class="hex-shape relative w-24 h-21">
-                                    <div class="w-full h-full bg-gray-600 rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center">
-                                        <span class="text-gray-300 text-xs">?</span>
+                                <div class="hex-shape exploration-placeholder" style="background: rgba(66, 153, 225, 0.3) !important; border: 2px dashed rgba(66, 153, 225, 0.8) !important;">
+                                    <div class="w-full h-full flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">?</span>
                                     </div>
                                 </div>
                                 
-                                <div class="absolute bottom-0 right-0 text-xs text-gray-400 bg-black bg-opacity-70 px-1 rounded">
+                                <div class="coordinate-label">
                                     @pos.X,@pos.Y
                                 </div>
                             </div>
@@ -132,33 +128,33 @@
     </div>
     
     <!-- Sites Legend -->
-    <div class="mt-4">
-        <h3 class="text-lg font-semibold text-white mb-2">Sites</h3>
+    <div class="sites-legend">
+        <h3>Sites</h3>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div class="bg-gray-700 rounded p-2 text-center">
-                <div class="w-8 h-8 bg-red-600 rounded-full mx-auto mb-1 flex items-center justify-center text-white text-xs font-bold">R</div>
-                <div class="text-xs text-white">Ancient Ruins</div>
-                <div class="text-xs text-gray-400">Hidden</div>
+            <div class="site-item">
+                <div class="site-icon" style="background: #e53e3e;">R</div>
+                <div class="site-name">Ancient Ruins</div>
+                <div class="site-status">Hidden</div>
             </div>
-            <div class="bg-gray-700 rounded p-2 text-center">
-                <div class="w-8 h-8 bg-red-600 rounded-full mx-auto mb-1 flex items-center justify-center text-white text-xs font-bold">D</div>
-                <div class="text-xs text-white">Dark Dungeon</div>
-                <div class="text-xs text-gray-400">Hidden</div>
+            <div class="site-item">
+                <div class="site-icon" style="background: #e53e3e;">D</div>
+                <div class="site-name">Dark Dungeon</div>
+                <div class="site-status">Hidden</div>
             </div>
-            <div class="bg-gray-700 rounded p-2 text-center">
-                <div class="w-8 h-8 bg-red-600 rounded-full mx-auto mb-1 flex items-center justify-center text-white text-xs font-bold">K</div>
-                <div class="text-xs text-white">Orc Keep</div>
-                <div class="text-xs text-gray-400">Hidden</div>
+            <div class="site-item">
+                <div class="site-icon" style="background: #e53e3e;">K</div>
+                <div class="site-name">Orc Keep</div>
+                <div class="site-status">Hidden</div>
             </div>
-            <div class="bg-gray-700 rounded p-2 text-center">
-                <div class="w-8 h-8 bg-red-600 rounded-full mx-auto mb-1 flex items-center justify-center text-white text-xs font-bold">M</div>
-                <div class="text-xs text-white">Mage Tower</div>
-                <div class="text-xs text-gray-400">Hidden</div>
+            <div class="site-item">
+                <div class="site-icon" style="background: #e53e3e;">M</div>
+                <div class="site-name">Mage Tower</div>
+                <div class="site-status">Hidden</div>
             </div>
-            <div class="bg-gray-700 rounded p-2 text-center">
-                <div class="w-8 h-8 bg-red-600 rounded-full mx-auto mb-1 flex items-center justify-center text-white text-xs font-bold">C</div>
-                <div class="text-xs text-white">Capital City</div>
-                <div class="text-xs text-gray-400">Hidden</div>
+            <div class="site-item">
+                <div class="site-icon" style="background: #e53e3e;">C</div>
+                <div class="site-name">Capital City</div>
+                <div class="site-status">Hidden</div>
             </div>
         </div>
     </div>
@@ -172,9 +168,9 @@
     
     // Zoom and pan variables
     private double zoomLevel = 1.0;
-    private double minZoom = 1.0;
+    private double minZoom = 0.5;
     private double maxZoom = 3.0;
-    private double zoomStep = 1.0;
+    private double zoomStep = 0.5;
     
     private double panX = 0;
     private double panY = 0;
@@ -240,18 +236,51 @@
         adjacentPositions.Clear();
         var revealedPositions = gameBoard.Tiles.Where(t => t.IsRevealed).Select(t => (t.X, t.Y)).ToHashSet();
         
+        // For each revealed tile, show 7 exploration placeholders around it
+        // These represent the individual hexes where the Mage Knight can move
         foreach (var tile in gameBoard.Tiles.Where(t => t.IsRevealed))
         {
-            // Get hex adjacent positions (6 directions)
-            var adjacent = GetHexAdjacentPositions(tile.X, tile.Y);
-            foreach (var pos in adjacent)
+            // Add 7 exploration placeholders around this tile
+            // Each tile has 7 hexes in a star pattern around it
+            for (int i = 1; i <= 7; i++) // Start from 1 to avoid conflict with main tile (0,0)
             {
-                if (!revealedPositions.Contains(pos) && !adjacentPositions.Contains(pos))
+                // Create unique coordinates for each exploration hex around the tile
+                var hexPos = (tile.X * 10 + i, tile.Y * 10 + i);
+                if (!adjacentPositions.Contains(hexPos))
                 {
-                    adjacentPositions.Add(pos);
+                    adjacentPositions.Add(hexPos);
                 }
             }
         }
+        
+        Console.WriteLine($"Revealed tiles: {revealedPositions.Count}, Exploration hex positions: {adjacentPositions.Count}");
+    }
+    
+    private List<(int X, int Y)> GetTileHexPositions(int tileX, int tileY)
+    {
+        // Return the 7 hex positions within a tile cluster
+        // This represents the individual hexes where a Mage Knight can be positioned
+        var hexes = new List<(int, int)>();
+        
+        // Center hex
+        hexes.Add((tileX, tileY));
+        
+        // 6 surrounding hexes in the star pattern
+        hexes.Add((tileX + 1, tileY));
+        hexes.Add((tileX - 1, tileY));
+        hexes.Add((tileX, tileY + 1));
+        hexes.Add((tileX, tileY - 1));
+        hexes.Add((tileX + 1, tileY - 1));
+        hexes.Add((tileX - 1, tileY + 1));
+        
+        return hexes;
+    }
+    
+    private bool IsHexInTile(int hexX, int hexY, int tileX, int tileY)
+    {
+        // Check if a hex position is within a specific tile cluster
+        var tileHexes = GetTileHexPositions(tileX, tileY);
+        return tileHexes.Contains((hexX, hexY));
     }
     
     private List<(int X, int Y)> GetHexAdjacentPositions(int x, int y)
@@ -275,16 +304,100 @@
     
     private string GetHexPositionStyle(int x, int y)
     {
-        // Convert hex coordinates to pixel positions
-        // Hex grid positioning: offset rows and proper spacing
-        var hexWidth = 96; // Width of hex tile
-        var hexHeight = 84; // Height of hex tile
-        var hexSpacing = 2; // Small gap between tiles
+        // For map tiles: position the entire 7-hex tile cluster
+        // For exploration hexes: position individual hexes around tiles
         
-        var pixelX = x * (hexWidth + hexSpacing) + (y % 2) * (hexWidth / 2 + hexSpacing / 2);
-        var pixelY = y * (hexHeight * 0.75 + hexSpacing); // 75% of height for proper hex spacing
+        var hexSize = 30; // Size for individual exploration hexes
+        var tileSpacing = 250; // Spacing between tile clusters
         
-        return $"left: {pixelX}px; top: {pixelY}px;";
+        // Check if this is a main tile or an exploration hex
+        // Main tiles are the actual game tiles, exploration hexes have encoded coordinates
+        if (x % 10 == 0 && y % 10 == 0)
+        {
+            // This is a main tile - position the tile cluster
+            var tileX = x / 10;
+            var tileY = y / 10;
+            var pixelX = tileX * tileSpacing + 400; // Center the tiles better
+            var pixelY = tileY * tileSpacing + 300; // Center the tiles better
+            
+            return $"left: {pixelX}px; top: {pixelY}px;";
+        }
+        else if (x > 10 || y > 10)
+        {
+            // This is an exploration hex - position around the tile
+            var tileX = x / 10;
+            var tileY = y / 10;
+            var hexIndex = x % 10;
+            
+            // Position the tile cluster center
+            var tilePixelX = tileX * tileSpacing + 400;
+            var tilePixelY = tileY * tileSpacing + 300;
+            
+            // Position the individual hex around the tile using a proper hex grid
+            var hexPositions = GetHexPositionsInTile();
+            if (hexIndex >= 1 && hexIndex <= 7 && hexIndex - 1 < hexPositions.Count)
+            {
+                var hexPos = hexPositions[hexIndex - 1]; // Adjust index since we start from 1
+                // Use proper hex grid positioning
+                var pixelX = tilePixelX + hexPos.X * hexSize * 2.5;
+                var pixelY = tilePixelY + hexPos.Y * hexSize * 2.5;
+                
+                return $"left: {pixelX}px; top: {pixelY}px;";
+            }
+        }
+        else
+        {
+            // This is a regular main tile (coordinates like 0,0, 1,0, 0,1, etc.)
+            var pixelX = x * tileSpacing + 400; // Center the tiles better
+            var pixelY = y * tileSpacing + 300; // Center the tiles better
+            
+            return $"left: {pixelX}px; top: {pixelY}px;";
+        }
+        
+        return "left: 400px; top: 300px;";
+    }
+    
+    private List<(int X, int Y)> GetHexPositionsInTile()
+    {
+        // Return the 7 hex positions within a tile in a 3-wide by almost 3-high pattern
+        // This creates the star pattern for the 7-hex tile
+        return new List<(int, int)>
+        {
+            (0, 0),    // Center hex
+            (-1, 0),   // Left
+            (1, 0),    // Right
+            (0, -1),   // Top
+            (0, 1),    // Bottom
+            (-1, 1),   // Bottom-left
+            (1, -1)    // Top-right
+        };
+    }
+    
+    private string GetTileTypeAbbreviation(TileType tileType)
+    {
+        return tileType switch
+        {
+            TileType.Starting => "S",
+            TileType.Countryside => "C",
+            TileType.Core => "K",
+            TileType.Forest => "F",
+            TileType.Mountain => "M",
+            TileType.Desert => "D",
+            TileType.Swamp => "Sw",
+            TileType.Water => "W",
+            TileType.Hills => "H",
+            TileType.Plains => "P",
+            TileType.Ruins => "R",
+            TileType.Dungeon => "Dg",
+            TileType.Keep => "K",
+            TileType.MageTower => "MT",
+            TileType.Monastery => "Mo",
+            TileType.Village => "V",
+            TileType.City => "C",
+            TileType.Volkaire => "V",
+            TileType.Krang => "K",
+            _ => "?"
+        };
     }
     
     private void OnTileClick(int x, int y)
@@ -297,21 +410,54 @@
     {
         // Handle exploration of new area
         Console.WriteLine($"Exploring new area at ({x}, {y})");
-        await GameService.ExploreTileAsync(GameSessionId, x, y);
-        await LoadGameBoard(); // Refresh board
+        
+        // Validate that the tile can be placed at this position
+        // Check if connection points will align with adjacent tiles
+        if (CanPlaceTileAt(x, y))
+        {
+            await GameService.ExploreTileAsync(GameSessionId, x, y);
+            await LoadGameBoard(); // Refresh board
+        }
+        else
+        {
+            Console.WriteLine($"Cannot place tile at ({x}, {y}) - connection points don't match");
+        }
+    }
+    
+    private bool CanPlaceTileAt(int x, int y)
+    {
+        // Check if a tile can be placed at the given coordinates
+        // This ensures that connection points (circles, stars, etc.) align properly
+        // with adjacent tiles
+        
+        if (gameBoard?.Tiles == null) return true;
+        
+        // Get adjacent positions
+        var adjacentPositions = GetHexAdjacentPositions(x, y);
+        var revealedTiles = gameBoard.Tiles.Where(t => t.IsRevealed).ToDictionary(t => (t.X, t.Y), t => t);
+        
+        // Check each adjacent position
+        foreach (var (adjX, adjY) in adjacentPositions)
+        {
+            if (revealedTiles.ContainsKey((adjX, adjY)))
+            {
+                // There's an adjacent revealed tile
+                // In a full implementation, we would check if the connection points match
+                // For now, we'll allow placement (this would be enhanced with actual tile data)
+                continue;
+            }
+        }
+        
+        return true; // Allow placement for now
     }
     
     // Zoom methods
     private void ZoomIn()
     {
         Console.WriteLine($"ZoomIn called - current zoom: {zoomLevel}, max: {maxZoom}");
-        if (zoomLevel == 1.0)
+        if (zoomLevel < maxZoom)
         {
-            zoomLevel = 2.0; // Jump to 200%
-        }
-        else if (zoomLevel == 2.0)
-        {
-            zoomLevel = 3.0; // Jump to 300%
+            zoomLevel = Math.Min(zoomLevel + zoomStep, maxZoom);
         }
         Console.WriteLine($"ZoomIn - new zoom level: {zoomLevel}");
         StateHasChanged();
@@ -320,13 +466,9 @@
     private void ZoomOut()
     {
         Console.WriteLine($"ZoomOut called - current zoom: {zoomLevel}, min: {minZoom}");
-        if (zoomLevel == 3.0)
+        if (zoomLevel > minZoom)
         {
-            zoomLevel = 2.0; // Jump to 200%
-        }
-        else if (zoomLevel == 2.0)
-        {
-            zoomLevel = 1.0; // Jump to 100%
+            zoomLevel = Math.Max(zoomLevel - zoomStep, minZoom);
         }
         Console.WriteLine($"ZoomOut - new zoom level: {zoomLevel}");
         StateHasChanged();
@@ -421,7 +563,6 @@
     // Transform style for zoom and pan
     private string GetTransformStyle()
     {
-        Console.WriteLine($"GetTransformStyle called - zoom: {zoomLevel}, panX: {panX}, panY: {panY}");
-        return $"transform: translate3d({panX:F0}px, {panY:F0}px, 0) scale({zoomLevel:F0}); transform-origin: 0 0; will-change: transform;";
+        return $"transform: translate3d({panX:F0}px, {panY:F0}px, 0) scale({zoomLevel:F1}); transform-origin: 0 0; will-change: transform;";
     }
 }

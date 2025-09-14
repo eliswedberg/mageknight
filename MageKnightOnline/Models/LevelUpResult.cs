@@ -28,3 +28,4 @@ public class PlayerStats
     public int Reputation { get; set; }
     public int ExperienceToNextLevel { get; set; }
 }
+

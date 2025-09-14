@@ -194,8 +194,6 @@ C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\ktq
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\a2hf2jwofl-h1s4sie4z3.gz
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\ko5v2idsob-4d85u1mtcx.gz
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\jgm5jycrbn-0j3bgjxly4.gz
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\qeyjce1mgk-xrnrajjj4g.gz
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\4s2uy6o1cr-xrnrajjj4g.gz
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\staticwebassets.build.json
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\staticwebassets.build.json.cache
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\staticwebassets.development.json
@@ -207,3 +205,6 @@ C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\MageKnightOnli
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\MageKnightOnline.genruntimeconfig.cache
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\ref\MageKnightOnline.dll
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\bin\Debug\net9.0\Data\app.db
+C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\scopedcss\Components\GameBoard.razor.rz.scp.css
+C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\qeyjce1mgk-5qobamuo9q.gz
+C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\4s2uy6o1cr-5qobamuo9q.gz

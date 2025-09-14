@@ -21,3 +21,4 @@ public class SiteConquestResult
     public DateTime AttemptedAt { get; set; }
     public string? Notes { get; set; }
 }
+

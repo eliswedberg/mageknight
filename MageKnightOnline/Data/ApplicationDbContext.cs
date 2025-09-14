@@ -18,13 +18,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<PlayerCardAcquisition> PlayerCardAcquisitions { get; set; }
     public DbSet<EnhancedPlayerHand> EnhancedPlayerHands { get; set; }
     
-    // Combat and progression system
-    public DbSet<CombatResult> CombatResults { get; set; }
-    public DbSet<LevelUpResult> LevelUpResults { get; set; }
-    public DbSet<SiteConquestResult> SiteConquestResults { get; set; }
-    public DbSet<VictoryCheckResult> VictoryCheckResults { get; set; }
-    public DbSet<VictoryCondition> VictoryConditions { get; set; }
-    
     // Game Turn Management
     public DbSet<GameTurn> GameTurns { get; set; }
     public DbSet<TurnAction> TurnActions { get; set; }
@@ -40,6 +33,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Combat> Combats { get; set; }
     public DbSet<CombatAction> CombatActions { get; set; }
     public DbSet<CombatParticipant> CombatParticipants { get; set; }
+    public DbSet<CombatResult> CombatResults { get; set; }
     public DbSet<Enemy> Enemies { get; set; }
     
     // Spells
@@ -451,37 +445,5 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(eph => eph.GameSessionId)
             .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure CombatResult relationships
-        builder.Entity<CombatResult>()
-            .HasOne(cr => cr.Combat)
-            .WithMany()
-            .HasForeignKey(cr => cr.CombatId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure LevelUpResult relationships
-        builder.Entity<LevelUpResult>()
-            .HasOne(lr => lr.Player)
-            .WithMany()
-            .HasForeignKey(lr => lr.PlayerId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure SiteConquestResult relationships
-        builder.Entity<SiteConquestResult>()
-            .HasOne(scr => scr.Site)
-            .WithMany()
-            .HasForeignKey(scr => scr.SiteId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure VictoryCheckResult relationships
-        builder.Entity<VictoryCheckResult>()
-            .HasOne(vcr => vcr.GameSession)
-            .WithMany()
-            .HasForeignKey(vcr => vcr.GameSessionId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure VictoryCondition primary key
-        builder.Entity<VictoryCondition>()
-            .HasKey(vc => vc.Id);
     }
 }

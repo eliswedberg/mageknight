@@ -93,12 +93,13 @@
     private List<Models.PlayerHand>? playerHand;
     private GamePlayer? currentPlayer;
     
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        await LoadPlayerHand();
+        LoadPlayerHand();
+        return Task.CompletedTask;
     }
     
-    private async Task LoadPlayerHand()
+    private Task LoadPlayerHand()
     {
         // This would load the actual player hand from the service
         // For now, we'll create a mock hand
@@ -180,6 +181,8 @@
             Fame = 0,
             Reputation = 0
         };
+        
+        return Task.CompletedTask;
     }
     
     private async Task OnCardClick(Models.PlayerHand card)

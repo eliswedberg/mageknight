@@ -347,6 +347,19 @@ public class MageKnightGameService
         };
         tiles.Add(startingTile);
         
+        // Add a few test tiles around the starting position for better visualization
+        var testTiles = new[]
+        {
+            new BoardTile { GameBoardId = gameBoardId, X = 1, Y = 0, Type = TileType.Forest, IsExplored = true, IsRevealed = true, Terrain = "Forest", MovementCost = 2, TileImageName = "MK_map_tiles_01-1" },
+            new BoardTile { GameBoardId = gameBoardId, X = -1, Y = 0, Type = TileType.Mountain, IsExplored = true, IsRevealed = true, Terrain = "Mountain", MovementCost = 3, TileImageName = "MK_map_tiles_01-2" },
+            new BoardTile { GameBoardId = gameBoardId, X = 0, Y = 1, Type = TileType.Plains, IsExplored = true, IsRevealed = true, Terrain = "Plains", MovementCost = 1, TileImageName = "MK_map_tiles_01-3" },
+            new BoardTile { GameBoardId = gameBoardId, X = 0, Y = -1, Type = TileType.Desert, IsExplored = true, IsRevealed = true, Terrain = "Desert", MovementCost = 2, TileImageName = "MK_map_tiles_01-4" },
+            new BoardTile { GameBoardId = gameBoardId, X = 1, Y = -1, Type = TileType.Hills, IsExplored = true, IsRevealed = true, Terrain = "Hills", MovementCost = 2, TileImageName = "MK_map_tiles_01-5" },
+            new BoardTile { GameBoardId = gameBoardId, X = -1, Y = 1, Type = TileType.Water, IsExplored = true, IsRevealed = true, Terrain = "Water", MovementCost = 1, TileImageName = "MK_map_tiles_01-6" }
+        };
+        
+        tiles.AddRange(testTiles);
+        
         _context.BoardTiles.AddRange(tiles);
         await _context.SaveChangesAsync();
     }
@@ -414,7 +427,7 @@ public class MageKnightGameService
         }
     }
 
-    private async Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
+    private Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
     {
         // For now, create a simple random tile
         // In a full implementation, this would draw from the actual tile deck
@@ -425,7 +438,7 @@ public class MageKnightGameService
         var selectedTile = tileTypes[random.Next(tileTypes.Length)];
         var selectedTerrain = terrainTypes[random.Next(terrainTypes.Length)];
         
-        return new BoardTile
+        return Task.FromResult<BoardTile?>(new BoardTile
         {
             GameBoardId = gameBoardId,
             X = x,
@@ -436,7 +449,7 @@ public class MageKnightGameService
             Terrain = selectedTerrain,
             MovementCost = selectedTerrain == "Mountain" ? 3 : selectedTerrain == "Forest" ? 2 : 1,
             TileImageName = $"MK_map_tiles_{selectedTile}"
-        };
+        });
     }
 
     private async Task InitializePlayerPositionsAsync(int gameBoardId, List<GamePlayer> players)
@@ -534,7 +547,7 @@ public class MageKnightGameService
         await _context.SaveChangesAsync();
     }
 
-    private async Task ApplyCardEffectsAsync(GamePlayer player, MageKnightCard card, string? targetData)
+    private Task ApplyCardEffectsAsync(GamePlayer player, MageKnightCard card, string? targetData)
     {
         // Apply card effects based on card type
         player.Mana += card.Move;
@@ -555,6 +568,8 @@ public class MageKnightGameService
         {
             // Handle unit effects
         }
+        
+        return Task.CompletedTask;
     }
 
     private int CalculateMovementCost(int fromX, int fromY, int toX, int toY)
@@ -597,7 +612,7 @@ public class MageKnightGameService
         return maxPosition + 1;
     }
 
-    private async Task LogGameActionAsync(int gameSessionId, int playerId, ActionType actionType, string description)
+    private Task LogGameActionAsync(int gameSessionId, int playerId, ActionType actionType, string description)
     {
         var gameAction = new GameAction
         {
@@ -607,6 +622,8 @@ public class MageKnightGameService
             Description = description
         };
         _context.GameActions.Add(gameAction);
+        
+        return Task.CompletedTask;
     }
 
     private bool IsAdjacentToRevealedTile(GameBoard gameBoard, int x, int y)

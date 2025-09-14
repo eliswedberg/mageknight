@@ -345,8 +345,8 @@ public class GameService
             var gameAction = new GameAction
             {
                 GameSessionId = gameSessionId,
-                PlayerId = userId != null ? _context.GamePlayers
-                    .FirstOrDefault(gp => gp.GameSessionId == gameSessionId && gp.UserId == userId)?.Id : null,
+                PlayerId = userId != null ? (await _context.GamePlayers
+                    .FirstOrDefaultAsync(gp => gp.GameSessionId == gameSessionId && gp.UserId == userId))?.Id : null,
                 Type = actionType,
                 Description = description,
                 Data = data

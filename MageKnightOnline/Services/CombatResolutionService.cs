@@ -131,12 +131,12 @@ public class CombatResolutionService
     {
         return await _context.CombatResults
             .Include(cr => cr.Combat)
-            .Where(cr => cr.Combat.GameSessionId == gameSessionId)
+            .Where(cr => cr.Combat != null && cr.Combat.GameSessionId == gameSessionId)
             .OrderByDescending(cr => cr.ResolvedAt)
             .ToListAsync();
     }
 
-    public async Task<CombatResult> GetCombatResultAsync(int combatId)
+    public async Task<CombatResult?> GetCombatResultAsync(int combatId)
     {
         return await _context.CombatResults
             .Include(cr => cr.Combat)

@@ -21,3 +21,4 @@ public class CombatResult
     public DateTime ResolvedAt { get; set; }
     public string? Notes { get; set; }
 }
+
