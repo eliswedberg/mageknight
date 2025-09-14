@@ -44,6 +44,10 @@ builder.Services.AddScoped<MageKnightGameService>();
 builder.Services.AddScoped<GameDataSeeder>();
 builder.Services.AddScoped<TurnManagementService>();
 builder.Services.AddScoped<CardManagementService>();
+builder.Services.AddScoped<CombatResolutionService>();
+builder.Services.AddScoped<CharacterProgressionService>();
+builder.Services.AddScoped<SiteManagementService>();
+builder.Services.AddScoped<VictoryConditionsService>();
 
 var app = builder.Build();
 

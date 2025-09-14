@@ -383,7 +383,19 @@ public class MageKnightGameService
 
             // Check if there's already a tile at this position
             var existingTile = gameBoard.Tiles.FirstOrDefault(t => t.X == x && t.Y == y);
-            if (existingTile != null) return false;
+            if (existingTile != null) 
+            {
+                _logger.LogInformation("Tile already exists at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
+                return false;
+            }
+
+            // Check if this position is adjacent to any revealed tile
+            var isAdjacent = IsAdjacentToRevealedTile(gameBoard, x, y);
+            if (!isAdjacent)
+            {
+                _logger.LogInformation("Position ({X}, {Y}) is not adjacent to any revealed tile for game session {GameSessionId}", x, y, gameSessionId);
+                return false;
+            }
 
             // Draw a random tile from the tile deck
             var newTile = await DrawRandomTileAsync(gameBoard.Id, x, y);
@@ -595,5 +607,37 @@ public class MageKnightGameService
             Description = description
         };
         _context.GameActions.Add(gameAction);
+    }
+
+    private bool IsAdjacentToRevealedTile(GameBoard gameBoard, int x, int y)
+    {
+        // Check if the position is adjacent to any revealed tile
+        var revealedTiles = gameBoard.Tiles.Where(t => t.IsRevealed).ToList();
+        
+        foreach (var tile in revealedTiles)
+        {
+            // Check hex adjacency (6 directions)
+            var adjacentPositions = GetHexAdjacentPositions(tile.X, tile.Y);
+            if (adjacentPositions.Contains((x, y)))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    private List<(int X, int Y)> GetHexAdjacentPositions(int x, int y)
+    {
+        // Hex grid adjacent positions (6 directions)
+        return new List<(int, int)>
+        {
+            (x + 1, y),     // East
+            (x - 1, y),     // West
+            (x, y + 1),     // North East
+            (x, y - 1),     // South West
+            (x + 1, y - 1), // North West
+            (x - 1, y + 1)  // South East
+        };
     }
 }

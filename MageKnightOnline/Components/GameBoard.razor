@@ -62,7 +62,7 @@
                                  @onclick="() => OnTileClick(tile.X, tile.Y)">
                                 
                                 <!-- Hex Background -->
-                                <div class="hex-shape relative w-24 h-24">
+                                <div class="hex-shape relative w-24 h-21">
                                     @if (!string.IsNullOrEmpty(tile.TileImageName))
                                     {
                                         <img src="/images/@(tile.TileImageName).png" 
@@ -108,7 +108,7 @@
                                  style="@GetHexPositionStyle(pos.X, pos.Y)"
                                  @onclick="() => OnExploreClick(pos.X, pos.Y)">
                                 
-                                <div class="hex-shape relative w-24 h-24">
+                                <div class="hex-shape relative w-24 h-21">
                                     <div class="w-full h-full bg-gray-600 rounded-lg border-2 border-dashed border-gray-400 flex items-center justify-center">
                                         <span class="text-gray-300 text-xs">?</span>
                                     </div>
@@ -277,8 +277,12 @@
     {
         // Convert hex coordinates to pixel positions
         // Hex grid positioning: offset rows and proper spacing
-        var pixelX = x * 72 + (y % 2) * 36; // 72px spacing, offset every other row
-        var pixelY = y * 62; // 62px vertical spacing for hex tiles
+        var hexWidth = 96; // Width of hex tile
+        var hexHeight = 84; // Height of hex tile
+        var hexSpacing = 2; // Small gap between tiles
+        
+        var pixelX = x * (hexWidth + hexSpacing) + (y % 2) * (hexWidth / 2 + hexSpacing / 2);
+        var pixelY = y * (hexHeight * 0.75 + hexSpacing); // 75% of height for proper hex spacing
         
         return $"left: {pixelX}px; top: {pixelY}px;";
     }
