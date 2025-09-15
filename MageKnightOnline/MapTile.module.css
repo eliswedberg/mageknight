@@ -1,0 +1,46 @@
+/* Optional: Additional styling for the MapTile component */
+.mapTileContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mapTileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mapTileOverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Hexagon interaction states */
+.hexGroup {
+  cursor: pointer;
+}
+
+.hexGroup:hover .hexOverlay {
+  opacity: 0.35;
+}
+
+.hexGroup.selected .hexOverlay {
+  opacity: 0.5;
+  fill: deepskyblue;
+}
+
+.hexHit {
+  cursor: pointer;
+  fill: transparent;
+}
+
+.hexOverlay {
+  pointer-events: none;
+  fill: yellow;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}

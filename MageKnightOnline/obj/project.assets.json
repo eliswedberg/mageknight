@@ -3319,24 +3319,31 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\eliwe\\.nuget\\packages\\": {}
+    "C:\\Users\\ElisWedberg\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\eliwe\\repos\\mageknight\\MageKnightOnline\\MageKnightOnline.csproj",
+      "projectUniqueName": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\MageKnightOnline.csproj",
       "projectName": "MageKnightOnline",
-      "projectPath": "C:\\Users\\eliwe\\repos\\mageknight\\MageKnightOnline\\MageKnightOnline.csproj",
-      "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\eliwe\\repos\\mageknight\\MageKnightOnline\\obj\\",
+      "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\MageKnightOnline.csproj",
+      "packagesPath": "C:\\Users\\ElisWedberg\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\ElisWedberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3399,7 +3406,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

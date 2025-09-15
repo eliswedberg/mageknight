@@ -347,18 +347,8 @@ public class MageKnightGameService
         };
         tiles.Add(startingTile);
         
-        // Add a few test tiles around the starting position for better visualization
-        var testTiles = new[]
-        {
-            new BoardTile { GameBoardId = gameBoardId, X = 1, Y = 0, Type = TileType.Forest, IsExplored = true, IsRevealed = true, Terrain = "Forest", MovementCost = 2, TileImageName = "MK_map_tiles_01-1" },
-            new BoardTile { GameBoardId = gameBoardId, X = -1, Y = 0, Type = TileType.Mountain, IsExplored = true, IsRevealed = true, Terrain = "Mountain", MovementCost = 3, TileImageName = "MK_map_tiles_01-2" },
-            new BoardTile { GameBoardId = gameBoardId, X = 0, Y = 1, Type = TileType.Plains, IsExplored = true, IsRevealed = true, Terrain = "Plains", MovementCost = 1, TileImageName = "MK_map_tiles_01-3" },
-            new BoardTile { GameBoardId = gameBoardId, X = 0, Y = -1, Type = TileType.Desert, IsExplored = true, IsRevealed = true, Terrain = "Desert", MovementCost = 2, TileImageName = "MK_map_tiles_01-4" },
-            new BoardTile { GameBoardId = gameBoardId, X = 1, Y = -1, Type = TileType.Hills, IsExplored = true, IsRevealed = true, Terrain = "Hills", MovementCost = 2, TileImageName = "MK_map_tiles_01-5" },
-            new BoardTile { GameBoardId = gameBoardId, X = -1, Y = 1, Type = TileType.Water, IsExplored = true, IsRevealed = true, Terrain = "Water", MovementCost = 1, TileImageName = "MK_map_tiles_01-6" }
-        };
-        
-        tiles.AddRange(testTiles);
+        // Only create the starting tile for now
+        // Additional tiles will be placed through exploration
         
         _context.BoardTiles.AddRange(tiles);
         await _context.SaveChangesAsync();
@@ -427,10 +417,20 @@ public class MageKnightGameService
         }
     }
 
-    private Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
+    private async Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
     {
+        // Get the game board to find adjacent tiles for edge matching
+        var gameBoard = await _context.GameBoards
+            .Include(gb => gb.Tiles)
+            .FirstOrDefaultAsync(gb => gb.Id == gameBoardId);
+        
+        if (gameBoard == null) return null;
+        
+        // Find adjacent tiles to match edges
+        var adjacentTiles = gameBoard.Tiles.Where(t => t.IsRevealed && IsAdjacentToPosition(t.X, t.Y, x, y)).ToList();
+        
         // For now, create a simple random tile
-        // In a full implementation, this would draw from the actual tile deck
+        // In a full implementation, this would draw from the actual tile deck and match edges
         var random = new Random();
         var tileTypes = new[] { "01-1", "01-2", "01-3", "01-4", "01-5", "01-6", "01-7", "01-8", "01-9", "01-10", "01-11" };
         var terrainTypes = new[] { "Forest", "Mountain", "Desert", "Plains", "Hills" };
@@ -438,7 +438,10 @@ public class MageKnightGameService
         var selectedTile = tileTypes[random.Next(tileTypes.Length)];
         var selectedTerrain = terrainTypes[random.Next(terrainTypes.Length)];
         
-        return Task.FromResult<BoardTile?>(new BoardTile
+        // TODO: Implement proper edge matching logic
+        // This would check the adjacent tiles' edge data and select a tile that matches
+        
+        return new BoardTile
         {
             GameBoardId = gameBoardId,
             X = x,
@@ -449,7 +452,44 @@ public class MageKnightGameService
             Terrain = selectedTerrain,
             MovementCost = selectedTerrain == "Mountain" ? 3 : selectedTerrain == "Forest" ? 2 : 1,
             TileImageName = $"MK_map_tiles_{selectedTile}"
-        });
+        };
+    }
+    
+    private bool IsAdjacentToPosition(int tileX, int tileY, int targetX, int targetY)
+    {
+        // Check if tile is adjacent to target position in hex grid
+        var adjacentPositions = GetHexAdjacentPositions(tileX, tileY);
+        return adjacentPositions.Contains((targetX, targetY));
+    }
+
+    public async Task<bool> RemoveAllTilesExceptOneAsync(int gameSessionId)
+    {
+        try
+        {
+            var gameBoard = await GetGameBoardAsync(gameSessionId);
+            if (gameBoard == null) return false;
+
+            // Get all tiles except the starting tile (0,0)
+            var tilesToRemove = gameBoard.Tiles.Where(t => !(t.X == 0 && t.Y == 0)).ToList();
+            
+            if (tilesToRemove.Any())
+            {
+                _context.BoardTiles.RemoveRange(tilesToRemove);
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Removed {Count} tiles from game session {GameSessionId}, keeping only starting tile", 
+                    tilesToRemove.Count, gameSessionId);
+                return true;
+            }
+            
+            _logger.LogInformation("No tiles to remove for game session {GameSessionId}", gameSessionId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing tiles for game session {GameSessionId}", gameSessionId);
+            return false;
+        }
     }
 
     private async Task InitializePlayerPositionsAsync(int gameBoardId, List<GamePlayer> players)

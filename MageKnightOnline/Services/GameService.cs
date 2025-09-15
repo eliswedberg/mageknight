@@ -400,4 +400,18 @@ public class GameService
             return false;
         }
     }
+
+    public async Task<bool> RemoveAllTilesExceptOneAsync(int gameSessionId)
+    {
+        try
+        {
+            var mageKnightService = _serviceProvider.GetRequiredService<MageKnightGameService>();
+            return await mageKnightService.RemoveAllTilesExceptOneAsync(gameSessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing tiles for game session {GameSessionId}", gameSessionId);
+            return false;
+        }
+    }
 }

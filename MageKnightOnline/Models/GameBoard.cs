@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 
 namespace MageKnightOnline.Models;
 
@@ -43,6 +44,43 @@ public class BoardTile
     public int MovementCost { get; set; } = 1;
     
     public string? TileImageName { get; set; } // Name of the image file for this tile
+    
+    public TileEdgeData EdgeData { get; set; } = new TileEdgeData();
+}
+
+[Owned]
+public class TileEdgeData
+{
+    // Each tile has 6 edges (hexagon), numbered clockwise from top
+    // Edge 0 = Top, Edge 1 = Top-Right, Edge 2 = Bottom-Right, 
+    // Edge 3 = Bottom, Edge 4 = Bottom-Left, Edge 5 = Top-Left
+    public string[] EdgeSymbols { get; set; } = new string[6];
+    public TerrainType[] EdgeTerrains { get; set; } = new TerrainType[6];
+    
+    public TileEdgeData()
+    {
+        // Initialize with empty symbols and unknown terrain
+        for (int i = 0; i < 6; i++)
+        {
+            EdgeSymbols[i] = "";
+            EdgeTerrains[i] = TerrainType.Unknown;
+        }
+    }
+}
+
+public enum TerrainType
+{
+    Unknown,
+    Forest,
+    Lake,
+    Mountain,
+    Desert,
+    Village,
+    Castle,
+    Ruins,
+    Mine,
+    Grassland,
+    Barren
 }
 
 public enum TileType

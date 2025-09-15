@@ -4,6 +4,8 @@
     width: 100%;
     height: 100%;
     background: radial-gradient(circle at 50% 50%, rgba(66, 153, 225, 0.1) 0%, transparent 70%);
+    min-width: 1000px;
+    min-height: 800px;
 }
 
 .hex-tile {
@@ -11,8 +13,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 150px; /* Wider for better aspect ratio */
-    height: 100px; /* Shorter height for better aspect ratio */
+    width: 250px; /* Tile cluster width */
+    height: 240px; /* Keep aspect close to overlay (600/623.538) */
     transform: translate(-50%, -50%);
     z-index: 1;
 }
@@ -25,9 +27,7 @@
 
 /* Hover effects for tile clusters */
 .hex-tile:hover .hex-shape {
-    border: 3px solid #4299e1;
-    box-shadow: 0 0 25px rgba(66, 153, 225, 0.9);
-    background: #5a6578; /* Slightly lighter background on hover */
+    /* No visual highlight for hex tiles */
 }
 
 .hex-tile:hover {
@@ -38,15 +38,14 @@
     position: relative;
     width: 100%;
     height: 100%;
-    background: #4a5568; /* Dark gray background for tiles */
-    border: 3px solid #2d3748; /* Darker gray border */
+    background: #4a5568;
+    border: 3px solid #2d3748;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6); /* Stronger shadow for main tiles */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); /* Hexagon shape */
 }
 
 .hex-shape.exploration-hex {
@@ -99,13 +98,13 @@
 }
 
 .hex-shape:hover {
-    transform: scale(1.05);
+    /* No visual highlight for hex shapes */
     z-index: 15;
 }
 
 .hex-shape:active {
     transform: scale(0.95);
-    box-shadow: 0 0 10px rgba(66, 153, 225, 0.4);
+    /* No visual highlight for active hex shapes */
 }
 
 /* Different tile type backgrounds */
@@ -156,11 +155,9 @@
 }
 
 .hex-shape.exploration-placeholder:hover {
-    border-color: #4299e1;
+    /* No visual highlight for exploration placeholders */
     opacity: 1; /* Fully visible on hover */
     animation: none;
-    background: rgba(66, 153, 225, 0.3); /* More visible background on hover */
-    box-shadow: 0 0 20px rgba(66, 153, 225, 0.7); /* Stronger glow effect on hover */
 }
 
 @keyframes pulse {
@@ -172,7 +169,169 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 6px; /* Match the tile cluster border radius */
+}
+
+/* Game board grid */
+.game-board-grid {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 800px;
+    min-height: 600px;
+}
+
+/* Game tiles */
+.game-tile {
+    position: absolute;
+    width: 208px;
+    height: 200px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.game-tile:hover {
+    /* No visual highlight for map tiles */
+}
+
+/* Placement indicators */
+.placement-indicator {
+    position: absolute;
+    width: 208px;
+    height: 200px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5;
+}
+
+.placement-hex {
+    width: 100%;
+    height: 100%;
+    border: 3px dashed #4299e1;
+    border-radius: 8px;
+    background: rgba(66, 153, 225, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.placement-hex::before {
+    content: "+";
+    font-size: 24px;
+    color: #4299e1;
+    font-weight: bold;
+}
+
+.placement-indicator:hover .placement-hex {
+    /* No visual highlight for placement indicators */
+}
+
+/* Map hexes (inner 2-3-2 pattern) - simple selectable areas */
+.map-hex {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 2; /* Lower than exploration hexes */
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: transparent;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.map-hex:hover {
+    /* No visual highlight for map hexes */
+}
+
+/* Exploration areas - completely invisible until hover, click to add matching tile */
+.exploration-area {
+    position: absolute;
+    width: 60px; /* Same size as map hexes */
+    height: 60px; /* Same size as map hexes */
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5; /* Higher than map hexes to ensure hover works */
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: transparent;
+    border: none;
+    transition: all 0.3s ease;
+    opacity: 0;
+    pointer-events: auto; /* Ensure pointer events work */
+}
+
+.exploration-area:hover {
+    background: rgba(246, 224, 94, 0.2);
+    border: 2px dashed #f6e05e;
+    box-shadow: 0 0 15px rgba(246, 224, 94, 0.4);
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+}
+
+.exploration-area::before {
+    content: "?";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    color: #f6e05e;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none; /* Don't interfere with hover detection */
+}
+
+.exploration-area:hover::before {
+    opacity: 1;
+    color: #e6ac00;
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.tile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tile-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.tile-overlay svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.hex-segment {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.hit-area {
+    fill: transparent;
+    cursor: pointer;
+}
+
+.overlay {
+    fill: yellow;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.hex-segment:hover .overlay {
+    opacity: 0.35;
 }
 
 /* Player marker styling */

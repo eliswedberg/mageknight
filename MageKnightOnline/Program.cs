@@ -45,6 +45,7 @@ builder.Services.AddScoped<GameDataSeeder>();
 builder.Services.AddScoped<TurnManagementService>();
 builder.Services.AddScoped<CardManagementService>();
 builder.Services.AddScoped<CombatResolutionService>();
+builder.Services.AddScoped<TileDataService>();
 
 var app = builder.Build();
 

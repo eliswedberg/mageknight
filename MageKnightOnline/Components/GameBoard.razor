@@ -2,6 +2,7 @@
 @using MageKnightOnline.Services
 @inject MageKnightGameService GameService
 @inject NavigationManager Navigation
+@inject TileDataService TileDataService
 
 <div class="game-board-container">
     <div class="game-board-header mb-4">
@@ -13,6 +14,14 @@
                     <span>Turn: 1</span>
                     <span>Phase: Preparation</span>
                 </div>
+            </div>
+            
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <button @onclick="RemoveAllTilesExceptOne" 
+                        class="btn btn-warning btn-sm mr-2">
+                    Reset to Starting Tile Only
+                </button>
             </div>
             
             <!-- Zoom Controls -->
@@ -50,71 +59,69 @@
              style="width: 100%; height: 100%; overflow: hidden; cursor: grab;"
              @ref="gameBoardRef">
             
-            <div class="game-board-content" 
-                 style="@GetTransformStyle()">
-                <div class="hex-grid relative" style="min-width: 1600px; min-height: 1400px; transform: translateZ(0);">
+            <!-- Game Board with Tiles -->
+            <div class="game-board-grid">
                     @if (gameBoard?.Tiles?.Any() == true)
                     {
                         @foreach (var tile in gameBoard.Tiles.Where(t => t.IsRevealed))
                         {
-                            <div class="hex-tile absolute cursor-pointer transition-transform duration-200"
-                                 style="@GetHexPositionStyle(tile.X, tile.Y)"
-                                 @onclick="() => OnTileClick(tile.X, tile.Y)">
-                                
-                                <!-- Hex Background -->
-                                <div class="hex-shape">
-                                    @if (!string.IsNullOrEmpty(tile.TileImageName))
-                                    {
-                                        <img src="/images/@(tile.TileImageName).png" 
-                                             alt="Map Tile" />
-                                    }
-                                    else
-                                    {
-                                        <div class="w-full h-full flex items-center justify-center">
-                                            <span class="text-white text-sm font-bold bg-black bg-opacity-50 px-2 py-1 rounded">@GetTileTypeAbbreviation(tile.Type)</span>
-                                        </div>
-                                    }
-                                </div>
-                                
-                                <!-- Player markers -->
-                                @if (tile.X == 0 && tile.Y == 0) // Starting position
-                                {
-                                    <div class="player-marker">
-                                        P1
+                        <div class="game-tile" style="@GetTilePositionStyle(tile.X, tile.Y)">
+                            <!-- Background Image -->
+                            <img src="/images/@(tile.TileImageName ?? "MK_map_tiles_01-A").png" alt="Map Tile" class="tile-image" />
+                            
+                            <!-- SVG Overlay -->
+                            <svg class="tile-overlay" viewBox="-311.769 -300 623.538 600" preserveAspectRatio="xMidYMid meet">
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "top-left")'>
+                                    <polygon class="hit-area" points="0,-240 0,-120 -103.9,-60 -207.8,-120 -207.8,-240 -103.9,-300" />
+                                    <polygon class="overlay" points="0,-240 0,-120 -103.9,-60 -207.8,-120 -207.8,-240 -103.9,-300" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "top-right")'>
+                                    <polygon class="hit-area" points="207.8,-240 207.8,-120 103.9,-60 0,-120 0,-240 103.9,-300" />
+                                    <polygon class="overlay" points="207.8,-240 207.8,-120 103.9,-60 0,-120 0,-240 103.9,-300" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "mid-left")'>
+                                    <polygon class="hit-area" points="-103.9,-60 -103.9,60 -207.8,120 -311.8,60 -311.8,-60 -207.8,-120" />
+                                    <polygon class="overlay" points="-103.9,-60 -103.9,60 -207.8,120 -311.8,60 -311.8,-60 -207.8,-120" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "mid-center")'>
+                                    <polygon class="hit-area" points="103.9,-60 103.9,60 0,120 -103.9,60 -103.9,-60 0,-120" />
+                                    <polygon class="overlay" points="103.9,-60 103.9,60 0,120 -103.9,60 -103.9,-60 0,-120" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "mid-right")'>
+                                    <polygon class="hit-area" points="311.8,-60 311.8,60 207.8,120 103.9,60 103.9,-60 207.8,-120" />
+                                    <polygon class="overlay" points="311.8,-60 311.8,60 207.8,120 103.9,60 103.9,-60 207.8,-120" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "bottom-left")'>
+                                    <polygon class="hit-area" points="0,120 0,240 -103.9,300 -207.8,240 -207.8,120 -103.9,60" />
+                                    <polygon class="overlay" points="0,120 0,240 -103.9,300 -207.8,240 -207.8,120 -103.9,60" />
+                                </g>
+                                <g class="hex-segment" @onclick='() => OnSegmentClick(tile.X, tile.Y, "bottom-right")'>
+                                    <polygon class="hit-area" points="207.8,120 207.8,240 103.9,300 0,240 0,120 103.9,60" />
+                                    <polygon class="overlay" points="207.8,120 207.8,240 103.9,300 0,240 0,120 103.9,60" />
+                                </g>
+                            </svg>
                                     </div>
                                 }
                                 
-                                <!-- Coordinates -->
-                                <div class="coordinate-label">
-                                    @tile.X,@tile.Y
-                                </div>
-                                
-                                <!-- Exploration indicator -->
-                                @if (!tile.IsExplored)
-                                {
-                                    <div class="exploration-indicator"></div>
-                                }
-                            </div>
-                        }
-                        
-                        <!-- Placeholder tiles for exploration -->
-                        @foreach (var pos in GetAdjacentPositions())
-                        {
-                            <div class="hex-tile exploration-hex absolute cursor-pointer transition-transform duration-200"
-                                 style="@GetHexPositionStyle(pos.X, pos.Y)"
-                                 @onclick="() => OnExploreClick(pos.X, pos.Y)">
-                                
-                                <div class="hex-shape exploration-placeholder" style="background: rgba(66, 153, 225, 0.3) !important; border: 2px dashed rgba(66, 153, 225, 0.8) !important;">
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <span class="text-white text-xs font-bold">?</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="coordinate-label">
-                                    @pos.X,@pos.Y
-                                </div>
-                            </div>
-                        }
+                    <!-- Valid placement positions - removed, using exploration hexes instead -->
+                    
+                    <!-- Map hexes (M) - inner 7 hexes for figure movement only -->
+                    @foreach (var pos in GetMapHexes())
+                    {
+                        <div class="map-hex" style="@GetMapHexStyle(pos.X, pos.Y)" 
+                             @onclick='() => OnMapHexClick(pos.X, pos.Y)'
+                             title="Click to move figure here (no tile placement)">
+                        </div>
+                    }
+                    
+                    <!-- Exploration hexes (E) - outer ring, click to add new tiles -->
+                    @foreach (var pos in GetExplorationHexes())
+                    {
+                        <div class="exploration-area" style="@GetExplorationAreaStyle(pos.X, pos.Y)" 
+                             @onclick='() => OnExplorationHexClick(pos.X, pos.Y)'
+                             title="Click to explore new tile">
+                        </div>
+                    }
                     }
                     else
                     {
@@ -122,7 +129,6 @@
                             <p>Loading game board...</p>
                         </div>
                     }
-                </div>
             </div>
         </div>
     </div>
@@ -285,16 +291,36 @@
     
     private List<(int X, int Y)> GetHexAdjacentPositions(int x, int y)
     {
-        // Hex grid adjacent positions (6 directions)
-        return new List<(int, int)>
+        // Proper hex grid adjacent positions (6 directions)
+        // In a hex grid, even and odd rows have different adjacency patterns
+        // This ensures that tiles are placed so their hexagon edges align perfectly
+        
+        var isEvenRow = y % 2 == 0;
+        
+        if (isEvenRow)
         {
-            (x + 1, y),     // East
-            (x - 1, y),     // West
-            (x, y + 1),     // North East
-            (x, y - 1),     // South West
-            (x + 1, y - 1), // North West
-            (x - 1, y + 1)  // South East
-        };
+            return new List<(int, int)>
+            {
+                (x + 1, y),     // East
+                (x - 1, y),     // West
+                (x, y + 1),     // South East
+                (x, y - 1),     // North East
+                (x - 1, y + 1), // South West
+                (x - 1, y - 1)  // North West
+            };
+        }
+        else
+        {
+            return new List<(int, int)>
+            {
+                (x + 1, y),     // East
+                (x - 1, y),     // West
+                (x + 1, y + 1), // South East
+                (x + 1, y - 1), // North East
+                (x, y + 1),     // South West
+                (x, y - 1)      // North West
+            };
+        }
     }
     
     private List<(int X, int Y)> GetAdjacentPositions()
@@ -398,6 +424,414 @@
             TileType.Krang => "K",
             _ => "?"
         };
+    }
+    
+
+    private async Task OnSegmentClick(int tileX, int tileY, string segment)
+    {
+        Console.WriteLine($"Clicked segment {segment} on tile ({tileX}, {tileY})");
+        
+        // Map segment to exploration coordinate
+        var (exploreX, exploreY) = MapSegmentToExploreCoord(tileX, tileY, segment);
+        
+        // Try to place a new tile at this exploration position
+        await GameService.ExploreTileAsync(GameSessionId, exploreX, exploreY);
+        await LoadGameBoard();
+    }
+
+    private (int X, int Y) MapSegmentToExploreCoord(int tileX, int tileY, string segment)
+    {
+        // Each tile consists of 7 hexes (1 central + 6 surrounding)
+        // We can explore to place new tiles adjacent to existing ones
+        // Map segments to hex grid directions for tile placement
+        var direction = segment switch
+        {
+            "top-left" => (-1, 1),     // North West
+            "top-right" => (1, 0),     // East  
+            "mid-left" => (-1, 0),     // West
+            "mid-center" => (0, 0),    // Center (not used for exploration)
+            "mid-right" => (1, -1),    // North East
+            "bottom-left" => (0, -1),  // South West
+            "bottom-right" => (0, 1),  // South East
+            _ => (0, 0)
+        };
+        
+        return (tileX + direction.Item1, tileY + direction.Item2);
+    }
+
+    private string GetTilePositionStyle(int x, int y)
+    {
+        // Position tiles in a proper staggered hex grid
+        // Each tile consists of 7 hexes (1 central + 6 surrounding)
+        // In a hex grid, tiles must be offset so their edges align perfectly
+        
+        var hexSize = 90; // Size of individual hexagons within a tile
+        var hexWidth = hexSize * 2; // Width between tile centers
+        var hexHeight = hexSize * Math.Sqrt(3); // Height between tile centers
+        
+        // Staggered positioning: odd rows offset by half width
+        // This ensures that hexagon edges align perfectly
+        var pixelX = x * hexWidth + (y % 2) * (hexWidth / 2) + 300;
+        var pixelY = y * hexHeight + 200;
+        
+        return $"left: {pixelX}px; top: {pixelY}px;";
+    }
+
+    // Removed GetValidPlacementPositions - using exploration hexes instead
+    
+    private List<(int X, int Y)> GetMapHexes()
+    {
+        if (gameBoard?.Tiles == null) return new List<(int, int)>();
+        
+        var mapHexes = new List<(int, int)>();
+        var revealedTiles = gameBoard.Tiles.Where(t => t.IsRevealed).ToList();
+        
+        // Show map hexes for each revealed tile
+        foreach (var tile in revealedTiles)
+        {
+            var mapHexPositions = GetMapHexPositions(tile.X, tile.Y);
+            mapHexes.AddRange(mapHexPositions);
+        }
+        
+        return mapHexes;
+    }
+    
+    private List<(int X, int Y)> GetMapHexPositions(int centerX, int centerY)
+    {
+        // Create the inner 7-hex pattern (2-3-2) for figure movement
+        // Using integer coordinates with offset to represent fractional positions
+        var positions = new List<(int, int)>
+        {
+            // Top row (2 hexes) - using offset coordinates
+            (centerX * 2 - 1, centerY * 2 - 2), // -0.5, -1
+            (centerX * 2 + 1, centerY * 2 - 2), // +0.5, -1
+            
+            // Middle row (3 hexes)
+            (centerX * 2 - 2, centerY * 2),     // -1, 0
+            (centerX * 2, centerY * 2),         // 0, 0
+            (centerX * 2 + 2, centerY * 2),     // +1, 0
+            
+            // Bottom row (2 hexes)
+            (centerX * 2 - 1, centerY * 2 + 2), // -0.5, +1
+            (centerX * 2 + 1, centerY * 2 + 2)  // +0.5, +1
+        };
+        
+        return positions;
+    }
+    
+    private List<(int X, int Y)> GetExplorationHexes()
+    {
+        if (gameBoard?.Tiles == null) return new List<(int, int)>();
+        
+        var explorationHexes = new List<(int, int)>();
+        var revealedTiles = gameBoard.Tiles.Where(t => t.IsRevealed).ToList();
+        var existingPositions = revealedTiles.Select(t => (t.X, t.Y)).ToHashSet();
+        
+        // Find the starting tile (0,0) - this is the center of our pattern
+        var startingTile = revealedTiles.FirstOrDefault(t => t.X == 0 && t.Y == 0);
+        if (startingTile == null) return explorationHexes;
+        
+        // Create the outer 12 hexes (3-4-5-4-3 pattern) using the same system as map hexes
+        // This creates the exploration ring around the starting tile
+        var explorationPositions = GetExplorationRingPositions(0, 0);
+        
+        foreach (var pos in explorationPositions)
+        {
+            // Only add if it's not already occupied by an existing tile
+            if (!existingPositions.Contains(pos))
+            {
+                explorationHexes.Add(pos);
+            }
+        }
+        
+        return explorationHexes;
+    }
+    
+    private List<(int X, int Y)> GetExplorationRingPositions(int centerX, int centerY)
+    {
+        // Create the outer 3-4-5-4-3 hexagon pattern around the center tile
+        // Using the same offset coordinate system as map hexes
+        var positions = new List<(int, int)>();
+        
+        // Top row (3 hexes) - using offset coordinates
+        positions.Add((centerX * 2 - 2, centerY * 2 - 4)); // -1, -2
+        positions.Add((centerX * 2, centerY * 2 - 4));     // 0, -2
+        positions.Add((centerX * 2 + 2, centerY * 2 - 4)); // +1, -2
+        
+        // Second row (4 hexes) - offset row
+        positions.Add((centerX * 2 - 3, centerY * 2 - 2)); // -1.5, -1
+        positions.Add((centerX * 2 - 1, centerY * 2 - 2)); // -0.5, -1
+        positions.Add((centerX * 2 + 1, centerY * 2 - 2)); // +0.5, -1
+        positions.Add((centerX * 2 + 3, centerY * 2 - 2)); // +1.5, -1
+        
+        // Middle row (5 hexes) - not offset
+        positions.Add((centerX * 2 - 3, centerY * 2));     // -1.5, 0
+        positions.Add((centerX * 2 - 1, centerY * 2));     // -0.5, 0
+        positions.Add((centerX * 2 + 1, centerY * 2));     // +0.5, 0
+        positions.Add((centerX * 2 + 3, centerY * 2));     // +1.5, 0
+        positions.Add((centerX * 2, centerY * 2 + 2));     // 0, +1
+        
+        // Fourth row (4 hexes) - offset row
+        positions.Add((centerX * 2 - 3, centerY * 2 + 2)); // -1.5, +1
+        positions.Add((centerX * 2 - 1, centerY * 2 + 2)); // -0.5, +1
+        positions.Add((centerX * 2 + 1, centerY * 2 + 2)); // +0.5, +1
+        positions.Add((centerX * 2 + 3, centerY * 2 + 2)); // +1.5, +1
+        
+        // Bottom row (3 hexes)
+        positions.Add((centerX * 2 - 2, centerY * 2 + 4)); // -1, +2
+        positions.Add((centerX * 2, centerY * 2 + 4));     // 0, +2
+        positions.Add((centerX * 2 + 2, centerY * 2 + 4)); // +1, +2
+        
+        return positions;
+    }
+    
+    
+    private bool IsTooCloseToExistingTiles(int x, int y, List<BoardTile> revealedTiles)
+    {
+        // Check if position is too close (within 1 hex) to any existing tile
+        foreach (var tile in revealedTiles)
+        {
+            var distance = Math.Abs(x - tile.X) + Math.Abs(y - tile.Y);
+            if (distance <= 1)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool IsValidPlacementPosition(int x, int y, List<BoardTile> revealedTiles)
+    {
+        // Check if position is already occupied
+        if (revealedTiles.Any(t => t.X == x && t.Y == y))
+            return false;
+            
+        // Check if position is adjacent to at least one revealed tile (hex grid adjacency)
+        var isAdjacent = revealedTiles.Any(tile => 
+        {
+            var adjacentPositions = GetHexAdjacentPositions(tile.X, tile.Y);
+            return adjacentPositions.Contains((x, y));
+        });
+        
+        if (!isAdjacent) return false;
+        
+        // Get adjacent tiles
+        var adjacentTiles = revealedTiles.Where(tile => 
+        {
+            var adjacentPositions = GetHexAdjacentPositions(tile.X, tile.Y);
+            return adjacentPositions.Contains((x, y));
+        }).ToList();
+        
+        // Determine tile type being placed (for now, assume Countryside)
+        var tileType = TileType.Countryside; // TODO: Get from tile being placed
+        
+        // Core tile contact rule: must touch at least 2 tiles when placed
+        if (tileType == TileType.Core)
+        {
+            if (adjacentTiles.Count < 2)
+                return false;
+        }
+        
+        // Countryside tile contact rule: may touch only one other tile 
+        // only if that neighbor tile itself touches at least two tiles
+        if (tileType == TileType.Countryside && adjacentTiles.Count == 1)
+        {
+            var neighborTile = adjacentTiles.First();
+            var neighborAdjacentTiles = revealedTiles.Where(t => 
+            {
+                var adjacentPositions = GetHexAdjacentPositions(t.X, t.Y);
+                return adjacentPositions.Contains((neighborTile.X, neighborTile.Y));
+            }).Count();
+            
+            // Neighbor must touch at least 2 tiles for single-contact countryside placement
+            if (neighborAdjacentTiles < 2)
+                return false;
+        }
+        
+        // Map boundary rule: check if position is within allowed map area
+        if (!IsWithinMapBoundary(x, y))
+            return false;
+        
+        // Check terrain/symbol matching for each adjacent tile
+        foreach (var adjacentTile in adjacentTiles)
+        {
+            if (!DoTilesMatchAtContact(x, y, adjacentTile.X, adjacentTile.Y, revealedTiles))
+                return false;
+        }
+        
+        // Check orientation: all tiles must face same direction
+        if (!IsOrientationValid(x, y, revealedTiles))
+            return false;
+        
+        return true;
+    }
+    
+    private bool DoTilesMatchAtContact(int newTileX, int newTileY, int existingTileX, int existingTileY, List<BoardTile> revealedTiles)
+    {
+        // Get the tiles
+        var newTile = revealedTiles.FirstOrDefault(t => t.X == newTileX && t.Y == newTileY);
+        var existingTile = revealedTiles.FirstOrDefault(t => t.X == existingTileX && t.Y == existingTileY);
+        
+        if (newTile == null || existingTile == null) return false;
+        
+        // Determine which edges are in contact
+        var (newTileEdge, existingTileEdge) = GetContactEdges(newTileX, newTileY, existingTileX, existingTileY);
+        
+        // Get tile IDs (assuming we have this data)
+        var newTileId = GetTileIdFromPosition(newTileX, newTileY);
+        var existingTileId = GetTileIdFromPosition(existingTileX, existingTileY);
+        
+        // Check if tiles match at contact edges
+        return TileDataService.DoTilesMatchAtContact(newTileId, newTileEdge, existingTileId, existingTileEdge);
+    }
+    
+    private (int newTileEdge, int existingTileEdge) GetContactEdges(int newTileX, int newTileY, int existingTileX, int existingTileY)
+    {
+        // Calculate which edges are in contact based on relative positions in hex grid
+        var dx = newTileX - existingTileX;
+        var dy = newTileY - existingTileY;
+        
+        // In hex grid, determine contact edges based on relative position
+        // This accounts for the staggered hex grid where odd/even rows have different patterns
+        
+        if (dy == 0) // Same row
+        {
+            if (dx > 0) // New tile is to the right
+                return (5, 1); // New tile's left edge touches existing tile's right edge
+            else // New tile is to the left
+                return (1, 5); // New tile's right edge touches existing tile's left edge
+        }
+        else if (dy > 0) // New tile is below
+        {
+            var isEvenRow = existingTileY % 2 == 0;
+            if (isEvenRow)
+            {
+                if (dx > 0) // New tile is below and to the right
+                    return (4, 2); // New tile's top-right edge touches existing tile's bottom-left edge
+                else if (dx < 0) // New tile is below and to the left
+                    return (2, 4); // New tile's top-left edge touches existing tile's bottom-right edge
+                else // New tile is directly below
+                    return (3, 0); // New tile's top edge touches existing tile's bottom edge
+            }
+            else
+            {
+                if (dx > 0) // New tile is below and to the right
+                    return (3, 0); // New tile's top edge touches existing tile's bottom edge
+                else if (dx < 0) // New tile is below and to the left
+                    return (3, 0); // New tile's top edge touches existing tile's bottom edge
+                else // New tile is directly below
+                    return (3, 0); // New tile's top edge touches existing tile's bottom edge
+            }
+        }
+        else // New tile is above
+        {
+            var isEvenRow = existingTileY % 2 == 0;
+            if (isEvenRow)
+            {
+                if (dx > 0) // New tile is above and to the right
+                    return (0, 3); // New tile's bottom edge touches existing tile's top edge
+                else if (dx < 0) // New tile is above and to the left
+                    return (0, 3); // New tile's bottom edge touches existing tile's top edge
+                else // New tile is directly above
+                    return (0, 3); // New tile's bottom edge touches existing tile's top edge
+            }
+            else
+            {
+                if (dx > 0) // New tile is above and to the right
+                    return (1, 4); // New tile's bottom-left edge touches existing tile's top-right edge
+                else if (dx < 0) // New tile is above and to the left
+                    return (5, 2); // New tile's bottom-right edge touches existing tile's top-left edge
+                else // New tile is directly above
+                    return (0, 3); // New tile's bottom edge touches existing tile's top edge
+            }
+        }
+    }
+    
+    private string GetTileIdFromPosition(int x, int y)
+    {
+        // For now, return a placeholder - this should be determined by the actual tile being placed
+        // In a real implementation, this would come from the tile being placed or from the game state
+        return "01-1"; // Placeholder
+    }
+    
+    private bool IsOrientationValid(int newTileX, int newTileY, List<BoardTile> revealedTiles)
+    {
+        // TODO: Implement orientation validation
+        // All tiles must face the same direction as the starting tile
+        // For now, allow all orientations
+        return true;
+    }
+    
+    private bool IsWithinMapBoundary(int x, int y)
+    {
+        // For now, allow placement within a reasonable area
+        // TODO: Implement scenario-specific map boundaries (Wedge, Hexagon, etc.)
+        var maxDistance = 10; // Maximum distance from starting tile (0,0)
+        return Math.Abs(x) <= maxDistance && Math.Abs(y) <= maxDistance;
+    }
+
+    private string GetPlacementPositionStyle(int x, int y)
+    {
+        // Use same hex grid positioning as tiles
+        var hexSize = 90;
+        var hexWidth = hexSize * 2;
+        var hexHeight = hexSize * Math.Sqrt(3);
+        
+        var pixelX = x * hexWidth + (y % 2) * (hexWidth / 2) + 300;
+        var pixelY = y * hexHeight + 200;
+        
+        return $"left: {pixelX}px; top: {pixelY}px;";
+    }
+    
+    private string GetMapHexStyle(int x, int y)
+    {
+        // Position map hexes within the tile area
+        var hexSize = 30; // Small hexes for movement within tiles
+        var hexWidth = hexSize * 2;
+        var hexHeight = hexSize * Math.Sqrt(3);
+        
+        // Convert offset coordinates back to fractional positions
+        var fractionalX = x / 2.0;
+        var fractionalY = y / 2.0;
+        
+        var pixelX = fractionalX * hexWidth + (fractionalY % 2) * (hexWidth / 2) + 300;
+        var pixelY = fractionalY * hexHeight + 200;
+        
+        return $"left: {pixelX}px; top: {pixelY}px;";
+    }
+    
+    private string GetExplorationAreaStyle(int x, int y)
+    {
+        // Use exactly the same positioning as map hexes
+        var hexSize = 30; // Same size as map hexes
+        var hexWidth = hexSize * 2;
+        var hexHeight = hexSize * Math.Sqrt(3);
+        
+        // Convert offset coordinates back to fractional positions (same as map hexes)
+        var fractionalX = x / 2.0;
+        var fractionalY = y / 2.0;
+        
+        var pixelX = fractionalX * hexWidth + (fractionalY % 2) * (hexWidth / 2) + 300;
+        var pixelY = fractionalY * hexHeight + 200;
+        
+        return $"left: {pixelX}px; top: {pixelY}px;";
+    }
+
+    // Removed OnPlacementClick - using exploration hexes instead
+    
+    private void OnMapHexClick(int x, int y)
+    {
+        Console.WriteLine($"Clicked map hex ({x}, {y}) - movement only, no tile placement");
+        // TODO: Implement figure movement logic
+        // This would move the player's figure to this position within the tile
+        // Map hexes should NEVER add new tiles to the board
+    }
+    
+    private async Task OnExplorationHexClick(int x, int y)
+    {
+        Console.WriteLine($"Clicked exploration hex ({x}, {y})");
+        await GameService.ExploreTileAsync(GameSessionId, x, y);
+        await LoadGameBoard();
     }
     
     private void OnTileClick(int x, int y)
@@ -565,4 +999,25 @@
     {
         return $"transform: translate3d({panX:F0}px, {panY:F0}px, 0) scale({zoomLevel:F1}); transform-origin: 0 0; will-change: transform;";
     }
+
+    private async Task RemoveAllTilesExceptOne()
+    {
+        try
+        {
+            Console.WriteLine($"Removing all tiles except starting tile for session {GameSessionId}");
+            var result = await GameService.RemoveAllTilesExceptOneAsync(GameSessionId);
+            Console.WriteLine($"Remove tiles result: {result}");
+            
+            if (result)
+            {
+                await LoadGameBoard();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error removing tiles: {ex.Message}");
+        }
+    }
 }
+

@@ -445,5 +445,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany()
             .HasForeignKey(eph => eph.GameSessionId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure TileEdgeData as owned entity (not a separate table)
+        builder.Entity<BoardTile>()
+            .OwnsOne(bt => bt.EdgeData);
     }
 }
