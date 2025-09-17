@@ -228,6 +228,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xHYW1lQm9hcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-4ycufp0ort
 
+[C:/Users/ElisWedberg/source/repos/mageknight/MageKnightOnline/Components/HexGrid.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xIZXhHcmlkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-4n38140jpp
+
 [C:/Users/ElisWedberg/source/repos/mageknight/MageKnightOnline/Components/Layout/MainLayout.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-7qoi3ikql9
@@ -235,3 +239,7 @@ build_metadata.AdditionalFiles.CssScope = b-7qoi3ikql9
 [C:/Users/ElisWedberg/source/repos/mageknight/MageKnightOnline/Components/Layout/NavMenu.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTmF2TWVudS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = b-rvtgbudlm9
+
+[C:/Users/ElisWedberg/source/repos/mageknight/MageKnightOnline/Components/ManaSource.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xNYW5hU291cmNlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-27ig1f9xay

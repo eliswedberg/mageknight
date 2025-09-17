@@ -417,5 +417,7 @@ C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\M
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\ref\MageKnightOnline.dll
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\1sa5ucwyqk-3b4k6uw959.gz
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\bin\Debug\net9.0\Data\app.db
-C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\qeyjce1mgk-pgf1we0ta2.gz
-C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\4s2uy6o1cr-pgf1we0ta2.gz
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\scopedcss\Components\HexGrid.razor.rz.scp.css
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\scopedcss\Components\ManaSource.razor.rz.scp.css
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\qeyjce1mgk-sj6yl3hak9.gz
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\compressed\4s2uy6o1cr-sj6yl3hak9.gz

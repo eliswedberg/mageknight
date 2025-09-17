@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MageKnightOnline")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+952062fe7dd2886d0b215551311c78be316cda8e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be228717bebfccb1ed6b94ab421c0373124735ef")]
 [assembly: System.Reflection.AssemblyProductAttribute("MageKnightOnline")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MageKnightOnline")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

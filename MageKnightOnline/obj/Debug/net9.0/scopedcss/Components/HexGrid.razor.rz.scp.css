@@ -1,0 +1,36 @@
+.hex-grid-container[b-4n38140jpp] {
+    position: relative;
+}
+
+.hex-grid-svg[b-4n38140jpp] { background: transparent; overflow: visible; display:block; }
+
+.hex-cell[b-4n38140jpp] {
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1;
+    fill: transparent;
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.hex-bg[b-4n38140jpp] {
+    stroke: rgba(255,255,255,0.12);
+    stroke-width: 1;
+    fill: transparent;
+}
+
+.hex-cell.tile:hover[b-4n38140jpp] {
+    fill: rgba(246, 224, 94, 0.25); /* yellow-ish */
+    stroke: rgba(246, 224, 94, 0.6);
+}
+
+.hex-cell.exploration:hover[b-4n38140jpp] {
+    fill: rgba(66, 153, 225, 0.25); /* blue-ish */
+    stroke: rgba(66, 153, 225, 0.6);
+}
+
+.hex-cell.empty:hover[b-4n38140jpp] {
+    fill: transparent;
+    stroke: rgba(255, 255, 255, 0.15);
+}
+
+

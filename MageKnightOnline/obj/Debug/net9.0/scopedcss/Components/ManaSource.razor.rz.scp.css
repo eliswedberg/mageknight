@@ -1,0 +1,11 @@
+.mana-source[b-27ig1f9xay] { color:#e2e8f0; }
+.mana-source .controls[b-27ig1f9xay] { display:flex; gap:8px; margin-bottom:8px; }
+.mana-source .dice[b-27ig1f9xay] { display:flex; gap:6px; }
+.mana-source .die[b-27ig1f9xay] { width:28px; height:28px; border-radius:4px; border:1px solid rgba(255,255,255,0.2); }
+.mana-source .die.white[b-27ig1f9xay] { background:#f8fafc; }
+.mana-source .die.blue[b-27ig1f9xay] { background:#63b3ed; }
+.mana-source .die.red[b-27ig1f9xay] { background:#f56565; }
+.mana-source .die.green[b-27ig1f9xay] { background:#68d391; }
+.mana-source .die.gold[b-27ig1f9xay] { background:#f6e05e; }
+.mana-source .die.black[b-27ig1f9xay] { background:#2d3748; }
+

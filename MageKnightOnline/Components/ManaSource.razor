@@ -1,0 +1,53 @@
+@using MageKnightOnline.Models
+@using MageKnightOnline.Services
+@inject ManaSourceService ManaService
+@inject DayNightService DayNight
+
+<div class="mana-source">
+    <div class="controls">
+        <button class="btn btn-sm" @onclick="ToggleDayNight">@(_isNight ? "Switch to Day" : "Switch to Night")</button>
+        <button class="btn btn-sm" @onclick="Refresh">Reroll</button>
+    </div>
+    <div class="dice">
+        @foreach (var d in _dice)
+        {
+            <div class="die @d.Color.ToString().ToLower()" title="@d.Color"></div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int GameSessionId { get; set; }
+
+    private bool _isNight;
+    private List<ManaDie> _dice = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var state = await ManaService.GetOrCreateAsync(GameSessionId);
+        _isNight = state.IsNight;
+        _dice = state.Dice;
+        StateHasChanged();
+    }
+
+    private async Task ToggleDayNight()
+    {
+        _isNight = !_isNight;
+        await DayNight.SetNightAsync(GameSessionId, _isNight);
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        var state = await ManaService.GetOrCreateAsync(GameSessionId);
+        _isNight = state.IsNight;
+        _dice = state.Dice;
+    }
+}
+
+

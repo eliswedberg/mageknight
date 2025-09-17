@@ -493,6 +493,43 @@
     color: #a0aec0;
 }
 
+/* _content/MageKnightOnline/Components/HexGrid.razor.rz.scp.css */
+.hex-grid-container[b-4n38140jpp] {
+    position: relative;
+}
+
+.hex-grid-svg[b-4n38140jpp] { background: transparent; overflow: visible; display:block; }
+
+.hex-cell[b-4n38140jpp] {
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1;
+    fill: transparent;
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.hex-bg[b-4n38140jpp] {
+    stroke: rgba(255,255,255,0.12);
+    stroke-width: 1;
+    fill: transparent;
+}
+
+.hex-cell.tile:hover[b-4n38140jpp] {
+    fill: rgba(246, 224, 94, 0.25); /* yellow-ish */
+    stroke: rgba(246, 224, 94, 0.6);
+}
+
+.hex-cell.exploration:hover[b-4n38140jpp] {
+    fill: rgba(66, 153, 225, 0.25); /* blue-ish */
+    stroke: rgba(66, 153, 225, 0.6);
+}
+
+.hex-cell.empty:hover[b-4n38140jpp] {
+    fill: transparent;
+    stroke: rgba(255, 255, 255, 0.15);
+}
+
+
 /* _content/MageKnightOnline/Components/Layout/MainLayout.razor.rz.scp.css */
 .page[b-7qoi3ikql9] {
     position: relative;
@@ -718,3 +755,15 @@ main[b-7qoi3ikql9] {
         overflow-y: auto;
     }
 }
+/* _content/MageKnightOnline/Components/ManaSource.razor.rz.scp.css */
+.mana-source[b-27ig1f9xay] { color:#e2e8f0; }
+.mana-source .controls[b-27ig1f9xay] { display:flex; gap:8px; margin-bottom:8px; }
+.mana-source .dice[b-27ig1f9xay] { display:flex; gap:6px; }
+.mana-source .die[b-27ig1f9xay] { width:28px; height:28px; border-radius:4px; border:1px solid rgba(255,255,255,0.2); }
+.mana-source .die.white[b-27ig1f9xay] { background:#f8fafc; }
+.mana-source .die.blue[b-27ig1f9xay] { background:#63b3ed; }
+.mana-source .die.red[b-27ig1f9xay] { background:#f56565; }
+.mana-source .die.green[b-27ig1f9xay] { background:#68d391; }
+.mana-source .die.gold[b-27ig1f9xay] { background:#f6e05e; }
+.mana-source .die.black[b-27ig1f9xay] { background:#2d3748; }
+

@@ -46,6 +46,9 @@ builder.Services.AddScoped<TurnManagementService>();
 builder.Services.AddScoped<CardManagementService>();
 builder.Services.AddScoped<CombatResolutionService>();
 builder.Services.AddScoped<TileDataService>();
+builder.Services.AddScoped<HexGridManager>();
+builder.Services.AddScoped<ManaSourceService>();
+builder.Services.AddScoped<DayNightService>();
 
 var app = builder.Build();
 

@@ -1,0 +1,143 @@
+@using MageKnightOnline.Models
+@using MageKnightOnline.Services
+@inject HexGridManager Grid
+@inject MageKnightGameService GameService
+
+<div class="hex-grid-container" style="position:relative;" tabindex="0" @onkeydown="OnKeyDown">
+    <svg class="hex-grid-svg" @onclick="OnSvgClick"
+         width="100%" height="600" viewBox="-1000 -800 2000 1600" preserveAspectRatio="xMidYMid meet">
+        <g transform="translate(@tx,@ty)">
+            @if (ShowBackgroundGrid)
+            {
+                @for (int rr = -GridRadius; rr <= GridRadius; rr++)
+                {
+                    @for (int qq = -GridRadius; qq <= GridRadius; qq++)
+                    {
+                        var (gx, gy) = AxialToPixelPointyTop(qq, rr, size);
+                        var gpoints = GetHexPointsPointyTop(gx, gy, size);
+                        <polygon class="hex-bg" points="@gpoints" />
+                    }
+                }
+            }
+
+            @foreach (var cell in Grid.Cells.Values)
+            {
+                var (x, y) = AxialToPixelPointyTop(cell.Q, cell.R, size);
+                var points = GetHexPointsPointyTop(x, y, size);
+                var cls = cell.IsTile ? "hex-cell tile" : cell.IsExploration ? "hex-cell exploration" : "hex-cell empty";
+                <polygon class="@cls" points="@points" @onclick="(e) => OnHexClick(e, cell)" />
+            }
+        </g>
+    </svg>
+
+    <div style="position:absolute; left:8px; top:8px; color:#cbd5e1; font-size:12px; background:rgba(0,0,0,0.3); padding:4px 6px; border-radius:4px;">
+        x=@tx:F0, y=@ty:F0, size=@size:F0 (arrows/WASD move, +/- scale, Shift=fast)
+    </div>
+</div>
+
+@code {
+    [Parameter] public int GameSessionId { get; set; }
+    [Parameter] public double OffsetX { get; set; } = 300; // align with existing tile origin
+    [Parameter] public double OffsetY { get; set; } = 200;
+    [Parameter] public bool ShowBackgroundGrid { get; set; } = true;
+    [Parameter] public int GridRadius { get; set; } = 3; // ring around center
+    [Parameter] public double HexSize { get; set; } = 120; // matches tile-overlay.svg: corner-to-corner 240, flat-to-flat ~207.8
+    [Parameter] public EventCallback<HexCell> HexClicked { get; set; }
+
+    private double tx;
+    private double ty;
+    private double size;
+
+    protected override void OnParametersSet()
+    {
+        if (tx == 0 && ty == 0 && size == 0)
+        {
+            tx = OffsetX;
+            ty = OffsetY;
+            size = HexSize;
+        }
+    }
+
+    private void OnSvgClick(MouseEventArgs e) { /* swallow */ }
+
+    private async Task OnHexClick(MouseEventArgs e, HexCell cell)
+    {
+        // If exploration, ask backend to explore/place tile at this axial center
+        if (cell.IsExploration)
+        {
+            // Convert axial (q,r) to the app's offset coordinates (odd-r, pointy-top)
+            var (x, y) = AxialToOddR(cell.Q, cell.R);
+            await GameService.ExploreTileAsync(GameSessionId, x, y);
+            Grid.TryPlaceTile(cell.Q, cell.R);
+            StateHasChanged();
+        }
+        await HexClicked.InvokeAsync(cell);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        var step = e.ShiftKey ? 20 : 5;
+        var sizeStep = e.ShiftKey ? 5 : 1;
+        switch (e.Key)
+        {
+            case "ArrowLeft":
+            case "a":
+            case "A":
+                tx -= step; break;
+            case "ArrowRight":
+            case "d":
+            case "D":
+                tx += step; break;
+            case "ArrowUp":
+            case "w":
+            case "W":
+                ty -= step; break;
+            case "ArrowDown":
+            case "s":
+            case "S":
+                ty += step; break;
+            case "+":
+            case "=":
+                size += sizeStep; break;
+            case "-":
+            case "_":
+                size = Math.Max(5, size - sizeStep); break;
+            case "r":
+            case "R":
+                tx = OffsetX; ty = OffsetY; size = HexSize; break;
+        }
+        StateHasChanged();
+    }
+
+    // axial -> odd-r (pointy-top, rows offset to the right when row is odd)
+    private static (int x, int y) AxialToOddR(int q, int r)
+    {
+        var x = q + (r - (r & 1)) / 2;
+        var y = r;
+        return (x, y);
+    }
+
+    // Convert axial (q,r) to pixel (x,y) for POINTY-TOP hexes (Red Blob)
+    private static (double x, double y) AxialToPixelPointyTop(int q, int r, double size)
+    {
+        var x = size * (Math.Sqrt(3) * q + Math.Sqrt(3) / 2.0 * r);
+        var y = size * (3.0 / 2.0 * r);
+        return (x, y);
+    }
+
+    // Get polygon points string for a POINTY-TOP hex centered at (x,y)
+    private static string GetHexPointsPointyTop(double cx, double cy, double size)
+    {
+        var points = new List<string>(6);
+        for (int i = 0; i < 6; i++)
+        {
+            var angleRad = Math.PI / 180.0 * (60 * i - 30); // pointy-top (matches tile-overlay.svg)
+            var px = cx + size * Math.Cos(angleRad);
+            var py = cy + size * Math.Sin(angleRad);
+            points.Add($"{px:F1},{py:F1}");
+        }
+        return string.Join(" ", points);
+    }
+}
+
+

@@ -105,23 +105,11 @@
                                 
                     <!-- Valid placement positions - removed, using exploration hexes instead -->
                     
-                    <!-- Map hexes (M) - inner 7 hexes for figure movement only -->
-                    @foreach (var pos in GetMapHexes())
-                    {
-                        <div class="map-hex" style="@GetMapHexStyle(pos.X, pos.Y)" 
-                             @onclick='() => OnMapHexClick(pos.X, pos.Y)'
-                             title="Click to move figure here (no tile placement)">
-                        </div>
-                    }
-                    
-                    <!-- Exploration hexes (E) - outer ring, click to add new tiles -->
-                    @foreach (var pos in GetExplorationHexes())
-                    {
-                        <div class="exploration-area" style="@GetExplorationAreaStyle(pos.X, pos.Y)" 
-                             @onclick='() => OnExplorationHexClick(pos.X, pos.Y)'
-                             title="Click to explore new tile">
-                        </div>
-                    }
+                    <!-- New unified hex grid (19 cells: 7 tile + 12 exploration) -->
+                    <HexGrid GameSessionId="@GameSessionId" OffsetX="300" OffsetY="200" HexClicked="OnHexCellClicked" />
+                    <div style="position:absolute; right:16px; top:16px;">
+                        <ManaSource GameSessionId="@GameSessionId" />
+                    </div>
                     }
                     else
                     {
@@ -782,7 +770,7 @@
         
         return $"left: {pixelX}px; top: {pixelY}px;";
     }
-    
+
     private string GetMapHexStyle(int x, int y)
     {
         // Position map hexes within the tile area
@@ -818,7 +806,11 @@
     }
 
     // Removed OnPlacementClick - using exploration hexes instead
-    
+    private void OnHexCellClicked(HexCell cell)
+    {
+        // Hook available for future selection logic
+    }
+
     private void OnMapHexClick(int x, int y)
     {
         Console.WriteLine($"Clicked map hex ({x}, {y}) - movement only, no tile placement");

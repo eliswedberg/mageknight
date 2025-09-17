@@ -1,0 +1,11 @@
+.mana-source { color:#e2e8f0; }
+.mana-source .controls { display:flex; gap:8px; margin-bottom:8px; }
+.mana-source .dice { display:flex; gap:6px; }
+.mana-source .die { width:28px; height:28px; border-radius:4px; border:1px solid rgba(255,255,255,0.2); }
+.mana-source .die.white { background:#f8fafc; }
+.mana-source .die.blue { background:#63b3ed; }
+.mana-source .die.red { background:#f56565; }
+.mana-source .die.green { background:#68d391; }
+.mana-source .die.gold { background:#f6e05e; }
+.mana-source .die.black { background:#2d3748; }
+
