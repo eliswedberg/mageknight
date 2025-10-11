@@ -1,0 +1,117 @@
+{
+  "_schema": {
+    "id": "string",
+    "type": "village|monastery|keep|mage_tower|city|ruins|dungeon|tomb|monster_den|spawning_grounds|portal",
+    "when_revealed": [],
+    "interact_options": [],
+    "defenders": [],
+    "rewards": []
+  },
+  "items": [
+    {
+      "id": "village",
+      "type": "village",
+      "interact_options": [
+        {
+          "type": "heal",
+          "cost_influence": 3
+        },
+        {
+          "type": "recruit",
+          "unit_types": "matching"
+        }
+      ]
+    },
+    {
+      "id": "monastery",
+      "type": "monastery",
+      "interact_options": [
+        {
+          "type": "heal",
+          "cost_influence": 2
+        },
+        {
+          "type": "learn_advanced_action",
+          "cost_influence": 6
+        }
+      ],
+      "when_revealed": [
+        {
+          "type": "add_advanced_action_to_unit_offer"
+        }
+      ],
+      "burn": {
+        "reputation_delta": -3,
+        "defender_color": "violet"
+      }
+    },
+    {
+      "id": "keep",
+      "type": "keep",
+      "fortified": true,
+      "entering_assaults": true
+    },
+    {
+      "id": "mage_tower",
+      "type": "mage_tower",
+      "fortified": true,
+      "interact_conquered": [
+        {
+          "type": "learn_spell",
+          "cost_influence": 7,
+          "requires_mana": "matching"
+        }
+      ]
+    },
+    {
+      "id": "city_red",
+      "type": "city",
+      "color": "red",
+      "interact_conquered": [
+        {
+          "type": "buy_artifact",
+          "cost_influence": 12
+        }
+      ]
+    },
+    {
+      "id": "city_blue",
+      "type": "city",
+      "color": "blue",
+      "interact_conquered": [
+        {
+          "type": "buy_spell",
+          "cost_influence": 7,
+          "requires_mana": "matching"
+        }
+      ]
+    },
+    {
+      "id": "city_white",
+      "type": "city",
+      "color": "white",
+      "interact_conquered": [
+        {
+          "type": "recruit_all_types",
+          "value": true
+        },
+        {
+          "type": "add_elite_unit_to_offer",
+          "cost_influence": 2
+        }
+      ]
+    },
+    {
+      "id": "city_green",
+      "type": "city",
+      "color": "green",
+      "interact_conquered": [
+        {
+          "type": "gain_advanced_action",
+          "cost_influence": 6,
+          "source": "offer_or_topdeck"
+        }
+      ]
+    }
+  ]
+}

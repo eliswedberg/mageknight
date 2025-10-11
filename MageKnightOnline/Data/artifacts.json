@@ -1,0 +1,14 @@
+{
+  "_schema": {
+    "id": "string",
+    "name": "string",
+    "basic": {
+      "effects": []
+    },
+    "strong": {
+      "throw_away": true,
+      "effects": []
+    }
+  },
+  "items": []
+}

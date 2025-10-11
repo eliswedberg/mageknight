@@ -22,9 +22,6 @@ public class GameDataSeeder
     {
         try
         {
-            // Seed test user
-            await SeedTestUserAsync();
-            
             // Seed Mage Knight Cards
             await SeedMageKnightCardsAsync();
             
@@ -36,6 +33,9 @@ public class GameDataSeeder
             
             // Seed Units
             await SeedUnitsAsync();
+            
+            // Seed Sites
+            await SeedSitesAsync();
             
             await _context.SaveChangesAsync();
             _logger.LogInformation("Game data seeded successfully");
@@ -167,4 +167,130 @@ public class GameDataSeeder
 
         _context.Units.AddRange(units);
     }
+
+    private async Task SeedSitesAsync()
+    {
+        if (await _context.Sites.AnyAsync()) return;
+
+        try
+        {
+            var sitesJsonPath = Path.Combine(Directory.GetCurrentDirectory(), "Data", "sites.json");
+            if (!File.Exists(sitesJsonPath))
+            {
+                _logger.LogWarning("Sites.json file not found at {Path}, skipping site seeding", sitesJsonPath);
+                return;
+            }
+
+            var jsonContent = await File.ReadAllTextAsync(sitesJsonPath);
+            var sitesData = System.Text.Json.JsonSerializer.Deserialize<SitesData>(jsonContent);
+
+            if (sitesData?.Items == null)
+            {
+                _logger.LogWarning("No site data found in sites.json");
+                return;
+            }
+
+            // Create site templates in the database for reference
+            // These will be used by SiteService to create actual sites during gameplay
+            var siteTemplates = new List<SiteTemplate>();
+            
+            foreach (var siteItem in sitesData.Items)
+            {
+                var siteTemplate = new SiteTemplate
+                {
+                    Id = siteItem.Id,
+                    Type = siteItem.Type,
+                    Color = siteItem.Color,
+                    Fortified = siteItem.Fortified,
+                    EnteringAssaults = siteItem.EnteringAssaults,
+                    InteractOptions = siteItem.InteractOptions,
+                    InteractConquered = siteItem.InteractConquered,
+                    WhenRevealed = siteItem.WhenRevealed,
+                    Defenders = siteItem.Defenders,
+                    Rewards = siteItem.Rewards,
+                    Burn = siteItem.Burn
+                };
+                
+                siteTemplates.Add(siteTemplate);
+            }
+
+            _logger.LogInformation("Loaded {Count} site templates from sites.json", siteTemplates.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding sites from sites.json");
+        }
+    }
 }
+
+#region Site Template Models for Seeding
+
+public class SitesData
+{
+    public SitesSchema? _schema { get; set; }
+    public List<SiteItem>? Items { get; set; }
+}
+
+public class SitesSchema
+{
+    public string? Id { get; set; }
+    public string? Type { get; set; }
+    public List<object>? When_revealed { get; set; }
+    public List<object>? Interact_options { get; set; }
+    public List<object>? Defenders { get; set; }
+    public List<object>? Rewards { get; set; }
+}
+
+public class SiteItem
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string? Color { get; set; }
+    public bool? Fortified { get; set; }
+    public bool? EnteringAssaults { get; set; }
+    public List<SiteInteraction>? InteractOptions { get; set; }
+    public List<SiteInteraction>? InteractConquered { get; set; }
+    public List<SiteEffect>? WhenRevealed { get; set; }
+    public List<object>? Defenders { get; set; }
+    public List<object>? Rewards { get; set; }
+    public BurnEffect? Burn { get; set; }
+}
+
+public class SiteTemplate
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string? Color { get; set; }
+    public bool? Fortified { get; set; }
+    public bool? EnteringAssaults { get; set; }
+    public List<SiteInteraction>? InteractOptions { get; set; }
+    public List<SiteInteraction>? InteractConquered { get; set; }
+    public List<SiteEffect>? WhenRevealed { get; set; }
+    public List<object>? Defenders { get; set; }
+    public List<object>? Rewards { get; set; }
+    public BurnEffect? Burn { get; set; }
+}
+
+public class SiteInteraction
+{
+    public string Type { get; set; } = string.Empty;
+    public int? CostInfluence { get; set; }
+    public string? UnitTypes { get; set; }
+    public string? RequiresMana { get; set; }
+    public bool? Value { get; set; }
+    public string? Source { get; set; }
+}
+
+public class SiteEffect
+{
+    public string Type { get; set; } = string.Empty;
+    public Dictionary<string, object>? Parameters { get; set; }
+}
+
+public class BurnEffect
+{
+    public int ReputationDelta { get; set; }
+    public string? DefenderColor { get; set; }
+}
+
+#endregion

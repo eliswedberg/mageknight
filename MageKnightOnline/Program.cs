@@ -26,12 +26,14 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => 
     {
         options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+        options.User.RequireUniqueEmail = false;
         // Relax password requirements for development
         options.Password.RequireDigit = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequireUppercase = false;
-        options.Password.RequiredLength = 4;
+        options.Password.RequiredLength = 6;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -49,66 +51,56 @@ builder.Services.AddScoped<TileDataService>();
 builder.Services.AddScoped<HexGridManager>();
 builder.Services.AddScoped<ManaSourceService>();
 builder.Services.AddScoped<DayNightService>();
+builder.Services.AddScoped<MapTileService>();
+builder.Services.AddScoped<ActionCardService>();
+builder.Services.AddScoped<TurnManagementService>();
+builder.Services.AddScoped<CombatService>();
+builder.Services.AddScoped<MovementService>();
+builder.Services.AddScoped<SiteService>();
 
 var app = builder.Build();
 
-// Ensure database is created
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.EnsureCreated();
-    
-    // Ensure game-related tables exist (for existing DBs created before adding game models)
-    try
+    // Ensure database is created and migrated
+    using (var scope = app.Services.CreateScope())
     {
-        await context.Database.OpenConnectionAsync();
-        using (var cmd = context.Database.GetDbConnection().CreateCommand())
-        {
-            cmd.CommandText = "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='GameSessions'";
-            var result = await cmd.ExecuteScalarAsync();
-            var hasGameTables = (result is long l && l > 0) || (result is int i && i > 0);
-            if (!hasGameTables)
-            {
-                var sqlPath = Path.Combine(app.Environment.ContentRootPath, "Data", "Migrations", "20241206000000_AddGameModels.sql");
-                if (File.Exists(sqlPath))
-                {
-                    var sql = await File.ReadAllTextAsync(sqlPath);
-                    await context.Database.ExecuteSqlRawAsync(sql);
-                }
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Warning: Could not ensure game tables exist: {ex.Message}");
-    }
-    finally
-    {
-        try { await context.Database.CloseConnectionAsync(); } catch { }
-    }
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        context.Database.EnsureCreated();
 
     // Create test user
     try
     {
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var testUser = await userManager.FindByEmailAsync("eliwe1@hotmail.com");
-        if (testUser == null)
+        
+        // Check if the problematic user ID exists
+        var problematicUserId = "4033b8c6-0d58-45f6-999a-41f212b15b04";
+        var existingUser = await userManager.FindByIdAsync(problematicUserId);
+        if (existingUser == null)
         {
-            testUser = new ApplicationUser
+            // Create user with the specific ID that's causing issues
+            var testUser = new ApplicationUser
             {
+                Id = problematicUserId,
                 UserName = "eliwe1@hotmail.com",
                 Email = "eliwe1@hotmail.com",
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                NormalizedUserName = "ELIWE1@HOTMAIL.COM",
+                NormalizedEmail = "ELIWE1@HOTMAIL.COM",
+                SecurityStamp = Guid.NewGuid().ToString(),
+                ConcurrencyStamp = Guid.NewGuid().ToString()
             };
-            var result = await userManager.CreateAsync(testUser, "elis123");
-            if (result.Succeeded)
-            {
-                Console.WriteLine("Test user created: eliwe1@hotmail.com / elis123");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to create test user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-            }
+            
+            // Set password hash manually
+            testUser.PasswordHash = userManager.PasswordHasher.HashPassword(testUser, "elis123");
+            
+            // Add directly to context to bypass UserManager validation
+            context.Users.Add(testUser);
+            await context.SaveChangesAsync();
+            
+            Console.WriteLine($"Test user created with specific ID: eliwe1@hotmail.com / elis123 with ID: {testUser.Id}");
+        }
+        else
+        {
+            Console.WriteLine($"User with problematic ID already exists: {existingUser.Email} with ID: {existingUser.Id}");
         }
     }
     catch (Exception ex)

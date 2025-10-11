@@ -1,0 +1,62 @@
+@page "/list-users"
+@using Microsoft.AspNetCore.Identity
+@using MageKnightOnline.Data
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>List Users</PageTitle>
+
+<h1>All Users in Database</h1>
+
+@if (Users != null)
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>UserName</th>
+                    <th>EmailConfirmed</th>
+                    <th>Has Password</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Users)
+                {
+                    <tr>
+                        <td>@user.Id</td>
+                        <td>@user.Email</td>
+                        <td>@user.UserName</td>
+                        <td>@user.EmailConfirmed</td>
+                        <td>@(!string.IsNullOrEmpty(user.PasswordHash))</td>
+                        <td>@user.Id.Substring(0, 8)...</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    
+    <p><strong>Total users:</strong> @Users.Count</p>
+}
+else
+{
+    <p>Loading users...</p>
+}
+
+@code {
+    private List<ApplicationUser>? Users { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Users = UserManager.Users.ToList();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+    }
+}

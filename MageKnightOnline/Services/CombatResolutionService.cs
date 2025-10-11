@@ -121,7 +121,7 @@ public class CombatResolutionService
         }
 
         // Update combat status
-        combat.Status = CombatStatus.Completed;
+        combat.Status = CombatStatus.Resolved;
         combat.EndedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

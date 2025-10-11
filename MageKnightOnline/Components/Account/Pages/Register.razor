@@ -22,7 +22,7 @@
 <div class="row">
     <div class="col-lg-6">
         <StatusMessage Message="@Message" />
-        <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+        <EditForm Model="Input" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
             <h2>Create a new account.</h2>
             <hr />
@@ -82,9 +82,9 @@
 
         Logger.LogInformation("User created a new account with password.");
 
-        // Email confirmation is disabled; sign in the user immediately after registration.
-
+        // Email confirmation is disabled; sign in the user directly
         await SignInManager.SignInAsync(user, isPersistent: false);
+        Logger.LogInformation("User created and signed in successfully: {Email}", Input.Email);
         RedirectManager.RedirectTo(ReturnUrl);
     }
 
@@ -113,7 +113,6 @@
     private sealed class InputModel
     {
         [Required]
-        [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
 

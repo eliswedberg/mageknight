@@ -1,88 +1,168 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MageKnightOnline.Models;
 
+/// <summary>
+/// Site model based on sites.json schema
+/// </summary>
 public class Site
 {
+    [Key]
     public int Id { get; set; }
     
-    public int GameBoardId { get; set; }
-    public GameBoard GameBoard { get; set; } = null!;
+    /// <summary>
+    /// Site identifier from sites.json (e.g., "village", "monastery", "city_red")
+    /// </summary>
+    [Required]
+    [MaxLength(50)]
+    public string SiteId { get; set; } = string.Empty;
     
-    public int X { get; set; }
-    public int Y { get; set; }
-    
+    /// <summary>
+    /// Site type from sites.json schema
+    /// </summary>
     public SiteType Type { get; set; }
     
-    // Enhanced site properties
-    public SiteSubType SiteSubType { get; set; }
-    public int DifficultyLevel { get; set; } = 1;
-    public int RequiredLevel { get; set; } = 1;
-    public bool IsRepeatable { get; set; } = false;
-    public string? SpecialRequirements { get; set; } // JSON string
-    public string? EnemyIds { get; set; } // JSON string
-    public string? LootTable { get; set; } // JSON string
+    /// <summary>
+    /// Site color (for cities and some other sites)
+    /// </summary>
+    [MaxLength(20)]
+    public string? Color { get; set; }
     
-    public string Name { get; set; } = string.Empty;
+    /// <summary>
+    /// Whether this site is fortified
+    /// </summary>
+    public bool IsFortified { get; set; } = false;
     
-    public string? Description { get; set; }
+    /// <summary>
+    /// Whether entering this site triggers assaults
+    /// </summary>
+    public bool EnteringAssaults { get; set; } = false;
     
-    public bool IsExplored { get; set; } = false;
+    /// <summary>
+    /// Effects triggered when site is revealed (JSON array)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string WhenRevealed { get; set; } = "[]";
     
+    /// <summary>
+    /// Interaction options available at this site (JSON array)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string InteractOptions { get; set; } = "[]";
+    
+    /// <summary>
+    /// Interaction options when site is conquered (JSON array)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string InteractConquered { get; set; } = "[]";
+    
+    /// <summary>
+    /// Site defenders (JSON array)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string Defenders { get; set; } = "[]";
+    
+    /// <summary>
+    /// Site rewards (JSON array)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string Rewards { get; set; } = "[]";
+    
+    /// <summary>
+    /// Burn effects (for monasteries, etc.) (JSON object)
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? Burn { get; set; }
+    
+    /// <summary>
+    /// Game session this site belongs to
+    /// </summary>
+    public int GameSessionId { get; set; }
+    public GameSession GameSession { get; set; } = null!;
+    
+    /// <summary>
+    /// Hex space this site is located on
+    /// </summary>
+    public int? HexSpaceId { get; set; }
+    public HexSpace? HexSpace { get; set; }
+    
+    /// <summary>
+    /// Whether the site has been revealed
+    /// </summary>
+    public bool IsRevealed { get; set; } = false;
+    
+    /// <summary>
+    /// Whether the site has been conquered
+    /// </summary>
     public bool IsConquered { get; set; } = false;
     
+    /// <summary>
+    /// Player who conquered the site
+    /// </summary>
     public int? ConqueredByPlayerId { get; set; }
     public GamePlayer? ConqueredByPlayer { get; set; }
     
+    /// <summary>
+    /// When the site was conquered
+    /// </summary>
     public DateTime? ConqueredAt { get; set; }
     
-    public int AttackCost { get; set; } = 0;
+    /// <summary>
+    /// Turn when the site was conquered
+    /// </summary>
+    public int? ConqueredOnTurn { get; set; }
     
-    public int FameReward { get; set; } = 0;
+    /// <summary>
+    /// Whether the site has been burned/destroyed
+    /// </summary>
+    public bool IsBurned { get; set; } = false;
     
-    public int ReputationReward { get; set; } = 0;
+    /// <summary>
+    /// Player who burned the site
+    /// </summary>
+    public int? BurnedByPlayerId { get; set; }
+    public GamePlayer? BurnedByPlayer { get; set; }
     
-    public int CrystalsReward { get; set; } = 0;
+    /// <summary>
+    /// When the site was burned
+    /// </summary>
+    public DateTime? BurnedAt { get; set; }
     
-    public string? ArtifactReward { get; set; }
+    /// <summary>
+    /// Site name for display
+    /// </summary>
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
     
-    public string? SpellReward { get; set; }
+    /// <summary>
+    /// Site description
+    /// </summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
     
-    public string? UnitReward { get; set; }
-    
+    /// <summary>
+    /// Site enemies (legacy support)
+    /// </summary>
     public ICollection<SiteEnemy> Enemies { get; set; } = new List<SiteEnemy>();
 }
 
+/// <summary>
+/// Site types from sites.json schema
+/// </summary>
 public enum SiteType
 {
-    Ruins,
-    Dungeon,
+    Village,
+    Monastery,
     Keep,
     MageTower,
-    Monastery,
-    Village,
     City,
-    Volkaire,
-    Krang,
-    Portal,
-    Tomb,
-    Library,
-    Laboratory
-}
-
-public enum SiteSubType
-{
-    Village,
-    Keep,
-    MageTower,
-    Monastery,
-    Dungeon,
     Ruins,
-    City,
-    Portal,
+    Dungeon,
     Tomb,
-    Library,
-    Laboratory
+    MonsterDen,
+    SpawningGrounds,
+    Portal
 }
 
 public class SiteEnemy

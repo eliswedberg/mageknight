@@ -10,7 +10,6 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
-@inject IJSRuntime JS
 
 <PageTitle>Log in</PageTitle>
 
@@ -19,7 +18,7 @@
     <div class="col-lg-6">
         <section>
             <StatusMessage Message="@errorMessage" />
-            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+            <EditForm Model="Input" OnValidSubmit="LoginUser" FormName="login">
                 <DataAnnotationsValidator />
                 <h2>Use a local account to log in.</h2>
                 <hr />
@@ -48,7 +47,7 @@
                         <a href="Account/ForgotPassword">Forgot your password?</a>
                     </p>
                     <p>
-                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a>
+                        <a href="@($"Account/Register?returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}")">Register as a new user</a>
                     </p>
                     <p>
                         <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
@@ -87,79 +86,38 @@
         }
     }
 
-
     public async Task LoginUser()
     {
         Logger.LogInformation("Login attempt for email: {Email}", Input.Email);
-        
-        try
+
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+
+        if (result.Succeeded)
         {
-            var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-            
-            if (result.Succeeded)
-            {
-                Logger.LogInformation("User logged in successfully.");
-                // Use JavaScript to navigate to avoid cookie issues
-                await JS.InvokeVoidAsync("eval", $"window.location.href = '{ReturnUrl ?? "/"}';");
-                return;
-            }
-            else if (result.RequiresTwoFactor)
-            {
-                RedirectManager.RedirectTo("Account/LoginWith2fa", new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
-            }
-            else if (result.IsLockedOut)
-            {
-                RedirectManager.RedirectTo("Account/Lockout");
-            }
-            else
-            {
-                errorMessage = "Error: Invalid login attempt.";
-            }
+            Logger.LogInformation("User logged in successfully: {Email}", Input.Email);
+            RedirectManager.RedirectTo(ReturnUrl);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Headers are read-only"))
+        else if (result.RequiresTwoFactor)
         {
-            Logger.LogInformation("Headers read-only, validating credentials and using JavaScript redirect for: {Email}", Input.Email);
-            
-            // Validate credentials without signing in (since headers are read-only)
-            try
-            {
-                var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
-                if (user != null)
-                {
-                    var isValidPassword = await SignInManager.UserManager.CheckPasswordAsync(user, Input.Password);
-                    if (isValidPassword)
-                    {
-                        Logger.LogInformation("Credentials valid, redirecting with JavaScript for: {Email}", Input.Email);
-                        // Use a different approach - redirect to a special login handler
-                        await JS.InvokeVoidAsync("eval", $"window.location.href = '/Account/LoginHandler?email={Uri.EscapeDataString(Input.Email)}&rememberMe={Input.RememberMe}&returnUrl={Uri.EscapeDataString(ReturnUrl ?? "/")}';");
-                    }
-                    else
-                    {
-                        errorMessage = "Error: Invalid login attempt.";
-                    }
-                }
-                else
-                {
-                    errorMessage = "Error: Invalid login attempt.";
-                }
-            }
-            catch (Exception validationEx)
-            {
-                Logger.LogError(validationEx, "Failed to validate credentials after headers read-only exception");
-                errorMessage = "Error: Login failed due to technical issues.";
-            }
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
         }
-        catch (Exception ex)
+        else if (result.IsLockedOut)
         {
-            Logger.LogError(ex, "Unexpected error during login");
-            errorMessage = "Error: An unexpected error occurred during login.";
+            Logger.LogWarning("User account locked out.");
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Error: Invalid login attempt.";
+            Logger.LogWarning("Invalid login attempt for: {Email}", Input.Email);
         }
     }
 
     private sealed class InputModel
     {
         [Required]
-        [EmailAddress]
         public string Email { get; set; } = "";
 
         [Required]

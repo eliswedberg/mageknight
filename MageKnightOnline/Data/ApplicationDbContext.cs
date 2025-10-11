@@ -52,11 +52,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<GameState> GameStates { get; set; }
     public DbSet<GameEvent> GameEvents { get; set; }
     
-    // Tile System
+    // Tile System (Legacy)
     public DbSet<TileDeck> TileDecks { get; set; }
     public DbSet<MapTile> MapTiles { get; set; }
     public DbSet<TileTerrainSection> TileTerrainSections { get; set; }
     public DbSet<TileSite> TileSites { get; set; }
+    
+    // New Map System (Map_tile_rules.md)
+    public DbSet<MapGraph> MapGraphs { get; set; }
+    public DbSet<MapTileNew> MapTileNews { get; set; }
+    public DbSet<HexSpace> HexSpaces { get; set; }
+    public DbSet<City> Cities { get; set; }
+    
+    // Action Cards System (actions.json schema)
+    public DbSet<ActionCard> ActionCards { get; set; }
     
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -101,6 +110,24 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             
         builder.Entity<GamePlayer>()
             .HasIndex(gp => new { gp.GameSessionId, gp.PlayerNumber })
+            .IsUnique();
+        
+        // Configure ActionCard relationships
+        builder.Entity<ActionCard>()
+            .HasOne(ac => ac.GameSession)
+            .WithMany()
+            .HasForeignKey(ac => ac.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<ActionCard>()
+            .HasOne(ac => ac.Player)
+            .WithMany()
+            .HasForeignKey(ac => ac.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure ActionCard unique constraints
+        builder.Entity<ActionCard>()
+            .HasIndex(ac => new { ac.PlayerId, ac.CardId })
             .IsUnique();
         
         // Configure PlayerHand relationships
@@ -206,11 +233,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasForeignKey(pp => pp.GameBoardId)
             .OnDelete(DeleteBehavior.Cascade);
             
-        builder.Entity<GameBoard>()
-            .HasMany(gb => gb.Sites)
-            .WithOne(s => s.GameBoard)
-            .HasForeignKey(s => s.GameBoardId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // Sites are now linked to GameSession, not GameBoard
+        // builder.Entity<GameBoard>()
+        //     .HasMany(gb => gb.Sites)
+        //     .WithOne(s => s.GameBoard)
+        //     .HasForeignKey(s => s.GameBoardId)
+        //     .OnDelete(DeleteBehavior.Cascade);
         
         // Configure BoardTile relationships
         builder.Entity<BoardTile>()
@@ -228,9 +256,27 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         
         // Configure Site relationships
         builder.Entity<Site>()
+            .HasOne(s => s.GameSession)
+            .WithMany()
+            .HasForeignKey(s => s.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<Site>()
+            .HasOne(s => s.HexSpace)
+            .WithMany()
+            .HasForeignKey(s => s.HexSpaceId)
+            .OnDelete(DeleteBehavior.SetNull);
+            
+        builder.Entity<Site>()
             .HasOne(s => s.ConqueredByPlayer)
             .WithMany()
             .HasForeignKey(s => s.ConqueredByPlayerId)
+            .OnDelete(DeleteBehavior.SetNull);
+            
+        builder.Entity<Site>()
+            .HasOne(s => s.BurnedByPlayer)
+            .WithMany()
+            .HasForeignKey(s => s.BurnedByPlayerId)
             .OnDelete(DeleteBehavior.SetNull);
             
         builder.Entity<Site>()
@@ -449,5 +495,76 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // Configure TileEdgeData as owned entity (not a separate table)
         builder.Entity<BoardTile>()
             .OwnsOne(bt => bt.EdgeData);
+        
+        // Configure new Map System relationships
+        builder.Entity<MapGraph>()
+            .HasOne(mg => mg.GameSession)
+            .WithMany()
+            .HasForeignKey(mg => mg.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        // MapGraph relationships are handled through GameSessionId
+        // Tiles and Cities are linked to GameSession, not directly to MapGraph
+            
+        // Sites are managed separately from MapGraph for now
+        // TODO: Consider if Sites should be directly linked to MapGraph
+        
+        // Configure MapTileNew relationships
+        builder.Entity<MapTileNew>()
+            .HasOne(mt => mt.GameSession)
+            .WithMany()
+            .HasForeignKey(mt => mt.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<MapTileNew>()
+            .HasMany(mt => mt.Hexes)
+            .WithOne(hs => hs.MapTile)
+            .HasForeignKey(hs => hs.MapTileId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        // Configure HexSpace relationships
+        builder.Entity<HexSpace>()
+            .HasOne(hs => hs.GameSession)
+            .WithMany()
+            .HasForeignKey(hs => hs.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<HexSpace>()
+            .HasOne(hs => hs.Site)
+            .WithMany()
+            .HasForeignKey(hs => hs.SiteId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
+        // Configure City relationships
+        builder.Entity<City>()
+            .HasOne(c => c.GameSession)
+            .WithMany()
+            .HasForeignKey(c => c.GameSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<City>()
+            .HasOne(c => c.MapTile)
+            .WithMany()
+            .HasForeignKey(c => c.MapTileId)
+            .OnDelete(DeleteBehavior.Cascade);
+            
+        builder.Entity<City>()
+            .HasOne(c => c.ConqueredByPlayer)
+            .WithMany()
+            .HasForeignKey(c => c.ConqueredByPlayerId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
+        // Configure unique constraints for new system
+        builder.Entity<MapGraph>()
+            .HasIndex(mg => mg.GameSessionId)
+            .IsUnique();
+            
+        builder.Entity<MapTileNew>()
+            .HasIndex(mt => new { mt.GameSessionId, mt.TileId })
+            .IsUnique();
+            
+        builder.Entity<HexSpace>()
+            .HasIndex(hs => new { hs.GameSessionId, hs.Q, hs.R })
+            .IsUnique();
     }
 }

@@ -1,0 +1,12 @@
+{
+  "_schema": {
+    "id": "string",
+    "color": "brown|gray|violet|draconum|orc",
+    "armor": 0,
+    "attack": 0,
+    "abilities": [],
+    "resistances": [],
+    "fame_value": 0
+  },
+  "items": []
+}

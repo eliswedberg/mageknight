@@ -123,6 +123,16 @@ else
                             <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl">
                                 <PlayerHand PlayerId="currentPlayer.Id" OnCardPlayed="OnCardPlayed" />
                             </div>
+                            
+                            <!-- Action Cards -->
+                            <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mt-4">
+                                <ActionCardHand PlayerId="currentPlayer.Id" GameSessionId="currentGame.Id" OnCardPlayed="OnActionCardPlayed" />
+                            </div>
+                            
+                            <!-- Turn Management -->
+                            <div class="bg-gray-800 bg-opacity-70 rounded-lg p-6 shadow-xl mt-4">
+                                <TurnManager GameSessionId="currentGame.Id" PlayerId="currentPlayer.Id" OnTurnChanged="OnTurnChanged" />
+                            </div>
                         }
                     }
                 </div>
@@ -220,5 +230,23 @@ else
                 StateHasChanged();
             }
         }
+    }
+
+    private async Task OnActionCardPlayed(Models.ActionCard card)
+    {
+        // Handle action card play
+        if (currentUserId != null)
+        {
+            // For now, just refresh the game to show updated card state
+            await LoadGame();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnTurnChanged()
+    {
+        // Handle turn changes
+        await LoadGame();
+        StateHasChanged();
     }
 }

@@ -81,6 +81,70 @@ namespace MageKnightOnline.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.ActionCard", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CardId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Color")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Effects")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int?>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPlayed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPlayedSideways")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Location")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ManaUsed")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("StrongRequiresMana")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("UsingStrongEffect")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameSessionId");
+
+                    b.HasIndex("PlayerId", "CardId")
+                        .IsUnique();
+
+                    b.ToTable("ActionCards");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.Artifact", b =>
                 {
                     b.Property<int>("Id")
@@ -192,16 +256,85 @@ namespace MageKnightOnline.Migrations
                     b.ToTable("BoardTiles");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.City", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ConqueredByPlayerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ConqueredOnTurn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Defenders")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsConquered")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MapGraphId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MapTileId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Rewards")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConqueredByPlayerId");
+
+                    b.HasIndex("GameSessionId");
+
+                    b.HasIndex("MapGraphId");
+
+                    b.HasIndex("MapTileId");
+
+                    b.ToTable("Cities");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.Combat", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("AttackingPlayerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CombatState")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("CurrentParticipantId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("CurrentParticipantId1")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentPhase")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("CurrentTurn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DefendingPlayerId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("EndedAt")
@@ -210,7 +343,23 @@ namespace MageKnightOnline.Migrations
                     b.Property<int>("GameSessionId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("SiteId")
+                    b.Property<bool>("IsAttackPhase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsBlockPhase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsInitiativePhase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsResolutionPhase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Modifiers")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SiteId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("StartedAt")
@@ -219,10 +368,19 @@ namespace MageKnightOnline.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("TurnNumber")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AttackingPlayerId");
+
+                    b.HasIndex("CurrentParticipantId1");
+
+                    b.HasIndex("DefendingPlayerId");
 
                     b.HasIndex("GameSessionId");
 
@@ -237,23 +395,55 @@ namespace MageKnightOnline.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ActionSequence")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ActionType")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CombatId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("DamageDealt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DamageReceived")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Modifiers")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ParticipantId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SpecialEffects")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("TargetId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("TurnNumber")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Value")
                         .HasColumnType("INTEGER");
@@ -264,6 +454,8 @@ namespace MageKnightOnline.Migrations
 
                     b.HasIndex("ParticipantId");
 
+                    b.HasIndex("TargetId");
+
                     b.ToTable("CombatActions");
                 });
 
@@ -273,7 +465,13 @@ namespace MageKnightOnline.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("AttackModifier")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("AttackValue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BlockModifier")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("BlockValue")
@@ -282,13 +480,22 @@ namespace MageKnightOnline.Migrations
                     b.Property<int>("CombatId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("CombatOrder")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("CurrentHealth")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("DamageModifier")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("EnemyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EnemyId1")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Health")
@@ -297,17 +504,30 @@ namespace MageKnightOnline.Migrations
                     b.Property<int>("Initiative")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsDefeated")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("PlayerId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Resistances")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SpecialAbilities")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CombatId");
 
                     b.HasIndex("EnemyId");
+
+                    b.HasIndex("EnemyId1");
 
                     b.HasIndex("PlayerId");
 
@@ -363,15 +583,25 @@ namespace MageKnightOnline.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("AttackValue")
+                    b.Property<string>("Abilities")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Armor")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("BlockValue")
+                    b.Property<int>("Attack")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Color")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("FameValue")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Health")
                         .HasColumnType("INTEGER");
@@ -382,18 +612,25 @@ namespace MageKnightOnline.Migrations
                     b.Property<int>("Initiative")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("Level")
+                    b.Property<bool>("IsElite")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("LootTable")
-                        .HasColumnType("TEXT");
+                    b.Property<bool>("IsFortified")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRanged")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSiege")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("SpecialAbilities")
+                    b.Property<string>("Resistances")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Type")
@@ -847,6 +1084,62 @@ namespace MageKnightOnline.Migrations
                     b.ToTable("GameTurns");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.HexSpace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("HexId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsExplored")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRevealed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MapTileId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MovementCost")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OccupantData")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("PositionInTile")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Q")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("R")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SiteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TerrainType")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MapTileId");
+
+                    b.HasIndex("SiteId");
+
+                    b.HasIndex("GameSessionId", "Q", "R")
+                        .IsUnique();
+
+                    b.ToTable("HexSpaces");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.MageKnightCard", b =>
                 {
                     b.Property<int>("Id")
@@ -945,6 +1238,66 @@ namespace MageKnightOnline.Migrations
                     b.ToTable("MageKnightCards");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.MapGraph", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CoastlineMask")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ConfigurationData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("CoreCityTilesRemaining")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CoreNonCityTilesRemaining")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CountrysideTilesRemaining")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentPhase")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentRound")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentTurn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Edges")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsInitialized")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ScenarioId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StartingLayout")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameSessionId")
+                        .IsUnique();
+
+                    b.ToTable("MapGraphs");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.MapTile", b =>
                 {
                     b.Property<int>("Id")
@@ -985,6 +1338,83 @@ namespace MageKnightOnline.Migrations
                     b.HasIndex("TileDeckId");
 
                     b.ToTable("MapTiles");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.MapTileNew", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AdjacentTileIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("BackColor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CenterQ")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CenterR")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CityColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CityLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ImageName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPlaced")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRevealed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MapGraphId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Orientation")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PlacementOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PlacementValidationData")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("TileId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TileType")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MapGraphId");
+
+                    b.HasIndex("GameSessionId", "TileId")
+                        .IsUnique();
+
+                    b.ToTable("MapTileNews");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.PlayerArtifact", b =>
@@ -1274,11 +1704,18 @@ namespace MageKnightOnline.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ArtifactReward")
+                    b.Property<string>("Burn")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("BurnedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("AttackCost")
+                    b.Property<int?>("BurnedByPlayerId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("ConqueredAt")
                         .HasColumnType("TEXT");
@@ -1286,72 +1723,81 @@ namespace MageKnightOnline.Migrations
                     b.Property<int?>("ConqueredByPlayerId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("CrystalsReward")
+                    b.Property<int?>("ConqueredOnTurn")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Defenders")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("DifficultyLevel")
+                    b.Property<bool>("EnteringAssaults")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("EnemyIds")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("FameReward")
+                    b.Property<int?>("GameBoardId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("GameBoardId")
+                    b.Property<int>("GameSessionId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("HexSpaceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("InteractConquered")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("InteractOptions")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsBurned")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsConquered")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsExplored")
+                    b.Property<bool>("IsFortified")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsRepeatable")
+                    b.Property<bool>("IsRevealed")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("LootTable")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ReputationReward")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("Rewards")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
-                    b.Property<int>("RequiredLevel")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SiteSubType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("SpecialRequirements")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SpellReward")
+                    b.Property<string>("SiteId")
+                        .IsRequired()
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("UnitReward")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("X")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Y")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("WhenRevealed")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BurnedByPlayerId");
 
                     b.HasIndex("ConqueredByPlayerId");
 
                     b.HasIndex("GameBoardId");
+
+                    b.HasIndex("GameSessionId");
+
+                    b.HasIndex("HexSpaceId");
 
                     b.ToTable("Sites");
                 });
@@ -1797,6 +2243,23 @@ namespace MageKnightOnline.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.ActionCard", b =>
+                {
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MageKnightOnline.Models.GamePlayer", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("GameSession");
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.BoardTile", b =>
                 {
                     b.HasOne("MageKnightOnline.Models.GameBoard", "GameBoard")
@@ -1839,8 +2302,50 @@ namespace MageKnightOnline.Migrations
                     b.Navigation("Site");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.City", b =>
+                {
+                    b.HasOne("MageKnightOnline.Models.GamePlayer", "ConqueredByPlayer")
+                        .WithMany()
+                        .HasForeignKey("ConqueredByPlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MageKnightOnline.Models.MapGraph", null)
+                        .WithMany("Cities")
+                        .HasForeignKey("MapGraphId");
+
+                    b.HasOne("MageKnightOnline.Models.MapTileNew", "MapTile")
+                        .WithMany()
+                        .HasForeignKey("MapTileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ConqueredByPlayer");
+
+                    b.Navigation("GameSession");
+
+                    b.Navigation("MapTile");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.Combat", b =>
                 {
+                    b.HasOne("MageKnightOnline.Models.GamePlayer", "AttackingPlayer")
+                        .WithMany()
+                        .HasForeignKey("AttackingPlayerId");
+
+                    b.HasOne("MageKnightOnline.Models.CombatParticipant", "CurrentParticipant")
+                        .WithMany()
+                        .HasForeignKey("CurrentParticipantId1");
+
+                    b.HasOne("MageKnightOnline.Models.GamePlayer", "DefendingPlayer")
+                        .WithMany()
+                        .HasForeignKey("DefendingPlayerId");
+
                     b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
                         .WithMany()
                         .HasForeignKey("GameSessionId")
@@ -1850,8 +2355,13 @@ namespace MageKnightOnline.Migrations
                     b.HasOne("MageKnightOnline.Models.Site", "Site")
                         .WithMany()
                         .HasForeignKey("SiteId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AttackingPlayer");
+
+                    b.Navigation("CurrentParticipant");
+
+                    b.Navigation("DefendingPlayer");
 
                     b.Navigation("GameSession");
 
@@ -1872,9 +2382,15 @@ namespace MageKnightOnline.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MageKnightOnline.Models.CombatParticipant", "Target")
+                        .WithMany("Actions")
+                        .HasForeignKey("TargetId");
+
                     b.Navigation("Combat");
 
                     b.Navigation("Participant");
+
+                    b.Navigation("Target");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.CombatParticipant", b =>
@@ -1889,6 +2405,10 @@ namespace MageKnightOnline.Migrations
                         .WithMany()
                         .HasForeignKey("EnemyId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MageKnightOnline.Models.Enemy", null)
+                        .WithMany("CombatParticipants")
+                        .HasForeignKey("EnemyId1");
 
                     b.HasOne("MageKnightOnline.Models.GamePlayer", "Player")
                         .WithMany()
@@ -1905,7 +2425,7 @@ namespace MageKnightOnline.Migrations
             modelBuilder.Entity("MageKnightOnline.Models.CombatResult", b =>
                 {
                     b.HasOne("MageKnightOnline.Models.Combat", "Combat")
-                        .WithMany()
+                        .WithMany("Results")
                         .HasForeignKey("CombatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2046,6 +2566,43 @@ namespace MageKnightOnline.Migrations
                     b.Navigation("GameSession");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.HexSpace", b =>
+                {
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MageKnightOnline.Models.MapTileNew", "MapTile")
+                        .WithMany("Hexes")
+                        .HasForeignKey("MapTileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MageKnightOnline.Models.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("GameSession");
+
+                    b.Navigation("MapTile");
+
+                    b.Navigation("Site");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.MapGraph", b =>
+                {
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameSession");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.MapTile", b =>
                 {
                     b.HasOne("MageKnightOnline.Models.TileDeck", "TileDeck")
@@ -2054,6 +2611,21 @@ namespace MageKnightOnline.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("TileDeck");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.MapTileNew", b =>
+                {
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MageKnightOnline.Models.MapGraph", null)
+                        .WithMany("Tiles")
+                        .HasForeignKey("MapGraphId");
+
+                    b.Navigation("GameSession");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.PlayerArtifact", b =>
@@ -2222,20 +2794,38 @@ namespace MageKnightOnline.Migrations
 
             modelBuilder.Entity("MageKnightOnline.Models.Site", b =>
                 {
+                    b.HasOne("MageKnightOnline.Models.GamePlayer", "BurnedByPlayer")
+                        .WithMany()
+                        .HasForeignKey("BurnedByPlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MageKnightOnline.Models.GamePlayer", "ConqueredByPlayer")
                         .WithMany()
                         .HasForeignKey("ConqueredByPlayerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MageKnightOnline.Models.GameBoard", "GameBoard")
+                    b.HasOne("MageKnightOnline.Models.GameBoard", null)
                         .WithMany("Sites")
-                        .HasForeignKey("GameBoardId")
+                        .HasForeignKey("GameBoardId");
+
+                    b.HasOne("MageKnightOnline.Models.GameSession", "GameSession")
+                        .WithMany()
+                        .HasForeignKey("GameSessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MageKnightOnline.Models.HexSpace", "HexSpace")
+                        .WithMany()
+                        .HasForeignKey("HexSpaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("BurnedByPlayer");
+
                     b.Navigation("ConqueredByPlayer");
 
-                    b.Navigation("GameBoard");
+                    b.Navigation("GameSession");
+
+                    b.Navigation("HexSpace");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.SiteEnemy", b =>
@@ -2364,6 +2954,18 @@ namespace MageKnightOnline.Migrations
                     b.Navigation("Actions");
 
                     b.Navigation("Participants");
+
+                    b.Navigation("Results");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.CombatParticipant", b =>
+                {
+                    b.Navigation("Actions");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.Enemy", b =>
+                {
+                    b.Navigation("CombatParticipants");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.EnhancedPlayerHand", b =>
@@ -2402,11 +3004,23 @@ namespace MageKnightOnline.Migrations
                     b.Navigation("Actions");
                 });
 
+            modelBuilder.Entity("MageKnightOnline.Models.MapGraph", b =>
+                {
+                    b.Navigation("Cities");
+
+                    b.Navigation("Tiles");
+                });
+
             modelBuilder.Entity("MageKnightOnline.Models.MapTile", b =>
                 {
                     b.Navigation("Sites");
 
                     b.Navigation("TerrainSections");
+                });
+
+            modelBuilder.Entity("MageKnightOnline.Models.MapTileNew", b =>
+                {
+                    b.Navigation("Hexes");
                 });
 
             modelBuilder.Entity("MageKnightOnline.Models.Site", b =>

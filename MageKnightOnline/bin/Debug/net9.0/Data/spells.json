@@ -1,0 +1,20 @@
+{
+  "_schema": {
+    "id": "string",
+    "name": "string",
+    "color": "red|blue|white|green",
+    "basic": {
+      "mana": 1,
+      "effects": []
+    },
+    "strong": {
+      "night_only": true,
+      "mana": {
+        "black": 1,
+        "color": 1
+      },
+      "effects": []
+    }
+  },
+  "items": []
+}

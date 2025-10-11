@@ -1,0 +1,145 @@
+@page "/debug-login"
+@using Microsoft.AspNetCore.Identity
+@using MageKnightOnline.Data
+@using System.ComponentModel.DataAnnotations
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<DebugLogin> Logger
+
+<PageTitle>Debug Login</PageTitle>
+
+<h1>Debug Login</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Test Login</h3>
+        <EditForm Model="LoginModel" OnValidSubmit="TestLogin">
+            <DataAnnotationsValidator />
+            <div class="form-group mb-3">
+                <label for="Email">Email:</label>
+                <InputText @bind-Value="LoginModel.Email" id="Email" class="form-control" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="Password">Password:</label>
+                <InputText type="password" @bind-Value="LoginModel.Password" id="Password" class="form-control" />
+            </div>
+            <button type="submit" class="btn btn-primary">Test Login</button>
+        </EditForm>
+        
+        @if (!string.IsNullOrEmpty(ResultMessage))
+        {
+            <div class="alert alert-info mt-3">
+                @ResultMessage
+            </div>
+        }
+    </div>
+    
+    <div class="col-md-6">
+        <h3>User Information</h3>
+        @if (UserInfo != null)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Found</h5>
+                    <p><strong>ID:</strong> @UserInfo.Id</p>
+                    <p><strong>Email:</strong> @UserInfo.Email</p>
+                    <p><strong>UserName:</strong> @UserInfo.UserName</p>
+                    <p><strong>EmailConfirmed:</strong> @UserInfo.EmailConfirmed</p>
+                    <p><strong>Has Password Hash:</strong> @(!string.IsNullOrEmpty(UserInfo.PasswordHash))</p>
+                </div>
+            </div>
+        }
+        else if (UserSearched)
+        {
+            <div class="alert alert-warning">
+                No user found with email: @LoginModel.Email
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private DebugLoginModel LoginModel { get; set; } = new();
+    private string ResultMessage { get; set; } = "";
+    private ApplicationUser? UserInfo { get; set; }
+    private bool UserSearched { get; set; } = false;
+
+    public class DebugLoginModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+        
+        [Required]
+        public string Password { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pre-fill with test user
+        LoginModel.Email = "eliwe1@hotmail.com";
+        LoginModel.Password = "elis123";
+    }
+
+    private async Task TestLogin()
+    {
+        ResultMessage = "";
+        UserInfo = null;
+        UserSearched = false;
+
+        try
+        {
+            Logger.LogInformation("Debug login attempt for: {Email}", LoginModel.Email);
+
+            // First, find the user
+            var user = await UserManager.FindByEmailAsync(LoginModel.Email);
+            UserSearched = true;
+            
+            if (user == null)
+            {
+                ResultMessage = "User not found in database.";
+                return;
+            }
+
+            UserInfo = user;
+            Logger.LogInformation("User found: {UserId}, Email: {Email}", user.Id, user.Email);
+
+            // Check password
+            var isValidPassword = await UserManager.CheckPasswordAsync(user, LoginModel.Password);
+            Logger.LogInformation("Password valid: {IsValid}", isValidPassword);
+
+            if (!isValidPassword)
+            {
+                ResultMessage = "Invalid password.";
+                return;
+            }
+
+            // Try to sign in
+            var signInResult = await SignInManager.PasswordSignInAsync(user, LoginModel.Password, false, false);
+            Logger.LogInformation("Sign in result: {Succeeded}, {RequiresTwoFactor}, {IsLockedOut}", 
+                signInResult.Succeeded, signInResult.RequiresTwoFactor, signInResult.IsLockedOut);
+
+            if (signInResult.Succeeded)
+            {
+                ResultMessage = "Login successful!";
+            }
+            else if (signInResult.RequiresTwoFactor)
+            {
+                ResultMessage = "Login requires two-factor authentication.";
+            }
+            else if (signInResult.IsLockedOut)
+            {
+                ResultMessage = "Account is locked out.";
+            }
+            else
+            {
+                ResultMessage = "Login failed for unknown reason.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during debug login");
+            ResultMessage = $"Error: {ex.Message}";
+        }
+    }
+}

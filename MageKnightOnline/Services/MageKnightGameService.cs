@@ -8,11 +8,16 @@ public class MageKnightGameService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<MageKnightGameService> _logger;
+    private readonly MapTileService _mapTileService;
+    private readonly ActionCardService _actionCardService;
 
-    public MageKnightGameService(ApplicationDbContext context, ILogger<MageKnightGameService> logger)
+    public MageKnightGameService(ApplicationDbContext context, ILogger<MageKnightGameService> logger, 
+        MapTileService mapTileService, ActionCardService actionCardService)
     {
         _context = context;
         _logger = logger;
+        _mapTileService = mapTileService;
+        _actionCardService = actionCardService;
     }
 
     // Game Initialization
@@ -26,7 +31,15 @@ public class MageKnightGameService
 
             if (gameSession == null) return false;
 
-            // Create game board
+            // Initialize the new map system
+            var mapInitialized = await _mapTileService.InitializeMapAsync(gameSessionId, "standard", "A");
+            if (!mapInitialized)
+            {
+                _logger.LogError("Failed to initialize map for game session {GameSessionId}", gameSessionId);
+                return false;
+            }
+
+            // Create legacy game board for backward compatibility
             var gameBoard = new GameBoard
             {
                 GameSessionId = gameSessionId,
@@ -35,7 +48,7 @@ public class MageKnightGameService
             _context.GameBoards.Add(gameBoard);
             await _context.SaveChangesAsync();
 
-            // Create board tiles
+            // Create board tiles (legacy system)
             await CreateBoardTilesAsync(gameBoard.Id);
 
             // Create sites
@@ -58,6 +71,9 @@ public class MageKnightGameService
             {
                 await InitializePlayerDeckAsync(player.Id);
                 await DrawInitialHandAsync(player.Id);
+                
+                // Create standard action card deck
+                await _actionCardService.CreateStandardDeckAsync(player.Id);
             }
 
             await _context.SaveChangesAsync();
@@ -239,7 +255,7 @@ public class MageKnightGameService
             {
                 GameSessionId = player.GameSessionId,
                 SiteId = siteId,
-                Type = CombatType.SiteAttack,
+                Type = CombatType.SiteConquest,
                 Status = CombatStatus.Preparing,
                 CurrentTurn = await GetCurrentTurnNumberAsync(player.GameSessionId)
             };
@@ -293,10 +309,10 @@ public class MageKnightGameService
         try
         {
             var site = await _context.Sites
-                .Include(s => s.GameBoard)
+                .Include(s => s.GameSession)
                 .FirstOrDefaultAsync(s => s.Id == siteId);
 
-            if (site == null || site.IsExplored) return false;
+            if (site == null || site.IsRevealed) return false;
 
             var player = await _context.GamePlayers
                 .Include(gp => gp.GameSession)
@@ -304,13 +320,14 @@ public class MageKnightGameService
 
             if (player == null) return false;
 
-            // Mark site as explored
-            site.IsExplored = true;
+            // Mark site as revealed
+            site.IsRevealed = true;
 
-            // Apply exploration rewards
-            player.Fame += site.FameReward;
-            player.Reputation += site.ReputationReward;
-            player.Crystals += site.CrystalsReward;
+            // Apply exploration rewards (these would come from the Rewards JSON field)
+            // For now, we'll use placeholder values
+            player.Fame += 1; // TODO: Parse from site.Rewards JSON
+            player.Reputation += 0; // TODO: Parse from site.Rewards JSON
+            player.Crystals += 0; // TODO: Parse from site.Rewards JSON
 
             // Log the action
             await LogGameActionAsync(player.GameSessionId, playerId, ActionType.SiteExplored, 
@@ -356,56 +373,96 @@ public class MageKnightGameService
 
     private async Task CreateSitesAsync(int gameBoardId)
     {
-        // According to Mage Knight rules, sites are placed on tiles when they are revealed
-        // For the starting tile, we can place some basic sites
-        var sites = new List<Site>
-        {
-            // Starting tile typically has villages or basic sites
-            new Site { GameBoardId = gameBoardId, X = 0, Y = 0, Type = SiteType.Village, Name = "Starting Village", AttackCost = 1, FameReward = 1 }
-        };
-        
-        _context.Sites.AddRange(sites);
-        await _context.SaveChangesAsync();
+        // Sites are now created by the MapTileService when tiles are revealed
+        // This method is kept for backward compatibility but doesn't create sites anymore
+        // Sites will be created automatically when tiles are explored
     }
 
     public async Task<GameBoard?> GetGameBoardAsync(int gameSessionId)
     {
-        return await _context.GameBoards
+        var gameBoard = await _context.GameBoards
             .Include(gb => gb.Tiles)
-            .Include(gb => gb.Sites)
             .Include(gb => gb.PlayerPositions)
             .FirstOrDefaultAsync(gb => gb.GameSessionId == gameSessionId);
+
+        // If no legacy game board exists, create one with data from the new system
+        if (gameBoard == null)
+        {
+            var mapGraph = await _context.MapGraphs
+                .Include(mg => mg.Tiles)
+                .FirstOrDefaultAsync(mg => mg.GameSessionId == gameSessionId);
+            
+            if (mapGraph != null)
+            {
+                // Create a legacy game board from the new system data
+                gameBoard = new GameBoard
+                {
+                    GameSessionId = gameSessionId,
+                    MapType = "Standard"
+                };
+                _context.GameBoards.Add(gameBoard);
+                await _context.SaveChangesAsync();
+
+                // Convert new system tiles to legacy tiles
+                foreach (var newTile in mapGraph.Tiles.Where(t => t.IsPlaced))
+                {
+                    var legacyTile = new BoardTile
+                    {
+                        GameBoardId = gameBoard.Id,
+                        X = newTile.CenterQ,
+                        Y = newTile.CenterR,
+                        Type = ConvertTileType(newTile.TileType),
+                        IsRevealed = newTile.IsRevealed,
+                        IsExplored = newTile.IsRevealed,
+                        TileImageName = newTile.ImageName
+                    };
+                    _context.BoardTiles.Add(legacyTile);
+                }
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return gameBoard;
+    }
+
+    private TileType ConvertTileType(MapTileType newType)
+    {
+        return newType switch
+        {
+            MapTileType.Starting => TileType.Starting,
+            MapTileType.Countryside => TileType.Countryside,
+            MapTileType.CoreNonCity => TileType.Core,
+            MapTileType.CoreCity => TileType.City,
+            _ => TileType.Starting
+        };
     }
 
     public async Task<bool> ExploreTileAsync(int gameSessionId, int x, int y)
     {
         try
         {
+            // Use the new map tile service for exploration
+            // Convert coordinates from the UI to axial coordinates
+            var (q, r) = ConvertToAxialCoordinates(x, y);
+            
+            var newTile = await _mapTileService.ExploreTileAsync(gameSessionId, 1, q, r); // TODO: Get actual player ID
+            if (newTile == null)
+            {
+                _logger.LogInformation("Failed to explore tile at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
+                return false;
+            }
+
+            // Also update the legacy system for backward compatibility
             var gameBoard = await GetGameBoardAsync(gameSessionId);
-            if (gameBoard == null) return false;
-
-            // Check if there's already a tile at this position
-            var existingTile = gameBoard.Tiles.FirstOrDefault(t => t.X == x && t.Y == y);
-            if (existingTile != null) 
+            if (gameBoard != null)
             {
-                _logger.LogInformation("Tile already exists at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
-                return false;
+                var legacyTile = await DrawRandomTileAsync(gameBoard.Id, x, y);
+                if (legacyTile != null)
+                {
+                    _context.BoardTiles.Add(legacyTile);
+                    await _context.SaveChangesAsync();
+                }
             }
-
-            // Check if this position is adjacent to any revealed tile
-            var isAdjacent = IsAdjacentToRevealedTile(gameBoard, x, y);
-            if (!isAdjacent)
-            {
-                _logger.LogInformation("Position ({X}, {Y}) is not adjacent to any revealed tile for game session {GameSessionId}", x, y, gameSessionId);
-                return false;
-            }
-
-            // Draw a random tile from the tile deck
-            var newTile = await DrawRandomTileAsync(gameBoard.Id, x, y);
-            if (newTile == null) return false;
-
-            _context.BoardTiles.Add(newTile);
-            await _context.SaveChangesAsync();
 
             _logger.LogInformation("Explored new tile at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
             return true;
@@ -415,6 +472,14 @@ public class MageKnightGameService
             _logger.LogError(ex, "Error exploring tile at ({X}, {Y}) for game session {GameSessionId}", x, y, gameSessionId);
             return false;
         }
+    }
+
+    // Convert UI coordinates to axial coordinates for the new map system
+    private (int q, int r) ConvertToAxialCoordinates(int x, int y)
+    {
+        // This is a simple conversion - in a real implementation, this would be more sophisticated
+        // For now, we'll use the same coordinates as the UI
+        return (x, y);
     }
 
     private async Task<BoardTile?> DrawRandomTileAsync(int gameBoardId, int x, int y)
@@ -466,23 +531,53 @@ public class MageKnightGameService
     {
         try
         {
-            var gameBoard = await GetGameBoardAsync(gameSessionId);
-            if (gameBoard == null) return false;
-
-            // Get all tiles except the starting tile (0,0)
-            var tilesToRemove = gameBoard.Tiles.Where(t => !(t.X == 0 && t.Y == 0)).ToList();
+            // Reset the new map system to only have the starting tile
+            var mapGraph = await _context.MapGraphs
+                .Include(mg => mg.Tiles)
+                .FirstOrDefaultAsync(mg => mg.GameSessionId == gameSessionId);
             
-            if (tilesToRemove.Any())
+            if (mapGraph != null)
             {
-                _context.BoardTiles.RemoveRange(tilesToRemove);
-                await _context.SaveChangesAsync();
+                // Remove all tiles except the starting tile
+                var tilesToRemove = mapGraph.Tiles.Where(t => t.TileType != MapTileType.Starting).ToList();
+                foreach (var tile in tilesToRemove)
+                {
+                    // Remove associated hex spaces
+                    var hexSpaces = await _context.HexSpaces.Where(hs => hs.MapTileId == tile.Id).ToListAsync();
+                    _context.HexSpaces.RemoveRange(hexSpaces);
+                    
+                    // Remove the tile
+                    _context.MapTileNews.Remove(tile);
+                }
                 
-                _logger.LogInformation("Removed {Count} tiles from game session {GameSessionId}, keeping only starting tile", 
-                    tilesToRemove.Count, gameSessionId);
-                return true;
+                // Reset map state
+                mapGraph.IsInitialized = true;
+                mapGraph.CurrentPhase = ExplorationPhase.Countryside;
+                mapGraph.CountrysideTilesRemaining = 10; // Reset deck counts
+                mapGraph.CoreNonCityTilesRemaining = 8;
+                mapGraph.CoreCityTilesRemaining = 4;
+                
+                await _context.SaveChangesAsync();
+            }
+
+            // Also clean up legacy system
+            var gameBoard = await GetGameBoardAsync(gameSessionId);
+            if (gameBoard != null)
+            {
+                // Get all tiles except the starting tile (0,0)
+                var tilesToRemove = gameBoard.Tiles.Where(t => !(t.X == 0 && t.Y == 0)).ToList();
+                
+                if (tilesToRemove.Any())
+                {
+                    _context.BoardTiles.RemoveRange(tilesToRemove);
+                    await _context.SaveChangesAsync();
+                    
+                    _logger.LogInformation("Removed {Count} legacy tiles from game session {GameSessionId}, keeping only starting tile", 
+                        tilesToRemove.Count, gameSessionId);
+                }
             }
             
-            _logger.LogInformation("No tiles to remove for game session {GameSessionId}", gameSessionId);
+            _logger.LogInformation("Reset map to starting tile only for game session {GameSessionId}", gameSessionId);
             return true;
         }
         catch (Exception ex)
