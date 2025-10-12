@@ -220,3 +220,4 @@ C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\refint\MageKni
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\MageKnightOnline.pdb
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\MageKnightOnline.genruntimeconfig.cache
 C:\Users\eliwe\repos\mageknight\MageKnightOnline\obj\Debug\net9.0\ref\MageKnightOnline.dll
+C:\Users\eliwe\repos\mageknight\MageKnightOnline\bin\Debug\net9.0\Data\starting_tiles.json

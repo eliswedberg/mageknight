@@ -342,11 +342,26 @@ public class GameService
     {
         try
         {
+            // Only log if we have a valid game session ID
+            if (gameSessionId <= 0)
+            {
+                _logger.LogWarning("Cannot log game action - invalid game session ID: {GameSessionId}", gameSessionId);
+                return;
+            }
+
+            // Find the player if userId is provided
+            int? playerId = null;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var gamePlayer = await _context.GamePlayers
+                    .FirstOrDefaultAsync(gp => gp.GameSessionId == gameSessionId && gp.UserId == userId);
+                playerId = gamePlayer?.Id;
+            }
+
             var gameAction = new GameAction
             {
                 GameSessionId = gameSessionId,
-                PlayerId = userId != null ? (await _context.GamePlayers
-                    .FirstOrDefaultAsync(gp => gp.GameSessionId == gameSessionId && gp.UserId == userId))?.Id : null,
+                PlayerId = playerId,
                 Type = actionType,
                 Description = description,
                 Data = data
@@ -385,18 +400,29 @@ public class GameService
         }
     }
 
-    public async Task<bool> PlayCardAsync(int playerId, int cardId)
+    public async Task<bool> PlayCardAsync(int gameSessionId, int playerId, int cardId)
     {
         try
         {
             // This is a placeholder implementation
             // In a real implementation, this would handle card playing logic
-            await LogGameActionAsync(0, null, ActionType.CardPlayed, "Card played");
+            
+            // Get the player to find their userId for logging
+            var gamePlayer = await _context.GamePlayers
+                .FirstOrDefaultAsync(gp => gp.Id == playerId && gp.GameSessionId == gameSessionId);
+            
+            if (gamePlayer == null)
+            {
+                _logger.LogWarning("Player {PlayerId} not found in game session {GameSessionId}", playerId, gameSessionId);
+                return false;
+            }
+
+            await LogGameActionAsync(gameSessionId, gamePlayer.UserId, ActionType.CardPlayed, $"Card {cardId} played");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error playing card {CardId} for player {PlayerId}", cardId, playerId);
+            _logger.LogError(ex, "Error playing card {CardId} for player {PlayerId} in game {GameSessionId}", cardId, playerId, gameSessionId);
             return false;
         }
     }

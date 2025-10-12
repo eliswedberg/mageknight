@@ -591,20 +591,30 @@ public class MageKnightGameService
     {
         var positions = new List<PlayerPosition>();
         
+        // Get the portal position from the starting tile
+        var gameSessionId = players.FirstOrDefault()?.GameSessionId ?? 0;
+        var portalPosition = await _mapTileService.GetPortalPositionAsync(gameSessionId);
+        
+        // Default to center if portal position not found
+        var (startX, startY) = portalPosition ?? (0, 0);
+        
         for (int i = 0; i < players.Count; i++)
         {
             var position = new PlayerPosition
             {
                 GameBoardId = gameBoardId,
                 PlayerId = players[i].Id,
-                X = 0, // Start in center (starting tile)
-                Y = 0
+                X = startX, // Start at portal position
+                Y = startY
             };
             positions.Add(position);
         }
         
         _context.PlayerPositions.AddRange(positions);
         await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Initialized {PlayerCount} players at portal position ({X}, {Y})", 
+            players.Count, startX, startY);
     }
 
     private async Task InitializePlayerDeckAsync(int playerId)

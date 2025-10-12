@@ -1,0 +1,20 @@
+// Hexes description from top, middle, bottom
+#  0 1
+# 2 3 4
+# 5 6 
+[
+    {
+        "name": "",
+        "imageName": "MK_map_tiles_01-A",
+        "type": "stating",
+        "hexes": [
+            {"position": 0, "terrainType": "Grassland", "isPortal": true, "edgeShape": "circle"},
+            {"position": 1, "terrainType": "Forest", "isPortal": false, "edgeShape": "star"},
+            {"position": 2, "terrainType": "Coastal", "isPortal": false, "edgeShape": "star"},
+            {"position": 3, "terrainType": "Grassland", "isPortal": true, "portalType": "StartingPortal"},
+            {"position": 4, "terrainType": "Grassland", "isPortal": false, "edgeShape": "circle"},
+            {"position": 5, "terrainType": "Grassland", "isPortal": false, "edgeShape": "circleA"},
+            {"position": 6, "terrainType": "Coastal", "isPortal": false, "edgeShape": "star"}
+        ]
+    }
+]

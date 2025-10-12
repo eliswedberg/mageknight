@@ -67,8 +67,8 @@ public class MapTileService
 
             // Add tile to map first
             mapGraph.Tiles.Add(startingTile);
-            
-            // Save the tile to get its ID before creating hex spaces
+
+            // Save the map graph to get the tile ID before creating hex spaces
             await _context.SaveChangesAsync();
 
             // Create 7 hex spaces for the starting tile (now that it has an ID)
@@ -175,9 +175,6 @@ public class MapTileService
 
             // Add tile to map first
             mapGraph.Tiles.Add(newTile);
-            
-            // Save the tile to get its ID before creating hex spaces
-            await _context.SaveChangesAsync();
 
             // Create hex spaces for the new tile (now that it has an ID)
             await CreateHexSpacesForTileAsync(newTile);
@@ -267,6 +264,12 @@ public class MapTileService
         };
 
         _context.MapTileNews.Add(startingTile);
+        
+        // Save the tile immediately to get its ID
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("Created starting tile {TileId} with ID {Id}", startingTile.TileId, startingTile.Id);
+        
         return startingTile;
     }
 
@@ -317,25 +320,42 @@ public class MapTileService
         }
 
         _context.MapTileNews.Add(newTile);
+        
+        // Save the tile immediately to get its ID
+        await _context.SaveChangesAsync();
+        
         return newTile;
     }
 
     private async Task CreateHexSpacesForTileAsync(MapTileNew tile)
     {
+        // Ensure the tile has been saved and has an ID
+        _logger.LogInformation("Creating hex spaces for tile {TileId} with ID {Id}", tile.TileId, tile.Id);
+        if (tile.Id == 0)
+        {
+            _logger.LogError("Cannot create hex spaces for tile {TileId} - tile has not been saved to database", tile.TileId);
+            return;
+        }
+
+        // Load tile data from JSON if it's a starting tile
+        var tileData = await LoadTileDataAsync(tile.TileId);
+        
         // Create 7 hex spaces: 1 center + 6 surrounding
         var hexSpaces = new List<HexSpace>();
 
         // Center hex (position 0)
+        var centerHexData = tileData?.HexSpaces?.FirstOrDefault(h => h.Position == 0);
         hexSpaces.Add(new HexSpace
         {
             HexId = $"{tile.TileId}_center",
             Q = tile.CenterQ,
             R = tile.CenterR,
-            TerrainType = TerrainType.Grassland, // Default, would be set from tile data
+            TerrainType = ParseTerrainType(centerHexData?.TerrainType) ?? TerrainType.Grassland,
             MapTileId = tile.Id,
             PositionInTile = 0,
             IsRevealed = tile.IsRevealed,
-            GameSessionId = tile.GameSessionId
+            GameSessionId = tile.GameSessionId,
+            OccupantData = centerHexData?.IsPortal == true ? "{\"type\":\"portal\",\"portalType\":\"" + centerHexData.PortalType + "\"}" : null
         });
 
         // 6 surrounding hexes (positions 1-6)
@@ -343,16 +363,18 @@ public class MapTileService
         for (int i = 0; i < 6; i++)
         {
             var (dq, dr) = directions[i];
+            var hexData = tileData?.HexSpaces?.FirstOrDefault(h => h.Position == i + 1);
             hexSpaces.Add(new HexSpace
             {
                 HexId = $"{tile.TileId}_hex_{i + 1}",
                 Q = tile.CenterQ + dq,
                 R = tile.CenterR + dr,
-                TerrainType = TerrainType.Grassland, // Default, would be set from tile data
+                TerrainType = ParseTerrainType(hexData?.TerrainType) ?? TerrainType.Grassland,
                 MapTileId = tile.Id,
                 PositionInTile = i + 1,
                 IsRevealed = tile.IsRevealed,
-                GameSessionId = tile.GameSessionId
+                GameSessionId = tile.GameSessionId,
+                OccupantData = hexData?.IsPortal == true ? "{\"type\":\"portal\",\"portalType\":\"" + hexData.PortalType + "\"}" : null
             });
         }
 
@@ -501,5 +523,115 @@ public class MapTileService
         }
     }
 
+    private TerrainType? ParseTerrainType(string? terrainTypeString)
+    {
+        if (string.IsNullOrEmpty(terrainTypeString))
+            return null;
+
+        return terrainTypeString.ToLower() switch
+        {
+            "grassland" => TerrainType.Grassland,
+            "forest" => TerrainType.Forest,
+            "hills" => TerrainType.Mountain, // Map hills to mountain
+            "plains" => TerrainType.Grassland, // Map plains to grassland for now
+            "desert" => TerrainType.Desert,
+            "mountain" => TerrainType.Mountain,
+            "lake" => TerrainType.Lake,
+            "swamp" => TerrainType.Barren, // Map swamp to barren for now
+            _ => TerrainType.Grassland
+        };
+    }
+
+    private async Task<TileData?> LoadTileDataAsync(string tileId)
+    {
+        try
+        {
+            var jsonPath = Path.Combine("Data", "starting_tiles.json");
+            if (!File.Exists(jsonPath))
+            {
+                _logger.LogWarning("Starting tiles JSON file not found at {Path}", jsonPath);
+                return null;
+            }
+
+            var jsonContent = await File.ReadAllTextAsync(jsonPath);
+            var tileDataCollection = JsonSerializer.Deserialize<TileDataCollection>(jsonContent);
+            
+            return tileDataCollection?.StartingTiles?.FirstOrDefault(t => t.TileId == tileId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading tile data for {TileId}", tileId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get the portal position for a starting tile
+    /// </summary>
+    public async Task<(int q, int r)?> GetPortalPositionAsync(int gameSessionId)
+    {
+        try
+        {
+            var mapGraph = await _context.MapGraphs
+                .Include(mg => mg.Tiles)
+                .FirstOrDefaultAsync(mg => mg.GameSessionId == gameSessionId);
+
+            if (mapGraph == null) return null;
+
+            var startingTile = mapGraph.Tiles.FirstOrDefault(t => t.TileType == MapTileType.Starting);
+            if (startingTile == null) return null;
+
+            var tileData = await LoadTileDataAsync(startingTile.TileId);
+            var portalHex = tileData?.HexSpaces?.FirstOrDefault(h => h.IsPortal);
+            
+            if (portalHex == null)
+            {
+                // Default to center if no portal found
+                return (startingTile.CenterQ, startingTile.CenterR);
+            }
+
+            // Calculate portal position based on hex position
+            if (portalHex.Position == 0)
+            {
+                // Center hex
+                return (startingTile.CenterQ, startingTile.CenterR);
+            }
+            else
+            {
+                // Surrounding hex (positions 1-6)
+                var directions = new[] { (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1) };
+                var (dq, dr) = directions[portalHex.Position - 1];
+                return (startingTile.CenterQ + dq, startingTile.CenterR + dr);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting portal position for game session {GameSessionId}", gameSessionId);
+            return null;
+        }
+    }
+
     #endregion
+}
+
+// Data models for tile configuration
+public class TileDataCollection
+{
+    public List<TileData>? StartingTiles { get; set; }
+}
+
+public class TileData
+{
+    public string TileId { get; set; } = string.Empty;
+    public string Layout { get; set; } = string.Empty;
+    public string ImageName { get; set; } = string.Empty;
+    public List<HexSpaceData>? HexSpaces { get; set; }
+}
+
+public class HexSpaceData
+{
+    public int Position { get; set; }
+    public string TerrainType { get; set; } = string.Empty;
+    public bool IsPortal { get; set; }
+    public string? PortalType { get; set; }
 }

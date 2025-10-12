@@ -223,7 +223,7 @@ else
         // Handle card play
         if (currentUserId != null)
         {
-            var result = await GameService.PlayCardAsync(card.GamePlayerId, card.CardId);
+            var result = await GameService.PlayCardAsync(GameId, card.GamePlayerId, card.CardId);
             if (result)
             {
                 await LoadGame();
