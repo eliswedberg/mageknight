@@ -16,5 +16,19 @@
             {"position": 5, "terrainType": "Grassland", "isPortal": false, "edgeShape": "circleA"},
             {"position": 6, "terrainType": "Coastal", "isPortal": false, "edgeShape": "star"}
         ]
+    },
+    {
+        "name": "",
+        "imageName": "MK_map_tiles_01-B",
+        "type": "stating",
+        "hexes": [
+            {"position": 0, "terrainType": "Grassland", "isPortal": true, "edgeShape": "circle"},
+            {"position": 1, "terrainType": "Forest", "isPortal": false, "edgeShape": "star"},
+            {"position": 2, "terrainType": "Coastal", "isPortal": false, "edgeShape": "star"},
+            {"position": 3, "terrainType": "Grassland", "isPortal": true, "portalType": "StartingPortal"},
+            {"position": 4, "terrainType": "Grassland", "isPortal": false, "edgeShape": "circle"},
+            {"position": 5, "terrainType": "Grassland", "isPortal": false, "edgeShape": "circle"},
+            {"position": 6, "terrainType": "Grassland", "isPortal": false, "edgeShape": "star"}
+        ]
     }
 ]
