@@ -65,10 +65,15 @@ public class MapTileService
             startingTile.IsRevealed = true;
             startingTile.PlacementOrder = 1;
 
-            // Create 7 hex spaces for the starting tile
+            // Add tile to map first
+            mapGraph.Tiles.Add(startingTile);
+            
+            // Save the tile to get its ID before creating hex spaces
+            await _context.SaveChangesAsync();
+
+            // Create 7 hex spaces for the starting tile (now that it has an ID)
             await CreateHexSpacesForTileAsync(startingTile);
 
-            mapGraph.Tiles.Add(startingTile);
             mapGraph.IsInitialized = true;
             mapGraph.CurrentPhase = ExplorationPhase.Countryside;
 
@@ -168,14 +173,17 @@ public class MapTileService
                 return null;
             }
 
-            // Create hex spaces for the new tile
+            // Add tile to map first
+            mapGraph.Tiles.Add(newTile);
+            
+            // Save the tile to get its ID before creating hex spaces
+            await _context.SaveChangesAsync();
+
+            // Create hex spaces for the new tile (now that it has an ID)
             await CreateHexSpacesForTileAsync(newTile);
 
             // Update adjacency relationships
             await UpdateTileAdjacencyAsync(newTile, mapGraph);
-
-            // Add tile to map
-            mapGraph.Tiles.Add(newTile);
 
             // Trigger reveal effects
             await TriggerRevealEffectsAsync(newTile, mapGraph);
