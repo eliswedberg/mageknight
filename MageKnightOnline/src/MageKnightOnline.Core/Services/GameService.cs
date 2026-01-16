@@ -400,6 +400,28 @@ public class GameService : IGameService
         return await ExecuteGameAction(gameId, userId, engine => engine.FleeCombat());
     }
 
+    // Unit operations in combat
+
+    public async Task<GameResult> ActivateUnitAsync(Guid gameId, Guid userId, int unitIndex, string abilityType, int? enemyIndex = null)
+    {
+        return await ExecuteGameAction(gameId, userId, engine => engine.ActivateUnit(unitIndex, abilityType, enemyIndex));
+    }
+
+    public async Task<GameResult> AssignDamageToUnitAsync(Guid gameId, Guid userId, int unitIndex, int damage)
+    {
+        return await ExecuteGameAction(gameId, userId, engine => engine.AssignDamageToUnit(unitIndex, damage));
+    }
+
+    public async Task<GameResult> HealUnitAsync(Guid gameId, Guid userId, int unitIndex)
+    {
+        return await ExecuteGameAction(gameId, userId, engine => engine.HealUnit(unitIndex));
+    }
+
+    public async Task<GameResult> DisbandUnitAsync(Guid gameId, Guid userId, int unitIndex)
+    {
+        return await ExecuteGameAction(gameId, userId, engine => engine.DisbandUnit(unitIndex));
+    }
+
     // Site interaction operations
     public async Task<GameResult> InteractWithSiteAsync(Guid gameId, Guid userId, string interactionType)
     {

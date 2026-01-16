@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "KUmXptoMK/k=",
+  "dgSpecHash": "qGwto8ALHUM=",
   "success": true,
   "projectFilePath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
   "expectedPackageFiles": [
@@ -8,7 +8,10 @@
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\azure.identity\\1.14.2\\azure.identity.1.14.2.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.2\\microsoft.aspnetcore.app.internal.assets.10.0.2.nupkg.sha512",
+    "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.aspnetcore.http.connections.client\\10.0.2\\microsoft.aspnetcore.http.connections.client.10.0.2.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\10.0.2\\microsoft.aspnetcore.identity.entityframeworkcore.10.0.2.nupkg.sha512",
+    "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.aspnetcore.signalr.client\\10.0.2\\microsoft.aspnetcore.signalr.client.10.0.2.nupkg.sha512",
+    "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.aspnetcore.signalr.client.core\\10.0.2\\microsoft.aspnetcore.signalr.client.core.10.0.2.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.bcl.cryptography\\9.0.4\\microsoft.bcl.cryptography.9.0.4.nupkg.sha512",
     "C:\\Users\\ElisWedberg\\.nuget\\packages\\microsoft.build.framework\\18.0.2\\microsoft.build.framework.18.0.2.nupkg.sha512",

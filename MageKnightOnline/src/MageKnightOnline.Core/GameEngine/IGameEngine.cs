@@ -139,6 +139,33 @@ public interface IGameEngine
     /// </summary>
     GameActionResult FleeCombat();
 
+    // Unit operations in combat
+
+    /// <summary>
+    /// Activates a unit to use its ability in combat.
+    /// </summary>
+    GameActionResult ActivateUnit(int unitIndex, string abilityType, int? enemyIndex = null);
+
+    /// <summary>
+    /// Assigns damage to a unit instead of taking wounds.
+    /// </summary>
+    GameActionResult AssignDamageToUnit(int unitIndex, int damage);
+
+    /// <summary>
+    /// Gets the available units that can be activated in the current combat phase.
+    /// </summary>
+    IEnumerable<UnitCombatOption> GetAvailableUnitActions();
+
+    /// <summary>
+    /// Heals a wounded unit.
+    /// </summary>
+    GameActionResult HealUnit(int unitIndex);
+
+    /// <summary>
+    /// Disbands a unit (removes it from the player's command).
+    /// </summary>
+    GameActionResult DisbandUnit(int unitIndex);
+
     // Site interactions
 
     /// <summary>
@@ -192,6 +219,28 @@ public interface IGameEngine
     /// Gets the fame required for next level.
     /// </summary>
     int GetFameForNextLevel();
+
+    // Victory conditions
+
+    /// <summary>
+    /// Checks if victory conditions have been met.
+    /// </summary>
+    bool CheckVictoryConditions();
+
+    /// <summary>
+    /// Calculates final scores for all players.
+    /// </summary>
+    VictoryState CalculateFinalScores();
+
+    /// <summary>
+    /// Ends the game and calculates final results.
+    /// </summary>
+    GameActionResult EndGame(string reason);
+
+    /// <summary>
+    /// Gets the current victory state (null if game not over).
+    /// </summary>
+    VictoryState? GetVictoryState();
 }
 
 /// <summary>
@@ -204,6 +253,33 @@ public class SiteInteractionOption
     public int? InfluenceCost { get; set; }
     public bool IsAvailable { get; set; } = true;
     public string? UnavailableReason { get; set; }
+}
+
+/// <summary>
+/// Represents an available unit action in combat.
+/// </summary>
+public class UnitCombatOption
+{
+    public int UnitIndex { get; set; }
+    public string UnitId { get; set; } = string.Empty;
+    public string UnitName { get; set; } = string.Empty;
+    public bool IsWounded { get; set; }
+    public bool IsReady { get; set; }
+    public bool UsedThisCombat { get; set; }
+    public List<UnitAbilityOption> AvailableAbilities { get; set; } = new();
+}
+
+/// <summary>
+/// Represents a specific ability a unit can use.
+/// </summary>
+public class UnitAbilityOption
+{
+    public string AbilityType { get; set; } = string.Empty; // Attack, Block, Influence, Move, Heal
+    public int Value { get; set; }
+    public string? Element { get; set; } // Fire, Ice, etc.
+    public bool IsRanged { get; set; }
+    public bool IsSiege { get; set; }
+    public string Description { get; set; } = string.Empty;
 }
 
 /// <summary>

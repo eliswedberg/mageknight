@@ -547,6 +547,13 @@ public class GameEngine : IGameEngine
 
         AddLogEntry("EndTurn", $"Player ended their turn");
 
+        // Check victory conditions after each turn
+        if (CheckVictoryConditions())
+        {
+            AddLogEntry("Victory", _state.Victory?.EndReason ?? "Game over!");
+            return GameActionResult.Ok($"Game Over! {_state.Victory?.EndReason}");
+        }
+
         // Move to next player in turn order
         _state.CurrentPlayerIndex++;
         if (_state.CurrentPlayerIndex >= _state.TurnOrder.Count)
@@ -554,6 +561,13 @@ public class GameEngine : IGameEngine
             // End of round
             _state.CurrentPlayerIndex = 0;
             EndRound();
+
+            // Check again after round ends
+            if (CheckVictoryConditions())
+            {
+                AddLogEntry("Victory", _state.Victory?.EndReason ?? "Game over!");
+                return GameActionResult.Ok($"Game Over! {_state.Victory?.EndReason}");
+            }
         }
         else
         {
@@ -1443,6 +1457,13 @@ public class GameEngine : IGameEngine
                 hexState.IsConquered = true;
                 hexState.OwnerUserId = player.UserId;
                 hexState.Enemies.Clear();
+
+                // Track city conquest
+                if (hexState.SiteType == "City")
+                {
+                    _state.CitiesConquered++;
+                    AddLogEntry("Conquest", $"City conquered! ({_state.CitiesConquered}/{_state.TotalCities})");
+                }
             }
 
             // Award site rewards
@@ -1452,8 +1473,18 @@ public class GameEngine : IGameEngine
                 AddLogEntry("Combat", $"Victory reward: {reward}");
             }
 
+            // Reset unit combat state
+            ResetUnitsCombatState(player);
+
             _state.Combat = null;
             _state.Phase = GamePhase.Movement;
+
+            // Check victory after conquering a site
+            if (CheckVictoryConditions())
+            {
+                AddLogEntry("Victory", _state.Victory?.EndReason ?? "Game over!");
+                return GameActionResult.Ok($"Victory! {_state.Victory?.EndReason}");
+            }
 
             AddLogEntry("Combat", "Victory! All enemies defeated.");
             return GameActionResult.Ok($"Victory! All enemies defeated. {reward}");
@@ -1468,6 +1499,12 @@ public class GameEngine : IGameEngine
             foreach (var enemy in _state.Combat.Enemies)
             {
                 enemy.IsBlocked = false;
+            }
+            
+            // Reset unit UsedThisCombat for next combat round (but not IsReady)
+            foreach (var unit in player.Units)
+            {
+                unit.UsedThisCombat = false;
             }
             
             AddLogEntry("Combat", "Combat continues - enemies remain");
@@ -1715,8 +1752,11 @@ public class GameEngine : IGameEngine
         player.Units.Add(new UnitState
         {
             UnitId = unitId,
+            Name = unitDef.Name,
+            Armor = unitDef.Armor,
             IsReady = true,
-            IsWounded = false
+            IsWounded = false,
+            UsedThisCombat = false
         });
         player.InfluencePool -= cost;
 
@@ -2026,4 +2066,675 @@ public class GameEngine : IGameEngine
             }
         }
     }
+
+    // ==================== UNIT COMBAT OPERATIONS ====================
+
+    public GameActionResult ActivateUnit(int unitIndex, string abilityType, int? enemyIndex = null)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (unitIndex < 0 || unitIndex >= player.Units.Count)
+            return GameActionResult.Fail("Invalid unit index");
+
+        var unit = player.Units[unitIndex];
+        
+        // Check if unit can be activated
+        if (!unit.IsReady)
+            return GameActionResult.Fail($"{unit.Name} is exhausted and cannot be activated");
+
+        if (unit.UsedThisCombat)
+            return GameActionResult.Fail($"{unit.Name} has already been used this combat");
+
+        // Get unit definition for abilities
+        var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unit.UnitId);
+        if (unitDef == null)
+            return GameActionResult.Fail("Unit definition not found");
+
+        var abilities = unitDef.ParsedAbilities;
+        var abilityTypeLower = abilityType.ToLower();
+
+        // Apply the ability based on type and current combat phase
+        switch (abilityTypeLower)
+        {
+            case "attack":
+                return UseUnitAttack(player, unit, unitDef, abilities, enemyIndex);
+
+            case "ranged":
+            case "ranged_attack":
+                return UseUnitRangedAttack(player, unit, unitDef, abilities, enemyIndex);
+
+            case "block":
+                return UseUnitBlock(player, unit, unitDef, abilities, enemyIndex);
+
+            case "influence":
+                return UseUnitInfluence(player, unit, unitDef, abilities);
+
+            case "move":
+                return UseUnitMove(player, unit, unitDef, abilities);
+
+            case "heal":
+                return UseUnitHeal(player, unit, unitDef, abilities);
+
+            default:
+                return GameActionResult.Fail($"Unknown ability type: {abilityType}");
+        }
+    }
+
+    private GameActionResult UseUnitAttack(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities, int? enemyIndex)
+    {
+        if (_state.Combat == null)
+            return GameActionResult.Fail("Not in combat");
+
+        if (_state.Combat.Phase != CombatPhase.Attack)
+            return GameActionResult.Fail("Can only use attack ability during attack phase");
+
+        if (abilities.Attack <= 0)
+            return GameActionResult.Fail($"{unit.Name} has no attack ability");
+
+        if (!enemyIndex.HasValue)
+            return GameActionResult.Fail("Must specify an enemy to attack");
+
+        if (enemyIndex.Value < 0 || enemyIndex.Value >= _state.Combat.Enemies.Count)
+            return GameActionResult.Fail("Invalid enemy index");
+
+        var enemy = _state.Combat.Enemies[enemyIndex.Value];
+        if (enemy.IsDefeated)
+            return GameActionResult.Fail("Enemy already defeated");
+
+        // Mark unit as used
+        unit.UsedThisCombat = true;
+        unit.IsReady = false; // Exhaust the unit
+
+        // Calculate effective armor
+        var element = abilities.AttackElement ?? "Physical";
+        var effectiveArmor = CalculateEffectiveArmor(enemy, element, true);
+
+        if (abilities.Attack >= effectiveArmor)
+        {
+            DefeatEnemy(enemy, player, $"{unit.Name}'s {element} attack");
+            return GameActionResult.Ok($"{unit.Name} defeated {enemy.Name} with {abilities.Attack} {element} attack!");
+        }
+        else
+        {
+            // Wounded units that attack ineffectively are destroyed
+            if (unit.IsWounded)
+            {
+                player.Units.Remove(unit);
+                AddLogEntry("Combat", $"{unit.Name} was destroyed after ineffective attack while wounded!");
+                return GameActionResult.Fail($"Attack failed and {unit.Name} was destroyed!");
+            }
+
+            // Paralyze effect
+            if (enemy.IsParalyze)
+            {
+                unit.IsWounded = true;
+                AddLogEntry("Combat", $"Paralyze! {unit.Name} was wounded by ineffective attack!");
+                return GameActionResult.Fail($"Attack ineffective - {unit.Name} was wounded by Paralyze!");
+            }
+
+            AddLogEntry("Combat", $"{unit.Name}'s attack failed - need {effectiveArmor} attack, had {abilities.Attack}");
+            return GameActionResult.Fail($"Attack too weak - need {effectiveArmor} to defeat");
+        }
+    }
+
+    private GameActionResult UseUnitRangedAttack(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities, int? enemyIndex)
+    {
+        if (_state.Combat == null)
+            return GameActionResult.Fail("Not in combat");
+
+        if (_state.Combat.Phase != CombatPhase.RangedAttack)
+            return GameActionResult.Fail("Can only use ranged attack during ranged attack phase");
+
+        if (abilities.Attack <= 0 || !abilities.IsRanged)
+            return GameActionResult.Fail($"{unit.Name} has no ranged attack ability");
+
+        if (!enemyIndex.HasValue)
+            return GameActionResult.Fail("Must specify an enemy to attack");
+
+        if (enemyIndex.Value < 0 || enemyIndex.Value >= _state.Combat.Enemies.Count)
+            return GameActionResult.Fail("Invalid enemy index");
+
+        var enemy = _state.Combat.Enemies[enemyIndex.Value];
+        if (enemy.IsDefeated)
+            return GameActionResult.Fail("Enemy already defeated");
+
+        // Fortified enemies require siege
+        if (enemy.IsFortified && !abilities.IsSiege)
+            return GameActionResult.Fail("Fortified enemies require Siege attack for ranged attacks");
+
+        // Mark unit as used
+        unit.UsedThisCombat = true;
+        unit.IsReady = false;
+
+        var element = abilities.AttackElement ?? "Physical";
+        var effectiveArmor = CalculateEffectiveArmor(enemy, element, false);
+
+        if (abilities.Attack >= effectiveArmor)
+        {
+            DefeatEnemy(enemy, player, $"{unit.Name}'s ranged {element} attack");
+            return GameActionResult.Ok($"{unit.Name} defeated {enemy.Name} with ranged attack!");
+        }
+        else
+        {
+            if (unit.IsWounded)
+            {
+                player.Units.Remove(unit);
+                return GameActionResult.Fail($"Attack failed and {unit.Name} was destroyed!");
+            }
+
+            if (enemy.IsParalyze)
+            {
+                unit.IsWounded = true;
+                return GameActionResult.Fail($"Attack ineffective - {unit.Name} was wounded by Paralyze!");
+            }
+
+            return GameActionResult.Fail($"Attack too weak - need {effectiveArmor} to defeat");
+        }
+    }
+
+    private GameActionResult UseUnitBlock(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities, int? enemyIndex)
+    {
+        if (_state.Combat == null)
+            return GameActionResult.Fail("Not in combat");
+
+        if (_state.Combat.Phase != CombatPhase.Block && _state.Combat.Phase != CombatPhase.SwiftAttack)
+            return GameActionResult.Fail("Can only use block ability during block phase");
+
+        if (abilities.Block <= 0)
+            return GameActionResult.Fail($"{unit.Name} has no block ability");
+
+        if (!enemyIndex.HasValue)
+            return GameActionResult.Fail("Must specify an enemy to block");
+
+        if (enemyIndex.Value < 0 || enemyIndex.Value >= _state.Combat.Enemies.Count)
+            return GameActionResult.Fail("Invalid enemy index");
+
+        var enemy = _state.Combat.Enemies[enemyIndex.Value];
+        if (enemy.IsDefeated || enemy.IsBlocked)
+            return GameActionResult.Fail("Enemy already defeated or blocked");
+
+        // In swift phase, can only block swift enemies
+        if (_state.Combat.Phase == CombatPhase.SwiftAttack && !enemy.IsSwift)
+            return GameActionResult.Fail("Can only block Swift enemies in this phase");
+
+        // Mark unit as used
+        unit.UsedThisCombat = true;
+        unit.IsReady = false;
+
+        // Check block element vs attack type
+        var canBlockElement = CanBlockAttackType(abilities, enemy.AttackType);
+        if (!canBlockElement)
+        {
+            // Physical block can always be used but may be less effective
+            AddLogEntry("Combat", $"{unit.Name}'s block may be less effective against {enemy.AttackType} attacks");
+        }
+
+        if (abilities.Block >= enemy.Attack)
+        {
+            enemy.IsBlocked = true;
+            AddLogEntry("Combat", $"{unit.Name} fully blocked {enemy.Name}'s attack ({abilities.Block} vs {enemy.Attack})");
+            return GameActionResult.Ok($"{unit.Name} blocked {enemy.Name}'s attack!");
+        }
+        else
+        {
+            var remainingDamage = enemy.Attack - abilities.Block;
+            _state.Combat.TotalUnblockedDamage += remainingDamage;
+
+            // Unit takes the unblocked damage as wound
+            if (!unit.IsWounded)
+            {
+                unit.IsWounded = true;
+                AddLogEntry("Combat", $"{unit.Name} partially blocked {enemy.Name} and was wounded!");
+                return GameActionResult.Ok($"Partial block - {unit.Name} was wounded, {remainingDamage} damage unblocked");
+            }
+            else
+            {
+                // Already wounded unit is destroyed
+                player.Units.Remove(unit);
+                AddLogEntry("Combat", $"{unit.Name} was destroyed blocking {enemy.Name}!");
+                return GameActionResult.Ok($"Partial block - {unit.Name} was destroyed, {remainingDamage} damage unblocked");
+            }
+        }
+    }
+
+    private bool CanBlockAttackType(Definitions.UnitAbilities abilities, string attackType)
+    {
+        if (string.IsNullOrEmpty(abilities.BlockElement))
+            return true; // Physical block works against everything
+
+        var blockElement = abilities.BlockElement.ToLower();
+        var attackTypeLower = attackType.ToLower();
+
+        // Ice block can block Fire attacks
+        if (blockElement == "ice" && attackTypeLower == "fire")
+            return true;
+        // Fire block can block Ice attacks
+        if (blockElement == "fire" && attackTypeLower == "ice")
+            return true;
+        // Matching elements
+        if (blockElement == attackTypeLower)
+            return true;
+
+        return false;
+    }
+
+    private GameActionResult UseUnitInfluence(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities)
+    {
+        if (abilities.Influence <= 0)
+            return GameActionResult.Fail($"{unit.Name} has no influence ability");
+
+        // Mark unit as used (but not exhausted for influence)
+        unit.UsedThisCombat = true;
+        unit.IsReady = false;
+
+        player.InfluencePool += abilities.Influence;
+        AddLogEntry("Unit", $"{unit.Name} provided +{abilities.Influence} influence");
+        return GameActionResult.Ok($"{unit.Name} provided +{abilities.Influence} influence!");
+    }
+
+    private GameActionResult UseUnitMove(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities)
+    {
+        if (abilities.Move <= 0)
+            return GameActionResult.Fail($"{unit.Name} has no move ability");
+
+        // Mark unit as used
+        unit.UsedThisCombat = true;
+        unit.IsReady = false;
+
+        player.MovementRemaining += abilities.Move;
+        AddLogEntry("Unit", $"{unit.Name} provided +{abilities.Move} movement");
+        return GameActionResult.Ok($"{unit.Name} provided +{abilities.Move} movement!");
+    }
+
+    private GameActionResult UseUnitHeal(PlayerState player, UnitState unit, Definitions.UnitDefinition unitDef, Definitions.UnitAbilities abilities)
+    {
+        if (abilities.Heal <= 0)
+            return GameActionResult.Fail($"{unit.Name} has no heal ability");
+
+        // Mark unit as used
+        unit.UsedThisCombat = true;
+        unit.IsReady = false;
+
+        player.HealPool += abilities.Heal;
+        AddLogEntry("Unit", $"{unit.Name} provided +{abilities.Heal} healing");
+        return GameActionResult.Ok($"{unit.Name} provided +{abilities.Heal} healing!");
+    }
+
+    public GameActionResult AssignDamageToUnit(int unitIndex, int damage)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (unitIndex < 0 || unitIndex >= player.Units.Count)
+            return GameActionResult.Fail("Invalid unit index");
+
+        var unit = player.Units[unitIndex];
+
+        if (!unit.IsWounded)
+        {
+            // Unit takes 1 wound
+            unit.IsWounded = true;
+            AddLogEntry("Combat", $"{unit.Name} was wounded absorbing {damage} damage");
+            return GameActionResult.Ok($"{unit.Name} was wounded!");
+        }
+        else
+        {
+            // Already wounded unit is destroyed
+            player.Units.Remove(unit);
+            AddLogEntry("Combat", $"{unit.Name} was destroyed absorbing {damage} damage");
+            return GameActionResult.Ok($"{unit.Name} was destroyed!");
+        }
+    }
+
+    public IEnumerable<UnitCombatOption> GetAvailableUnitActions()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            yield break;
+
+        for (int i = 0; i < player.Units.Count; i++)
+        {
+            var unit = player.Units[i];
+            var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unit.UnitId);
+            if (unitDef == null) continue;
+
+            var abilities = unitDef.ParsedAbilities;
+            var option = new UnitCombatOption
+            {
+                UnitIndex = i,
+                UnitId = unit.UnitId,
+                UnitName = unit.Name,
+                IsWounded = unit.IsWounded,
+                IsReady = unit.IsReady,
+                UsedThisCombat = unit.UsedThisCombat,
+                AvailableAbilities = new List<UnitAbilityOption>()
+            };
+
+            // Add available abilities based on current phase
+            if (_state.Combat != null)
+            {
+                // Attack abilities
+                if (abilities.Attack > 0)
+                {
+                    if (_state.Combat.Phase == CombatPhase.Attack)
+                    {
+                        option.AvailableAbilities.Add(new UnitAbilityOption
+                        {
+                            AbilityType = "Attack",
+                            Value = abilities.Attack,
+                            Element = abilities.AttackElement,
+                            Description = $"Attack {abilities.Attack}{(abilities.AttackElement != null ? $" ({abilities.AttackElement})" : "")}"
+                        });
+                    }
+
+                    if (abilities.IsRanged && _state.Combat.Phase == CombatPhase.RangedAttack)
+                    {
+                        option.AvailableAbilities.Add(new UnitAbilityOption
+                        {
+                            AbilityType = "Ranged",
+                            Value = abilities.Attack,
+                            Element = abilities.AttackElement,
+                            IsRanged = true,
+                            IsSiege = abilities.IsSiege,
+                            Description = $"Ranged Attack {abilities.Attack}{(abilities.IsSiege ? " (Siege)" : "")}{(abilities.AttackElement != null ? $" ({abilities.AttackElement})" : "")}"
+                        });
+                    }
+                }
+
+                // Block abilities
+                if (abilities.Block > 0 && (_state.Combat.Phase == CombatPhase.Block || _state.Combat.Phase == CombatPhase.SwiftAttack))
+                {
+                    option.AvailableAbilities.Add(new UnitAbilityOption
+                    {
+                        AbilityType = "Block",
+                        Value = abilities.Block,
+                        Element = abilities.BlockElement,
+                        Description = $"Block {abilities.Block}{(abilities.BlockElement != null ? $" ({abilities.BlockElement})" : "")}"
+                    });
+                }
+            }
+
+            // Non-combat abilities (always available when unit is ready)
+            if (abilities.Influence > 0 && unit.IsReady && !unit.UsedThisCombat)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Influence",
+                    Value = abilities.Influence,
+                    Description = $"Influence {abilities.Influence}"
+                });
+            }
+
+            if (abilities.Move > 0 && unit.IsReady && !unit.UsedThisCombat && _state.Combat == null)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Move",
+                    Value = abilities.Move,
+                    Description = $"Move {abilities.Move}"
+                });
+            }
+
+            if (abilities.Heal > 0 && unit.IsReady && !unit.UsedThisCombat)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Heal",
+                    Value = abilities.Heal,
+                    Description = $"Heal {abilities.Heal}"
+                });
+            }
+
+            yield return option;
+        }
+    }
+
+    public GameActionResult HealUnit(int unitIndex)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (unitIndex < 0 || unitIndex >= player.Units.Count)
+            return GameActionResult.Fail("Invalid unit index");
+
+        var unit = player.Units[unitIndex];
+
+        if (!unit.IsWounded)
+            return GameActionResult.Fail($"{unit.Name} is not wounded");
+
+        if (player.HealPool < 2) // Units require 2 heal to recover
+            return GameActionResult.Fail("Not enough healing (need 2 heal to heal a unit)");
+
+        unit.IsWounded = false;
+        player.HealPool -= 2;
+
+        AddLogEntry("Heal", $"Healed {unit.Name}");
+        return GameActionResult.Ok($"Healed {unit.Name}!");
+    }
+
+    public GameActionResult DisbandUnit(int unitIndex)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (unitIndex < 0 || unitIndex >= player.Units.Count)
+            return GameActionResult.Fail("Invalid unit index");
+
+        var unit = player.Units[unitIndex];
+        var unitName = unit.Name;
+        player.Units.RemoveAt(unitIndex);
+
+        AddLogEntry("Disband", $"Disbanded {unitName}");
+        return GameActionResult.Ok($"Disbanded {unitName}");
+    }
+
+    /// <summary>
+    /// Resets unit combat state at the end of combat.
+    /// </summary>
+    private void ResetUnitsCombatState(PlayerState player)
+    {
+        foreach (var unit in player.Units)
+        {
+            unit.UsedThisCombat = false;
+        }
+    }
+
+    /// <summary>
+    /// Readies all units at the start of a new round.
+    /// </summary>
+    private void ReadyAllUnits(PlayerState player)
+    {
+        foreach (var unit in player.Units)
+        {
+            unit.IsReady = true;
+            unit.UsedThisCombat = false;
+        }
+    }
+
+    #region Victory Conditions
+
+    public bool CheckVictoryConditions()
+    {
+        // Check if game is already over
+        if (_state.Victory?.IsGameOver == true)
+            return true;
+
+        // Get scenario
+        var scenarios = _definitions.GetScenariosAsync().Result;
+        var scenario = scenarios.FirstOrDefault(s => s.Id == _state.ScenarioId);
+
+        // Get total rounds from scenario
+        var totalRounds = _definitions.GetScenariosAsync().Result
+            .FirstOrDefault(s => s.Id == _state.ScenarioId)?.Rounds ?? 6;
+
+        // Check if all rounds are complete
+        if (_state.Round > totalRounds)
+        {
+            var victory = CalculateFinalScores();
+            victory.VictoryType = VictoryType.TimeOut;
+            victory.EndReason = "All rounds completed";
+            _state.Victory = victory;
+            return true;
+        }
+
+        // Check scenario-specific victory conditions
+        if (scenario != null)
+        {
+            // Check city conquest
+            if (scenario.Goal?.Contains("Conquer all cities") == true || 
+                scenario.Goal?.Contains("Conquer") == true && _state.TotalCities > 0)
+            {
+                if (_state.CitiesConquered >= _state.TotalCities && _state.TotalCities > 0)
+                {
+                    var victory = CalculateFinalScores();
+                    victory.VictoryType = VictoryType.CityConquest;
+                    victory.EndReason = "All cities conquered!";
+                    _state.Victory = victory;
+                    return true;
+                }
+            }
+
+            // Check "Reveal the City" goal (training scenario)
+            if (scenario.Goal?.Contains("Reveal the City") == true)
+            {
+                if (_state.CityRevealed)
+                {
+                    var victory = CalculateFinalScores();
+                    victory.VictoryType = VictoryType.ScenarioGoal;
+                    victory.EndReason = "City tile revealed!";
+                    _state.Victory = victory;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public VictoryState CalculateFinalScores()
+    {
+        var victory = new VictoryState
+        {
+            IsGameOver = true,
+            FinalScores = new List<PlayerScore>()
+        };
+
+        foreach (var player in _state.Players)
+        {
+            var score = new PlayerScore
+            {
+                UserId = player.UserId,
+                HeroName = player.HeroId,
+                Fame = player.Fame,
+                ReputationBonus = CalculateReputationBonus(player.Reputation),
+                CitiesConquered = CountPlayerCitiesConquered(player),
+                AdventureSitesConquered = CountPlayerAdventureSitesConquered(player),
+                ArtifactsCount = player.Artifacts.Count,
+                SpellsCount = player.Spells.Count,
+                AdvancedActionsCount = player.AdvancedActions.Count
+            };
+
+            // Calculate total score
+            score.TotalScore = score.Fame + score.ReputationBonus +
+                               (score.CitiesConquered * 10) +
+                               (score.AdventureSitesConquered * 2) +
+                               (score.ArtifactsCount * 2) +
+                               (score.SpellsCount * 1) +
+                               (score.AdvancedActionsCount * 1);
+
+            victory.FinalScores.Add(score);
+        }
+
+        // Sort by total score and assign ranks
+        var sortedScores = victory.FinalScores.OrderByDescending(s => s.TotalScore).ToList();
+        for (int i = 0; i < sortedScores.Count; i++)
+        {
+            sortedScores[i].Rank = i + 1;
+        }
+        victory.FinalScores = sortedScores;
+
+        // Set winners (could be multiple in case of tie)
+        var highestScore = sortedScores.FirstOrDefault()?.TotalScore ?? 0;
+        victory.WinnerUserIds = sortedScores
+            .Where(s => s.TotalScore == highestScore)
+            .Select(s => s.UserId)
+            .ToList();
+
+        return victory;
+    }
+
+    public GameActionResult EndGame(string reason)
+    {
+        if (_state.Victory?.IsGameOver == true)
+            return GameActionResult.Fail("Game is already over");
+
+        var victory = CalculateFinalScores();
+        victory.EndReason = reason;
+        victory.VictoryType = VictoryType.TimeOut;
+        _state.Victory = victory;
+
+        AddLogEntry("Game Over", reason);
+        return GameActionResult.Ok($"Game ended: {reason}");
+    }
+
+    public VictoryState? GetVictoryState()
+    {
+        return _state.Victory;
+    }
+
+    private int CalculateReputationBonus(int reputation)
+    {
+        // Reputation ranges from -7 to +7
+        // Negative reputation gives negative points
+        // Positive reputation gives bonus points
+        return reputation switch
+        {
+            >= 7 => 10,
+            >= 5 => 7,
+            >= 3 => 5,
+            >= 1 => 3,
+            0 => 0,
+            >= -2 => -2,
+            >= -4 => -5,
+            >= -6 => -8,
+            _ => -12
+        };
+    }
+
+    private int CountPlayerCitiesConquered(PlayerState player)
+    {
+        // Count cities that were conquered by this player
+        int count = 0;
+        foreach (var hex in _state.Map.HexData.Values)
+        {
+            if (hex.SiteType == "City" && hex.IsConquered && hex.OwnerUserId == player.UserId)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int CountPlayerAdventureSitesConquered(PlayerState player)
+    {
+        // Count adventure sites conquered by this player
+        int count = 0;
+        var adventureSites = new[] { "Dungeon", "Tomb", "MonsterDen", "SpawningGrounds", "Keep", "MageTower", "Mage_Tower" };
+        
+        foreach (var hex in _state.Map.HexData.Values)
+        {
+            if (adventureSites.Contains(hex.SiteType) && hex.IsConquered && hex.OwnerUserId == player.UserId)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    #endregion
 }

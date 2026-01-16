@@ -232,3 +232,6 @@ C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnli
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\MageKnightOnline.Web.pdb
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\MageKnightOnline.Web.genruntimeconfig.cache
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\ref\MageKnightOnline.Web.dll
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\bin\Debug\net10.0\Microsoft.AspNetCore.Http.Connections.Client.dll
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\bin\Debug\net10.0\Microsoft.AspNetCore.SignalR.Client.dll
+C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Web\bin\Debug\net10.0\Microsoft.AspNetCore.SignalR.Client.Core.dll

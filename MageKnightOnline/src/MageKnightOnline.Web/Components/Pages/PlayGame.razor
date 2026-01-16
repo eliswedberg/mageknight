@@ -4,10 +4,12 @@
 @using MageKnightOnline.Core.GameEngine
 @using MageKnightOnline.Core.Definitions
 @using System.Text.Json
+@using Microsoft.AspNetCore.SignalR.Client
 @inject AuthStateService AuthService
 @inject IGameService GameService
 @inject IGameDefinitionService DefinitionService
 @inject NavigationManager Navigation
+@implements IAsyncDisposable
 
 <PageTitle>Playing - Mage Knight Online</PageTitle>
 
@@ -37,6 +39,14 @@ else if (_game.Status != GameStatus.InProgress)
         <a href="/game/@GameId">Return to game lobby</a>
     </div>
 }
+else if (_gameState.Victory?.IsGameOver == true)
+{
+    <!-- Victory Screen -->
+    <VictoryScreen Victory="_gameState.Victory"
+                   CurrentUserId="@(AuthService.CurrentUser?.Id ?? Guid.Empty)"
+                   CanPlayAgain="false"
+                   OnReturnToLobby="ReturnToLobby" />
+}
 else if (_gameState.Phase == GamePhase.TacticsSelection)
 {
     <!-- Tactics Selection Phase -->
@@ -58,6 +68,12 @@ else
             <div class="game-controls">
                 <span class="round-indicator">Round @_gameState.Round / @(_scenario?.Rounds ?? 3)</span>
                 <span class="time-indicator">@(_gameState.IsDay ? "☀️ Day" : "🌙 Night")</span>
+                <span class="connected-players" title="@string.Join(", ", _connectedPlayers)">
+                    👥 @_connectedPlayers.Count online
+                </span>
+                <button class="btn btn-secondary btn-sm" @onclick="ToggleChat">
+                    💬 Chat @(_chatMessages.Count > 0 ? $"({_chatMessages.Count})" : "")
+                </button>
                 <button class="btn btn-secondary btn-sm" @onclick="ToggleLog">
                     📜 Log
                 </button>
@@ -158,12 +174,16 @@ else
                     <!-- Combat overlay -->
                     <CombatPanel Combat="_gameState.Combat"
                                  RangedAttack="@(_myPlayerState?.RangedAttack ?? 0)"
+                                 SiegeAttack="@(_myPlayerState?.SiegeAttack ?? 0)"
                                  AttackPool="@(_myPlayerState?.AttackPool ?? 0)"
                                  BlockPool="@(_myPlayerState?.BlockPool ?? 0)"
+                                 Units="@GetUnitCombatOptions()"
                                  OnRangedAttack="HandleRangedAttack"
                                  OnBlock="HandleBlock"
                                  OnAttack="HandleAttack"
                                  OnAssignDamage="HandleAssignDamage"
+                                 OnAssignDamageToUnit="HandleAssignDamageToUnit"
+                                 OnUnitAbility="HandleUnitAbility"
                                  OnEndPhase="HandleEndCombatPhase"
                                  OnFlee="HandleFlee" />
                 }
@@ -179,6 +199,18 @@ else
                              ShowCoordinates="@_showCoordinates"
                              OnHexClicked="OnTileHexClicked"
                              OnHexHovered="OnTileHexHovered" />
+                    
+                    <!-- Site Interaction Panel -->
+                    <SiteInteractionPanel IsVisible="@_showSitePanel"
+                                          SiteName="@_currentSiteName"
+                                          Interactions="@_siteInteractions"
+                                          AttackPool="@(_myPlayerState?.AttackPool ?? 0)"
+                                          BlockPool="@(_myPlayerState?.BlockPool ?? 0)"
+                                          InfluencePool="@(_myPlayerState?.InfluencePool ?? 0)"
+                                          Message="@_siteInteractionMessage"
+                                          IsError="@_siteInteractionIsError"
+                                          OnInteractionSelected="HandleSiteInteraction"
+                                          OnClose="CloseSitePanel" />
                 }
             </main>
 
@@ -198,6 +230,12 @@ else
                     <div class="action-buttons">
                         @if (IsMyTurn)
                         {
+                            @if (IsAtSite && !HasEnemiesAtCurrentPosition)
+                            {
+                                <button class="btn btn-gold" @onclick="OpenSitePanel">
+                                    @GetCurrentSiteIcon() Interact with Site
+                                </button>
+                            }
                             <button class="btn btn-primary" @onclick="EndTurn">End Turn</button>
                             <button class="btn btn-secondary" @onclick="Rest" disabled="@(!CanRest)">Rest</button>
                         }
@@ -255,6 +293,39 @@ else
                                 <span class="log-message">@entry.Details</span>
                             </div>
                         }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_showChat)
+        {
+            <div class="chat-overlay" @onclick="ToggleChat">
+                <div class="chat-panel card" @onclick:stopPropagation="true">
+                    <div class="chat-header">
+                        <h3>💬 Chat</h3>
+                        <button class="btn btn-sm btn-secondary" @onclick="ToggleChat">✕</button>
+                    </div>
+                    <div class="chat-messages">
+                        @foreach (var msg in _chatMessages.TakeLast(50))
+                        {
+                            <div class="chat-message">
+                                <span class="chat-time">@msg.Timestamp.ToString("HH:mm")</span>
+                                <span class="chat-username">@msg.Username:</span>
+                                <span class="chat-text">@msg.Message</span>
+                            </div>
+                        }
+                        @if (_chatMessages.Count == 0)
+                        {
+                            <p class="text-muted text-center">No messages yet. Say hello!</p>
+                        }
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" @bind="_chatInput" @bind:event="oninput" 
+                               @onkeypress="HandleChatKeyPress" 
+                               placeholder="Type a message..." 
+                               class="chat-input" />
+                        <button class="btn btn-primary btn-sm" @onclick="SendChatMessage">Send</button>
                     </div>
                 </div>
             </div>
@@ -535,6 +606,111 @@ else
     .log-message {
         color: var(--color-text-primary);
     }
+
+    /* Chat panel styles */
+    .chat-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .chat-panel {
+        width: 400px;
+        max-height: 70vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .chat-header h3 {
+        margin: 0;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        min-height: 200px;
+        max-height: 400px;
+        padding: var(--spacing-sm);
+        background: var(--color-bg-dark);
+        border-radius: var(--radius-sm);
+    }
+
+    .chat-message {
+        display: flex;
+        gap: var(--spacing-sm);
+        font-size: 0.85rem;
+        padding: var(--spacing-xs);
+    }
+
+    .chat-time {
+        color: var(--color-text-muted);
+        min-width: 40px;
+        font-size: 0.75rem;
+    }
+
+    .chat-username {
+        color: var(--color-gold);
+        font-weight: 600;
+    }
+
+    .chat-text {
+        color: var(--color-text-primary);
+    }
+
+    .chat-input-area {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-md);
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: var(--spacing-sm);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background: var(--color-bg-dark);
+        color: var(--color-text-primary);
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--color-gold);
+    }
+
+    .connected-players {
+        color: var(--color-text-muted);
+        font-size: 0.85rem;
+        cursor: help;
+    }
+
+    .btn-gold {
+        background: linear-gradient(135deg, #d4a853 0%, #b8922e 100%);
+        border: 1px solid #e8c56a;
+        color: #1a1a1a;
+        font-weight: 600;
+    }
+
+    .btn-gold:hover {
+        background: linear-gradient(135deg, #e8c56a 0%, #d4a853 100%);
+        transform: translateY(-1px);
+    }
 </style>
 
 @code {
@@ -553,6 +729,13 @@ else
     private GameStateModel _gameState = new();
     private PlayerState? _myPlayerState;
 
+    // SignalR connection
+    private HubConnection? _hubConnection;
+    private List<string> _connectedPlayers = new();
+    private List<ChatMessage> _chatMessages = new();
+    private string _chatInput = string.Empty;
+    private bool _showChat = false;
+
     // UI state
     private bool _showLog = false;
     private bool _showCoordinates = true;
@@ -562,6 +745,9 @@ else
     private int? _selectedCardIndex;
     private int? _selectedManaIndex;
 
+    // Chat message record
+    private record ChatMessage(string Username, string Message, DateTime Timestamp);
+
     // TileMap state
     private List<TileMap.TileData> _tiles = new();
     private List<TileMap.HexData> _tileHexes = new();
@@ -569,12 +755,68 @@ else
     private List<TileMap.HexData>? _highlightedTileHexes;
     private Dictionary<string, MapTileDefinition> _tileDefinitions = new();
 
+    // Site interaction state
+    private bool _showSitePanel = false;
+    private string _currentSiteName = "";
+    private List<SiteInteractionOption> _siteInteractions = new();
+    private string? _siteInteractionMessage;
+    private bool _siteInteractionIsError = false;
+
     private bool IsMyTurn => _gameState.CurrentPlayerIndex >= 0 
         && _gameState.CurrentPlayerIndex < _gameState.Players.Count
         && _gameState.Players[_gameState.CurrentPlayerIndex].UserId == AuthService.CurrentUser?.Id;
     
     private bool CanRest => IsMyTurn && _myPlayerState?.Hand.Count > 0;
     private bool CanRerollMana => IsMyTurn;
+
+    private bool IsAtSite
+    {
+        get
+        {
+            if (_myPlayerState == null) return false;
+            var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
+            return _gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && 
+                   !string.IsNullOrEmpty(hexState.SiteType) &&
+                   hexState.SiteType != "Portal";
+        }
+    }
+
+    private bool HasEnemiesAtCurrentPosition
+    {
+        get
+        {
+            if (_myPlayerState == null) return false;
+            var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
+            return _gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && 
+                   hexState.Enemies.Any();
+        }
+    }
+
+    private string GetCurrentSiteIcon()
+    {
+        if (_myPlayerState == null) return "🏠";
+        var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
+        if (!_gameState.Map.HexData.TryGetValue(hexKey, out var hexState) || string.IsNullOrEmpty(hexState.SiteType))
+            return "🏠";
+
+        return hexState.SiteType switch
+        {
+            "Village" => "🏘️",
+            "Monastery" => "⛪",
+            "MageTower" or "Mage_Tower" => "🗼",
+            "Keep" => "🏰",
+            "MagicalGlade" or "Magical_Glade" => "🌳",
+            "AncientRuins" or "Ancient_Ruins" => "🏚️",
+            "Dungeon" => "🕳️",
+            "Tomb" => "⚰️",
+            "MonsterDen" or "Monster_Den" => "🐺",
+            "SpawningGrounds" or "Spawning_Grounds" => "👹",
+            "Draconum" => "🐉",
+            "City" => "🏙️",
+            _ when hexState.SiteType.Contains("Mine") => "⛏️",
+            _ => "🏠"
+        };
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -589,7 +831,155 @@ else
         var mapTiles = await DefinitionService.GetMapTilesAsync();
         _tileDefinitions = mapTiles.ToDictionary(t => t.Id);
 
+        // Setup SignalR connection
+        await SetupSignalR();
+
         await LoadGame();
+    }
+
+    private async Task SetupSignalR()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Handle game state changes from other players
+        _hubConnection.On<string>("GameStateChanged", async (actionDescription) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadGame();
+                StateHasChanged();
+            });
+        });
+
+        // Handle player joined
+        _hubConnection.On<string, string>("PlayerJoined", (username, connectionId) =>
+        {
+            InvokeAsync(() =>
+            {
+                if (!_connectedPlayers.Contains(username))
+                    _connectedPlayers.Add(username);
+                StateHasChanged();
+            });
+        });
+
+        // Handle player left
+        _hubConnection.On<string, string>("PlayerLeft", (username, connectionId) =>
+        {
+            InvokeAsync(() =>
+            {
+                _connectedPlayers.Remove(username);
+                StateHasChanged();
+            });
+        });
+
+        // Handle player disconnected
+        _hubConnection.On<string>("PlayerDisconnected", (username) =>
+        {
+            InvokeAsync(() =>
+            {
+                _connectedPlayers.Remove(username);
+                StateHasChanged();
+            });
+        });
+
+        // Handle turn started
+        _hubConnection.On<string>("TurnStarted", (playerName) =>
+        {
+            InvokeAsync(() =>
+            {
+                // Could show a notification
+                StateHasChanged();
+            });
+        });
+
+        // Handle chat messages
+        _hubConnection.On<string, string, DateTime>("ReceiveMessage", (username, message, timestamp) =>
+        {
+            InvokeAsync(() =>
+            {
+                _chatMessages.Add(new ChatMessage(username, message, timestamp));
+                // Keep only last 100 messages
+                if (_chatMessages.Count > 100)
+                    _chatMessages.RemoveAt(0);
+                StateHasChanged();
+            });
+        });
+
+        // Handle game ended
+        _hubConnection.On<string>("GameEnded", async (reason) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadGame();
+                StateHasChanged();
+            });
+        });
+
+        // Handle action performed by other player
+        _hubConnection.On<string, string, string>("ActionPerformed", (username, actionType, description) =>
+        {
+            InvokeAsync(async () =>
+            {
+                // Reload game state to see the action
+                await LoadGame();
+                StateHasChanged();
+            });
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            
+            // Join the game room
+            if (AuthService.CurrentUser != null)
+            {
+                await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
+                
+                // Get list of connected players
+                _connectedPlayers = await _hubConnection.InvokeAsync<List<string>>("GetConnectedPlayers", GameId.ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SignalR connection error: {ex.Message}");
+        }
+    }
+
+    private async Task NotifyGameStateChanged(string actionDescription)
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected)
+        {
+            await _hubConnection.SendAsync("NotifyGameStateChanged", GameId.ToString(), actionDescription);
+        }
+    }
+
+    private async Task SendChatMessage()
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(_chatInput))
+        {
+            await _hubConnection.SendAsync("SendMessage", GameId.ToString(), _chatInput);
+            _chatInput = string.Empty;
+        }
+    }
+
+    private async Task HandleChatKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendChatMessage();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.SendAsync("LeaveGame", GameId.ToString());
+            await _hubConnection.DisposeAsync();
+        }
     }
 
     // Tactics selection helpers
@@ -610,6 +1000,7 @@ else
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Tactic selected");
         }
     }
 
@@ -871,6 +1262,30 @@ else
             if (result.Success)
             {
                 await LoadGame();
+                
+                // Check if we landed on a site - open interaction panel
+                if (_myPlayerState != null)
+                {
+                    var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
+                    if (_gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && 
+                        !string.IsNullOrEmpty(hexState.SiteType) &&
+                        hexState.SiteType != "Portal" &&
+                        !hexState.Enemies.Any())
+                    {
+                        await OpenSitePanel();
+                    }
+                }
+            }
+        }
+        else if (hex.IsRevealed && hex.Q == _myPlayerState.Position.Q && hex.R == _myPlayerState.Position.R)
+        {
+            // Clicked on current position - check for site interactions
+            var hexKey = $"{hex.Q},{hex.R}";
+            if (_gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && 
+                !string.IsNullOrEmpty(hexState.SiteType) &&
+                hexState.SiteType != "Portal")
+            {
+                await OpenSitePanel();
             }
         }
     }
@@ -997,6 +1412,7 @@ else
     }
 
     private void ToggleLog() => _showLog = !_showLog;
+    private void ToggleChat() => _showChat = !_showChat;
 
     private async Task OnHexClicked(HexGrid.HexData hex)
     {
@@ -1120,7 +1536,13 @@ else
             _selectedCardIndex = null;
             _selectedManaIndex = null;
             await LoadGame();
+            await NotifyGameStateChanged("Turn ended");
         }
+    }
+
+    private void ReturnToLobby()
+    {
+        Navigation.NavigateTo("/");
     }
 
     // Combat handlers
@@ -1185,6 +1607,207 @@ else
         if (result.Success)
         {
             await LoadGame();
+        }
+    }
+
+    // Unit combat methods
+
+    private List<UnitCombatOption> GetUnitCombatOptions()
+    {
+        if (_myPlayerState == null) return new();
+
+        var options = new List<UnitCombatOption>();
+        for (int i = 0; i < _myPlayerState.Units.Count; i++)
+        {
+            var unit = _myPlayerState.Units[i];
+            var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unit.UnitId);
+            if (unitDef == null) continue;
+
+            var abilities = unitDef.ParsedAbilities;
+            var option = new UnitCombatOption
+            {
+                UnitIndex = i,
+                UnitId = unit.UnitId,
+                UnitName = unit.Name,
+                IsWounded = unit.IsWounded,
+                IsReady = unit.IsReady,
+                UsedThisCombat = unit.UsedThisCombat,
+                AvailableAbilities = new List<UnitAbilityOption>()
+            };
+
+            // Add available abilities based on current phase
+            if (_gameState.Combat != null)
+            {
+                // Attack abilities
+                if (abilities.Attack > 0)
+                {
+                    if (_gameState.Combat.Phase == CombatPhase.Attack)
+                    {
+                        option.AvailableAbilities.Add(new UnitAbilityOption
+                        {
+                            AbilityType = "Attack",
+                            Value = abilities.Attack,
+                            Element = abilities.AttackElement,
+                            Description = $"Attack {abilities.Attack}{(abilities.AttackElement != null ? $" ({abilities.AttackElement})" : "")}"
+                        });
+                    }
+
+                    if (abilities.IsRanged && _gameState.Combat.Phase == CombatPhase.RangedAttack)
+                    {
+                        option.AvailableAbilities.Add(new UnitAbilityOption
+                        {
+                            AbilityType = "Ranged",
+                            Value = abilities.Attack,
+                            Element = abilities.AttackElement,
+                            IsRanged = true,
+                            IsSiege = abilities.IsSiege,
+                            Description = $"Ranged Attack {abilities.Attack}{(abilities.IsSiege ? " (Siege)" : "")}{(abilities.AttackElement != null ? $" ({abilities.AttackElement})" : "")}"
+                        });
+                    }
+                }
+
+                // Block abilities
+                if (abilities.Block > 0 && (_gameState.Combat.Phase == CombatPhase.Block || _gameState.Combat.Phase == CombatPhase.SwiftAttack))
+                {
+                    option.AvailableAbilities.Add(new UnitAbilityOption
+                    {
+                        AbilityType = "Block",
+                        Value = abilities.Block,
+                        Element = abilities.BlockElement,
+                        Description = $"Block {abilities.Block}{(abilities.BlockElement != null ? $" ({abilities.BlockElement})" : "")}"
+                    });
+                }
+            }
+
+            // Non-combat abilities (always available when unit is ready)
+            if (abilities.Influence > 0 && unit.IsReady && !unit.UsedThisCombat)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Influence",
+                    Value = abilities.Influence,
+                    Description = $"Influence {abilities.Influence}"
+                });
+            }
+
+            if (abilities.Move > 0 && unit.IsReady && !unit.UsedThisCombat && _gameState.Combat == null)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Move",
+                    Value = abilities.Move,
+                    Description = $"Move {abilities.Move}"
+                });
+            }
+
+            if (abilities.Heal > 0 && unit.IsReady && !unit.UsedThisCombat)
+            {
+                option.AvailableAbilities.Add(new UnitAbilityOption
+                {
+                    AbilityType = "Heal",
+                    Value = abilities.Heal,
+                    Description = $"Heal {abilities.Heal}"
+                });
+            }
+
+            options.Add(option);
+        }
+
+        return options;
+    }
+
+    private async Task HandleAssignDamageToUnit(int unitIndex)
+    {
+        var result = await GameService.AssignDamageToUnitAsync(GameId, AuthService.CurrentUser!.Id, unitIndex, 1);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleUnitAbility((int UnitIndex, string AbilityType, int? EnemyIndex) args)
+    {
+        var result = await GameService.ActivateUnitAsync(GameId, AuthService.CurrentUser!.Id, args.UnitIndex, args.AbilityType, args.EnemyIndex);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    // Site interaction methods
+
+    private async Task OpenSitePanel()
+    {
+        if (_myPlayerState == null) return;
+
+        var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
+        if (_gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && !string.IsNullOrEmpty(hexState.SiteType))
+        {
+            _currentSiteName = FormatSiteName(hexState.SiteType);
+            _siteInteractions = await GetSiteInteractionsAsync();
+            _siteInteractionMessage = null;
+            _siteInteractionIsError = false;
+            _showSitePanel = true;
+        }
+    }
+
+    private async Task<List<SiteInteractionOption>> GetSiteInteractionsAsync()
+    {
+        // Use GameEngine to get available interactions
+        var engine = new MageKnightOnline.Core.GameEngine.GameEngine(DefinitionService);
+        engine.LoadState(_game!.GameState);
+        return engine.GetAvailableSiteInteractions().ToList();
+    }
+
+    private string FormatSiteName(string siteType)
+    {
+        // Convert site type to display name
+        return siteType switch
+        {
+            "Village" => "🏘️ Village",
+            "Monastery" => "⛪ Monastery",
+            "MageTower" or "Mage_Tower" => "🗼 Mage Tower",
+            "Keep" => "🏰 Keep",
+            "MagicalGlade" or "Magical_Glade" => "🌳 Magical Glade",
+            "AncientRuins" or "Ancient_Ruins" => "🏚️ Ancient Ruins",
+            "Dungeon" => "🕳️ Dungeon",
+            "Tomb" => "⚰️ Tomb",
+            "MonsterDen" or "Monster_Den" => "🐺 Monster Den",
+            "SpawningGrounds" or "Spawning_Grounds" => "👹 Spawning Grounds",
+            "Draconum" => "🐉 Draconum Lair",
+            "OrcMarauders" or "Orc_Marauders" => "👺 Orc Marauders",
+            "City" => "🏙️ City",
+            _ when siteType.Contains("Mine") => "⛏️ Crystal Mine",
+            _ => siteType.Replace("_", " ")
+        };
+    }
+
+    private void CloseSitePanel()
+    {
+        _showSitePanel = false;
+        _siteInteractionMessage = null;
+    }
+
+    private async Task HandleSiteInteraction(string interactionType)
+    {
+        _siteInteractionMessage = null;
+        _siteInteractionIsError = false;
+
+        var result = await GameService.InteractWithSiteAsync(GameId, AuthService.CurrentUser!.Id, interactionType);
+        
+        if (result.Success)
+        {
+            _siteInteractionMessage = $"{interactionType} successful!";
+            _siteInteractionIsError = false;
+            await LoadGame();
+            
+            // Refresh interactions after successful action
+            _siteInteractions = await GetSiteInteractionsAsync();
+        }
+        else
+        {
+            _siteInteractionMessage = result.ErrorMessage ?? "Action failed";
+            _siteInteractionIsError = true;
         }
     }
 }

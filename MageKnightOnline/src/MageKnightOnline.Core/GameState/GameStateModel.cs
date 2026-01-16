@@ -48,6 +48,93 @@ public class GameStateModel
     // Combat state
     [JsonPropertyName("combat")]
     public CombatState? Combat { get; set; }
+
+    // Victory state
+    [JsonPropertyName("victory")]
+    public VictoryState? Victory { get; set; }
+
+    // Scenario tracking
+    [JsonPropertyName("scenario_id")]
+    public string ScenarioId { get; set; } = string.Empty;
+
+    [JsonPropertyName("cities_conquered")]
+    public int CitiesConquered { get; set; } = 0;
+
+    [JsonPropertyName("total_cities")]
+    public int TotalCities { get; set; } = 0;
+
+    [JsonPropertyName("city_revealed")]
+    public bool CityRevealed { get; set; } = false;
+}
+
+/// <summary>
+/// State for tracking victory conditions.
+/// </summary>
+public class VictoryState
+{
+    [JsonPropertyName("is_game_over")]
+    public bool IsGameOver { get; set; } = false;
+
+    [JsonPropertyName("victory_type")]
+    public VictoryType VictoryType { get; set; } = VictoryType.None;
+
+    [JsonPropertyName("winner_user_ids")]
+    public List<Guid> WinnerUserIds { get; set; } = new();
+
+    [JsonPropertyName("final_scores")]
+    public List<PlayerScore> FinalScores { get; set; } = new();
+
+    [JsonPropertyName("end_reason")]
+    public string EndReason { get; set; } = string.Empty;
+}
+
+public enum VictoryType
+{
+    None,
+    CityConquest,       // All cities conquered
+    ScenarioGoal,       // Scenario-specific goal achieved
+    TimeOut,            // All rounds completed
+    Cooperative,        // Co-op victory
+    Defeat              // All players eliminated or failed objective
+}
+
+/// <summary>
+/// Final score for a player at end of game.
+/// </summary>
+public class PlayerScore
+{
+    [JsonPropertyName("user_id")]
+    public Guid UserId { get; set; }
+
+    [JsonPropertyName("hero_name")]
+    public string HeroName { get; set; } = string.Empty;
+
+    [JsonPropertyName("fame")]
+    public int Fame { get; set; }
+
+    [JsonPropertyName("reputation_bonus")]
+    public int ReputationBonus { get; set; }
+
+    [JsonPropertyName("cities_conquered")]
+    public int CitiesConquered { get; set; }
+
+    [JsonPropertyName("adventure_sites_conquered")]
+    public int AdventureSitesConquered { get; set; }
+
+    [JsonPropertyName("artifacts_count")]
+    public int ArtifactsCount { get; set; }
+
+    [JsonPropertyName("spells_count")]
+    public int SpellsCount { get; set; }
+
+    [JsonPropertyName("advanced_actions_count")]
+    public int AdvancedActionsCount { get; set; }
+
+    [JsonPropertyName("total_score")]
+    public int TotalScore { get; set; }
+
+    [JsonPropertyName("rank")]
+    public int Rank { get; set; }
 }
 
 /// <summary>
@@ -243,6 +330,16 @@ public class PlayerState
     // Element types for current attacks
     [JsonPropertyName("attack_elements")]
     public List<string> AttackElements { get; set; } = new(); // "Fire", "Ice", "ColdFire"
+
+    // Collected items
+    [JsonPropertyName("artifacts")]
+    public List<string> Artifacts { get; set; } = new(); // Artifact IDs
+
+    [JsonPropertyName("spells")]
+    public List<string> Spells { get; set; } = new(); // Spell IDs
+
+    [JsonPropertyName("advanced_actions")]
+    public List<string> AdvancedActions { get; set; } = new(); // Advanced Action IDs
 }
 
 /// <summary>
@@ -253,11 +350,30 @@ public class UnitState
     [JsonPropertyName("unit_id")]
     public string UnitId { get; set; } = string.Empty;
 
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("armor")]
+    public int Armor { get; set; } = 3;
+
     [JsonPropertyName("is_wounded")]
     public bool IsWounded { get; set; } = false;
 
     [JsonPropertyName("is_ready")]
     public bool IsReady { get; set; } = true;
+
+    [JsonPropertyName("used_this_combat")]
+    public bool UsedThisCombat { get; set; } = false;
+
+    /// <summary>
+    /// Can this unit be activated? Must be ready and not wounded.
+    /// </summary>
+    public bool CanActivate => IsReady && !IsWounded;
+
+    /// <summary>
+    /// Can this unit be used for blocking? Wounded units can still block but take damage.
+    /// </summary>
+    public bool CanBlock => IsReady;
 }
 
 /// <summary>

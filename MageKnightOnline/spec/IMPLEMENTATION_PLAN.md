@@ -553,11 +553,13 @@ För en spelbar MVP, fokusera på:
 - ⏳ Vampiric (ej implementerat)
 - ⏳ Summon (delvis - logik finns men ej fullt testad)
 
-#### 6.4 Enheter i strid ⏳ EJ IMPLEMENTERAT
-- ⏳ Aktivera enhet
-- ⏳ Enhetsskada
-- ⏳ Wounded units
-- ⏳ Ready/Exhausted state
+#### 6.4 Enheter i strid ✅ KLAR
+- ✅ Aktivera enhet (ActivateUnit i GameEngine)
+- ✅ Enhetsskada (AssignDamageToUnit)
+- ✅ Wounded units
+- ✅ Ready/Exhausted state
+- ✅ Unit abilities i strid (Attack, Block, Ranged, Siege, etc.)
+- ✅ CombatPanel uppdaterad med unit-stöd
 
 ### Fas 7: Interaktioner & Platser ✅ DELVIS KLAR (75%)
 #### 7.1 Site Interactions ✅ KLAR
@@ -601,18 +603,18 @@ För en spelbar MVP, fokusera på:
 - ✅ Influence modifiers baserat på reputation
 - ✅ Reputation changes (plunder, etc.)
 
-### Fas 9: Scenarios & Vinst ⏳ DELVIS KLAR (40%)
+### Fas 9: Scenarios & Vinst ✅ DELVIS KLAR (75%)
 #### 9.1 Scenario Setup ✅ KLAR
 - ✅ Ladda scenario-konfiguration
 - ✅ Generera map deck
 - ✅ Placera starting tile
 - ⏳ Sätt city levels (ej implementerat)
 
-#### 9.2 Vinst-villkor ⏳ EJ IMPLEMENTERAT
-- ⏳ Spåra scenario-mål
-- ⏳ Detektera vinst/förlust
-- ⏳ Beräkna slutpoäng
-- ⏳ Visa resultat
+#### 9.2 Vinst-villkor ✅ KLAR
+- ✅ Spåra scenario-mål (CitiesConquered, CityRevealed)
+- ✅ Detektera vinst/förlust (CheckVictoryConditions)
+- ✅ Beräkna slutpoäng (CalculateFinalScores)
+- ✅ Visa resultat (VictoryScreen-komponent)
 
 #### 9.3 Implementera scenarios ⏳ DELVIS
 - ⏳ First Reconnaissance (Training) - ej implementerat
@@ -627,7 +629,7 @@ För en spelbar MVP, fokusera på:
 - ✅ Interaktiv karta (TileMap)
 - ⏳ Drag-and-drop kort (ej implementerat)
 - ✅ Stridsdialog (CombatPanel - delvis)
-- ✅ Site interaction dialog (SiteInteractionPanel - skapad men ej fullt integrerad)
+- ✅ Site interaction dialog (SiteInteractionPanel - integrerad i PlayGame)
 - ✅ Taktikval-dialog (TacticsSelection)
 
 #### 10.2 Visuell feedback ⏳ DELVIS
@@ -641,13 +643,14 @@ För en spelbar MVP, fokusera på:
 - ⏳ Tablet-stöd - delvis
 - ⏳ Grundläggande mobilvy - delvis
 
-### Fas 11: Multiplayer & Synk ⏳ DELVIS KLAR (50%)
-#### 11.1 SignalR Game Hub ⏳ DELVIS
+### Fas 11: Multiplayer & Synk ✅ DELVIS KLAR (80%)
+#### 11.1 SignalR Game Hub ✅ KLAR
 - ✅ SignalR Hub för lobby (GameHub)
-- ⏳ Synka game state - delvis (via page refresh)
-- ⏳ Turn notifications - delvis
-- ⏳ Chat - ej implementerat
-- ⏳ Reconnection handling - ej implementerat
+- ✅ Synka game state (real-time via SignalR)
+- ✅ Turn notifications
+- ✅ Chat (i spel)
+- ✅ Reconnection handling (WithAutomaticReconnect)
+- ✅ Player connection tracking
 
 #### 11.2 Concurrency ⏳ EJ IMPLEMENTERAT
 - ⏳ Optimistic locking
@@ -677,26 +680,26 @@ För en spelbar MVP, fokusera på:
 | 3. Domänmodeller | ✅ Klar | 100% |
 | 4. Spelmotor | ✅ Delvis | 85% |
 | 5. Karta & Rörelse | ✅ Delvis | 90% |
-| 6. Strid | ✅ Delvis | 85% |
+| 6. Strid | ✅ Klar | 95% |
 | 7. Interaktioner | ✅ Delvis | 75% |
 | 8. Leveling | ✅ Klar | 100% |
-| 9. Scenarios | ⏳ Delvis | 40% |
+| 9. Scenarios | ✅ Delvis | 75% |
 | 10. UI & Polish | ⏳ Delvis | 60% |
-| 11. Multiplayer | ⏳ Delvis | 50% |
+| 11. Multiplayer | ✅ Delvis | 80% |
 | 12. Testing | ❌ Ej påbörjat | 0% |
 
-**Total progress: ~75% av MVP**
+**Total progress: ~90% av MVP**
 
 ---
 
 ## Nästa steg (Prioriterat)
 
 ### Hög prioritet (för spelbar MVP):
-1. ⏳ Enheter i strid (Fas 6.4)
-2. ⏳ Vinst-villkor och scenario-mål (Fas 9.2)
-3. ⏳ Integrera SiteInteractionPanel i PlayGame (Fas 10.1)
-4. ⏳ Förbättra CombatPanel med alla abilities (Fas 10.1)
-5. ⏳ Full SignalR-synkning för multiplayer (Fas 11.1)
+1. ✅ Enheter i strid (Fas 6.4) - KLAR
+2. ✅ Vinst-villkor och scenario-mål (Fas 9.2) - KLAR
+3. ✅ Integrera SiteInteractionPanel i PlayGame (Fas 10.1) - KLAR
+4. ✅ Förbättra CombatPanel med alla abilities (Fas 10.1) - KLAR
+5. ✅ Full SignalR-synkning för multiplayer (Fas 11.1) - KLAR
 
 ### Medel prioritet:
 6. ⏳ Conquered City interactions (Fas 7.1)

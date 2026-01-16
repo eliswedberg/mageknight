@@ -41,6 +41,12 @@ public interface IGameService
     Task<GameResult> EndCombatPhaseAsync(Guid gameId, Guid userId);
     Task<GameResult> FleeCombatAsync(Guid gameId, Guid userId);
 
+    // Unit operations in combat
+    Task<GameResult> ActivateUnitAsync(Guid gameId, Guid userId, int unitIndex, string abilityType, int? enemyIndex = null);
+    Task<GameResult> AssignDamageToUnitAsync(Guid gameId, Guid userId, int unitIndex, int damage);
+    Task<GameResult> HealUnitAsync(Guid gameId, Guid userId, int unitIndex);
+    Task<GameResult> DisbandUnitAsync(Guid gameId, Guid userId, int unitIndex);
+
     // Site interaction operations
     Task<GameResult> InteractWithSiteAsync(Guid gameId, Guid userId, string interactionType);
     Task<GameResult> RecruitUnitAsync(Guid gameId, Guid userId, string unitId);
