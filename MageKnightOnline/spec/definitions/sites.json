@@ -1,0 +1,116 @@
+[
+  {
+    "id": "site_village",
+    "name": "Village",
+    "image": "images/description_village.jpg",
+    "interactions": [
+      { "type": "Recruit", "target": "Unit_Regular", "condition": "Reputation >= 0" },
+      { "type": "Heal", "value": 1, "cost": { "influence": 3 } },
+      { "type": "Plunder", "effect": "Draw 2 cards, -1 Reputation" }
+    ]
+  },
+  {
+    "id": "site_monastery",
+    "name": "Monastery",
+    "image": "images/description_monastery.jpg",
+    "interactions": [
+      { "type": "Recruit", "target": "Unit_Regular" },
+      { "type": "Heal", "value": 1, "cost": { "influence": 2 } },
+      { "type": "Training", "effect": "Pay 6 Influence -> Gain Advanced Action" },
+      { "type": "Burn", "effect": "Battle Purple Enemy -> Gain Artifact, -2 Reputation" }
+    ]
+  },
+  {
+    "id": "site_magictower",
+    "name": "Mage Tower",
+    "image": "images/description_mage_tower.jpg",
+    "interactions": [
+      { "type": "Recruit", "target": "Unit_Spellcaster" },
+      { "type": "LearnSpell", "effect": "Pay 7 Influence + 1 Mana -> Gain Spell" }
+    ]
+  },
+  {
+    "id": "site_keep",
+    "name": "Keep",
+    "image": "images/description_keep.jpg",
+    "interactions": [
+      { "type": "Recruit", "target": "Unit_Regular", "condition": "Location owned by player" }
+    ]
+  },
+  {
+    "id": "site_glade",
+    "name": "Magical Glade",
+    "image": "images/description_magical_glade.jpg",
+    "interactions": [
+      { "type": "Heal", "value": 1, "cost": { "influence": 0 }, "description": "Free heal 1" },
+      { "type": "Empower", "effect": "Gain 1 Gold Crystal (Day) or 1 Black Mana Token (Night)" },
+      { "type": "Cleanse", "effect": "Throw away Wounds. For each Wound -> Gain 1 Mana of any color." }
+    ]
+  },
+  {
+    "id": "site_mine_crystals",
+    "name": "Crystal Mine",
+    "image": "images/description_mines.jpg",
+    "interactions": [
+      { "type": "Harvest", "effect": "Gain 1 Crystal of mine color to Inventory." }
+    ]
+  },
+  {
+    "id": "site_city_conquered",
+    "name": "Conquered City",
+    "image": "images/description_city.jpg",
+    "interactions": [
+      { "type": "Recruit", "target": "Unit_All", "description": "Can recruit any unit type allowed in cities." },
+      { "type": "Interact", "effect": "Influence 2 buys 1 Fame (Leader only)." }
+    ]
+  },
+  {
+    "id": "site_dungeon",
+    "name": "Dungeon",
+    "image": "images/description_dungeon.jpg",
+    "rules": ["NightRules", "Battle Brown Enemy"],
+    "reward": "Artifact"
+  },
+  {
+    "id": "site_tomb",
+    "name": "Tomb",
+    "image": "images/description_tomb.jpg",
+    "rules": ["NightRules", "Battle Red Enemy"],
+    "reward": "Artifact + Spell"
+  },
+  {
+    "id": "site_monsterden",
+    "name": "Monster Den",
+    "image": "images/description_monster_den.jpg",
+    "rules": ["Battle Brown Enemy"],
+    "reward": "2 Crystals"
+  },
+  {
+    "id": "site_spawning",
+    "name": "Spawning Grounds",
+    "image": "images/description_spawning_grounds.jpg",
+    "rules": ["Battle 2x Brown Enemy"],
+    "reward": "Artifact"
+  },
+  {
+    "id": "site_ruins",
+    "name": "Ruins",
+    "image": "images/description_ancient_ruins.jpg",
+    "rules": ["Battle variable enemies", "Get Yellow Token"],
+    "reward": "Ruins Token"
+  },
+  {
+    "id": "site_draconum",
+    "name": "Draconum",
+    "image": "images/description_draconum.jpg",
+    "rules": ["Battle Red Enemy (Draconum)"],
+    "reward": "2 Artifacts"
+  },
+  {
+    "id": "site_orc_marauders",
+    "name": "Marauding Orcs",
+    "image": "images/description_marauding_orcs.jpg",
+    "rules": ["Battle Green Enemy"],
+    "reward": "2 Fame"
+  }
+]

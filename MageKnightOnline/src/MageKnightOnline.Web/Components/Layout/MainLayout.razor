@@ -1,0 +1,83 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject AuthStateService AuthService
+@inject NavigationManager Navigation
+
+<div class="app-layout">
+    <header class="navbar">
+        <a href="/" class="navbar-brand">
+            <img src="images/deed_icon.png" alt="" style="height: 32px;" />
+            Mage Knight Online
+        </a>
+        
+        <nav>
+            <ul class="navbar-nav">
+                @if (AuthService.IsAuthenticated)
+                {
+                    <li><a href="/" class="nav-link">Lobby</a></li>
+                    <li><a href="/my-games" class="nav-link">My Games</a></li>
+                    <li>
+                        <span class="nav-link text-muted">@AuthService.CurrentUser?.Username</span>
+                    </li>
+                    <li>
+                        <a href="/logout" class="btn btn-secondary btn-sm">Logout</a>
+                    </li>
+                }
+                else
+                {
+                    <li><a href="/login" class="nav-link">Login</a></li>
+                    <li><a href="/register" class="nav-link">Register</a></li>
+                }
+            </ul>
+        </nav>
+    </header>
+
+    <main class="page-container">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        <p class="text-muted text-center text-sm">
+            Mage Knight Online &copy; 2024 - A fan-made digital adaptation
+        </p>
+    </footer>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize auth state from session storage after first render
+            // (ProtectedSessionStorage requires JS interop, which isn't available during prerender)
+            await AuthService.InitializeAsync();
+        }
+    }
+
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+    }
+}

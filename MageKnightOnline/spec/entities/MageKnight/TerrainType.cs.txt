@@ -1,0 +1,13 @@
+public enum TerrainType
+{
+    None = 0,
+    Plains,     // Move cost: 2
+    Forest,     // Move cost: 3 (Day) / 5 (Night)
+    Hills,      // Move cost: 3
+    Desert,     // Move cost: 5 (Day) / 3 (Night)
+    Wasteland,  // Move cost: 4
+    Swamp,      // Move cost: 5
+    Mountain,   // Impassable (unless Flying/Tunnel)
+    Water,      // Impassable (Lake/Coast)
+    City        // Special rules
+}

@@ -1,0 +1,23 @@
+public class CardEffect
+{
+    public EffectType Type { get; set; }
+    public int Value { get; set; } // T.ex. 4 (Move 4)
+    public EffectAttribute Attributes { get; set; }
+    
+    // För textbeskrivning i UI om det är komplext
+    public string Description { get; set; } 
+
+    // Constructor helpers
+    public static CardEffect Move(int amount) => 
+        new CardEffect { Type = EffectType.Move, Value = amount };
+
+    public static CardEffect FireAttack(int amount) => 
+        new CardEffect { Type = EffectType.Attack, Value = amount, Attributes = EffectAttribute.Fire };
+        
+    public static CardEffect SiegeAttack(int amount, bool isFire = false) => 
+        new CardEffect { 
+            Type = EffectType.Attack, 
+            Value = amount, 
+            Attributes = EffectAttribute.Siege | (isFire ? EffectAttribute.Fire : EffectAttribute.None) 
+        };
+}

@@ -1,3 +1,0 @@
-# Setup
-
-Pseudocode and triggers.

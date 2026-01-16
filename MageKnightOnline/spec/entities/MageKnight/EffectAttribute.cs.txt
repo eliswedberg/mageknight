@@ -1,0 +1,26 @@
+[Flags] // Flags gör att vi kan kombinera dem (t.ex. Ranged + Fire)
+public enum EffectAttribute
+{
+    None = 0,
+
+    // --- Elemental Types (Combat) ---
+    Physical = 1 << 0,  // Standard
+    Fire     = 1 << 1,  // Fire Attack / Fire Block
+    Ice      = 1 << 2,  // Ice Attack / Ice Block
+    Cold     = 1 << 3,  // Cold Attack (Specifikt för PVP/ Vissa enemies)
+    
+    // --- Combat Modes ---
+    Ranged   = 1 << 4,  // Ranged Attack (sker i Ranged phase)
+    Siege    = 1 << 5,  // Siege Attack (Ranged phase, men funkar mot Fortified)
+    
+    // --- Defense Modifiers ---
+    ResistantPhysical = 1 << 6, // Halverar inkommande fysisk skada
+    
+    // --- Movement Modifiers ---
+    Safe     = 1 << 7,  // "Safe Move" (triggar inte fiender)
+    Flight   = 1 << 8,  // Flygande movement
+    Tunnel   = 1 << 9,  // "Underground Travel"
+
+    // --- Special ---
+    Unblockable = 1 << 10 // Attack som inte kan blockas
+}

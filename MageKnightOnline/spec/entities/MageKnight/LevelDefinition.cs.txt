@@ -1,0 +1,9 @@
+public class LevelDefinition
+{
+    public int Level { get; set; }
+    public int XpStart { get; set; } // XP som krävs
+    public int CommandTokens { get; set; }
+    public int Armor { get; set; }
+    public int HandSize { get; set; }
+    public string Reward { get; set; } // Textsträng som motorn får tolka
+}

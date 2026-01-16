@@ -1,0 +1,247 @@
+[
+  {
+    "id": "enemy_green_01", "name": "Diggers", "type": "Green", "count": 2, "fame": 2,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_marauding_orcs_diggers_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+  {
+    "id": "enemy_green_02", "name": "Wolf Riders", "type": "Green", "count": 3, "fame": 2,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": ["Swift"],
+    "image": "images/enemy_marauding_orcs_wolf_riders_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+  {
+    "id": "enemy_green_03", "name": "Prowlers", "type": "Green", "count": 3, "fame": 3,
+    "attack": { "value": 4, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_marauding_orcs_prowlers_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+  {
+    "id": "enemy_green_04", "name": "Cursed Hags", "type": "Green", "count": 2, "fame": 3,
+    "attack": { "value": 2, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": ["Physical"] },
+    "abilities": ["Poison"],
+    "image": "images/enemy_marauding_orcs_cursed_hags_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+  {
+    "id": "enemy_green_05", "name": "Orc Ironclads", "type": "Green", "count": 2, "fame": 4,
+    "attack": { "value": 5, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_marauding_orcs_ironclads_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+  {
+    "id": "enemy_green_06", "name": "Orc Summoners", "type": "Green", "count": 1, "fame": 4,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": ["Summon_Brown"],
+    "image": "images/enemy_marauding_orcs_orc_summoners_x2.png",
+    "back_image": "images/enemy_marauding_orcs_back.png"
+  },
+
+  {
+    "id": "enemy_grey_01", "name": "Crossbowmen", "type": "Grey", "count": 3, "fame": 3,
+    "attack": { "value": 3, "attributes": ["Ranged", "Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_keeps_crossbowmen_x3.png",
+    "back_image": "images/enemy_keeps_back.png"
+  },
+  {
+    "id": "enemy_grey_02", "name": "Guardsmen", "type": "Grey", "count": 3, "fame": 3,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": ["Physical"] },
+    "abilities": ["Fortified"],
+    "image": "images/enemy_keeps_guardsmen_x3.png",
+    "back_image": "images/enemy_keeps_back.png"
+  },
+  {
+    "id": "enemy_grey_03", "name": "Golems", "type": "Grey", "count": 2, "fame": 4,
+    "attack": { "value": 4, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": ["Physical"] },
+    "abilities": [],
+    "image": "images/enemy_keeps_golems_x2.png",
+    "back_image": "images/enemy_keeps_back.png"
+  },
+  {
+    "id": "enemy_grey_04", "name": "Swordsmen", "type": "Grey", "count": 2, "fame": 4,
+    "attack": { "value": 5, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_keeps_swordsmen_x2.png",
+    "back_image": "images/enemy_keeps_back.png"
+  },
+
+  {
+    "id": "enemy_violet_01", "name": "Monks", "type": "Violet", "count": 2, "fame": 3,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": [] },
+    "abilities": [],
+    "image": "images/enemy_mage_towers_monks_x2.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+  {
+    "id": "enemy_violet_02", "name": "Illusionists", "type": "Violet", "count": 2, "fame": 3,
+    "attack": { "value": 4, "attributes": ["Physical"] },
+    "armor": { "value": 2, "resistances": ["Physical"] },
+    "abilities": [],
+    "image": "images/enemy_mage_towers_illusionists_x2.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+  {
+    "id": "enemy_violet_03", "name": "Ice Golems", "type": "Violet", "count": 2, "fame": 4,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": ["Physical", "Ice"] },
+    "abilities": ["Paralyze"],
+    "image": "images/enemy_mage_towers_ice_golems_x1.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+  {
+    "id": "enemy_violet_04", "name": "Fire Golems", "type": "Violet", "count": 2, "fame": 4,
+    "attack": { "value": 3, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": ["Physical", "Fire"] },
+    "abilities": ["Fire"],
+    "image": "images/enemy_mage_towers_fire_golems_x1.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+  {
+    "id": "enemy_violet_05", "name": "Ice Mages", "type": "Violet", "count": 2, "fame": 4,
+    "attack": { "value": 4, "attributes": ["Ice", "Ranged"] },
+    "armor": { "value": 4, "resistances": ["Ice"] },
+    "abilities": [],
+    "image": "images/enemy_mage_towers_ice_mages_x2.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+  {
+    "id": "enemy_violet_06", "name": "Fire Mages", "type": "Violet", "count": 2, "fame": 4,
+    "attack": { "value": 4, "attributes": ["Fire", "Ranged"] },
+    "armor": { "value": 4, "resistances": ["Fire"] },
+    "abilities": [],
+    "image": "images/enemy_mage_towers_fire_mages_x2.png",
+    "back_image": "images/enemy_mage_towers_back.png"
+  },
+
+  {
+    "id": "enemy_brown_01", "name": "Crypt Worms", "type": "Brown", "count": 2, "fame": 5,
+    "attack": { "value": 6, "attributes": ["Physical"] },
+    "armor": { "value": 3, "resistances": ["Physical"] },
+    "abilities": ["Fortified"],
+    "image": "images/enemy_dungeon_crypt_worm_x2.png",
+    "back_image": "images/enemy_dungeon_back.png"
+  },
+  {
+    "id": "enemy_brown_02", "name": "Gargoyles", "type": "Brown", "count": 2, "fame": 4,
+    "attack": { "value": 5, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": ["Physical"] },
+    "abilities": [],
+    "image": "images/enemy_dungeon_gargoyle_x2.png",
+    "back_image": "images/enemy_dungeon_back.png"
+  },
+  {
+    "id": "enemy_brown_03", "name": "Minotaurs", "type": "Brown", "count": 2, "fame": 4,
+    "attack": { "value": 5, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": [] },
+    "abilities": ["Brutal"],
+    "image": "images/enemy_dungeon_minotaur_x2.png",
+    "back_image": "images/enemy_dungeon_back.png"
+  },
+  {
+    "id": "enemy_brown_04", "name": "Medusas", "type": "Brown", "count": 2, "fame": 4,
+    "attack": { "value": 4, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": ["Physical"] },
+    "abilities": ["Paralyze"],
+    "image": "images/enemy_dungeon_medusa_x2.png",
+    "back_image": "images/enemy_dungeon_back.png"
+  },
+  {
+    "id": "enemy_brown_05", "name": "Werewolves", "type": "Brown", "count": 2, "fame": 5,
+    "attack": { "value": 5, "attributes": ["Physical"] },
+    "armor": { "value": 5, "resistances": [] },
+    "abilities": ["Swift"],
+    "image": "images/enemy_dungeon_werewolf_x2.png",
+    "back_image": "images/enemy_dungeon_back.png"
+  },
+
+  {
+    "id": "enemy_red_01", "name": "Fire Dragon", "type": "Red", "count": 2, "fame": 7,
+    "attack": { "value": 5, "attributes": ["Fire"] },
+    "armor": { "value": 4, "resistances": ["Fire"] },
+    "abilities": ["Swift", "High_Dragon"],
+    "image": "images/enemy_draconum_fire_dragon_x2.png",
+    "back_image": "images/enemy_draconum_back.png"
+  },
+  {
+    "id": "enemy_red_02", "name": "High Dragon", "type": "Red", "count": 2, "fame": 6,
+    "attack": { "value": 6, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": [] },
+    "abilities": ["Swift", "Brutal", "High_Dragon"],
+    "image": "images/enemy_draconum_high_dragon_x2.png",
+    "back_image": "images/enemy_draconum_back.png"
+  },
+  {
+    "id": "enemy_red_03", "name": "Ice Dragon", "type": "Red", "count": 2, "fame": 8,
+    "attack": { "value": 6, "attributes": ["Cold"] },
+    "armor": { "value": 4, "resistances": ["Ice"] },
+    "abilities": ["Swift", "High_Dragon"],
+    "image": "images/enemy_draconum_ice_dragon_x2.png",
+    "back_image": "images/enemy_draconum_back.png"
+  },
+  {
+    "id": "enemy_red_04", "name": "Swamp Dragon", "type": "Red", "count": 1, "fame": 8,
+    "attack": { "value": 6, "attributes": ["Physical"] },
+    "armor": { "value": 5, "resistances": ["Physical"] },
+    "abilities": ["Swift", "Poison", "High_Dragon"],
+    "image": "images/enemy_draconum_swamp_dragon_x2.png",
+    "back_image": "images/enemy_draconum_back.png"
+  },
+
+  {
+    "id": "enemy_white_01", "name": "Altem Guardians", "type": "White", "count": 3, "fame": 7,
+    "attack": { "value": 6, "attributes": ["Physical"] },
+    "armor": { "value": 5, "resistances": ["Physical", "Fire", "Ice"] },
+    "abilities": [],
+    "image": "images/enemy_cities_altem_guardians_x2.png",
+    "back_image": "images/enemy_cities_back.png"
+  },
+  {
+    "id": "enemy_white_02", "name": "Altem Guardsmen", "type": "White", "count": 4, "fame": 4,
+    "attack": { "value": 4, "attributes": ["Physical"] },
+    "armor": { "value": 4, "resistances": ["Physical"] },
+    "abilities": ["Fortified"],
+    "image": "images/enemy_cities_altem_guardsmen_x2.png",
+    "back_image": "images/enemy_cities_back.png"
+  },
+  {
+    "id": "enemy_white_03", "name": "Altem Mages", "type": "White", "count": 2, "fame": 6,
+    "attack": { "value": 4, "attributes": ["Cold", "Fire"] },
+    "armor": { "value": 4, "resistances": ["Fire", "Ice"] },
+    "abilities": [],
+    "image": "images/enemy_cities_altem_mages_x2.png",
+    "back_image": "images/enemy_cities_back.png"
+  },
+  {
+    "id": "enemy_white_04", "name": "Gunners", "type": "White", "count": 3, "fame": 5,
+    "attack": { "value": 5, "attributes": ["Fire", "Ranged"] },
+    "armor": { "value": 5, "resistances": ["Physical"] },
+    "abilities": [],
+    "image": "images/enemy_cities_gunners_x3.png",
+    "back_image": "images/enemy_cities_back.png"
+  },
+  {
+    "id": "enemy_white_05", "name": "Freezers", "type": "White", "count": 2, "fame": 5,
+    "attack": { "value": 4, "attributes": ["Ice"] },
+    "armor": { "value": 5, "resistances": ["Ice"] },
+    "abilities": ["Paralyze"],
+    "image": "images/enemy_cities_freezers_x3.png",
+    "back_image": "images/enemy_cities_back.png"
+  }
+]

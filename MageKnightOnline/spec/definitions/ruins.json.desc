@@ -1,0 +1,11 @@
+När spelaren besegrar fienderna i en ruin:
+
+Spelet drar en slumpmässig ruin_loot från högen.
+
+Om det är Spell (x2): Spelaren får välja en Spell från den synliga given (Offer).
+
+Om det är Artifact (x2): Spelaren drar 2 Artifacts från leken, behåller 1.
+
+Om det är Unit (x1): Spelaren rekryterar en enhet gratis.
+
+Om det är Wealth (x2): Spelaren får resurser direkt.

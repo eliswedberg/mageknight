@@ -1,0 +1,6 @@
+public enum TileBackType
+{
+    Countryside,    // Gröna baksidor (Tiles 1-14)
+    Core,           // Bruna baksidor (Tiles 1-11)
+    Core_City       // Bruna baksidor, men städer har ofta egna regler för shuffle
+}

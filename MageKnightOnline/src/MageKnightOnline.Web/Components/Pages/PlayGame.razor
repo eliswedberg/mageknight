@@ -1,0 +1,1190 @@
+@page "/play/{GameId:guid}"
+@using MageKnightOnline.Web.Components.Game
+@using MageKnightOnline.Core.GameState
+@using MageKnightOnline.Core.GameEngine
+@using MageKnightOnline.Core.Definitions
+@using System.Text.Json
+@inject AuthStateService AuthService
+@inject IGameService GameService
+@inject IGameDefinitionService DefinitionService
+@inject NavigationManager Navigation
+
+<PageTitle>Playing - Mage Knight Online</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        Please <a href="/login">login</a> to play.
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Loading game...</p>
+    </div>
+}
+else if (_game == null)
+{
+    <div class="alert alert-error">
+        Game not found. <a href="/">Return to lobby</a>
+    </div>
+}
+else if (_game.Status != GameStatus.InProgress)
+{
+    <div class="alert alert-warning">
+        This game is not currently in progress.
+        <a href="/game/@GameId">Return to game lobby</a>
+    </div>
+}
+else if (_gameState.Phase == GamePhase.TacticsSelection)
+{
+    <!-- Tactics Selection Phase -->
+    <TacticsSelection Round="@_gameState.Round"
+                      IsDay="@_gameState.IsDay"
+                      AvailableTactics="@_availableTactics"
+                      TakenTacticIds="@GetTakenTacticIds()"
+                      HasSelected="@HasSelectedTactic()"
+                      OnTacticSelected="OnTacticSelected" />
+}
+else
+{
+    <div class="game-board-container">
+        <header class="game-header">
+            <div class="game-title">
+                <h1>@_game.Name</h1>
+                <span class="scenario-name">@_scenario?.Name</span>
+            </div>
+            <div class="game-controls">
+                <span class="round-indicator">Round @_gameState.Round / @(_scenario?.Rounds ?? 3)</span>
+                <span class="time-indicator">@(_gameState.IsDay ? "☀️ Day" : "🌙 Night")</span>
+                <button class="btn btn-secondary btn-sm" @onclick="ToggleLog">
+                    📜 Log
+                </button>
+            </div>
+        </header>
+
+        <div class="game-layout">
+            <!-- Left sidebar - Player info -->
+            <aside class="player-sidebar">
+                <div class="card">
+                    <h3>Players</h3>
+                    @foreach (var (playerState, index) in _gameState.Players.Select((p, i) => (p, i)))
+                    {
+                        var hero = _heroes.FirstOrDefault(h => h.Id == playerState.HeroId);
+                        var isCurrentTurn = _gameState.CurrentPlayerIndex == index;
+                        var gamePlayer = _game.Players.FirstOrDefault(p => p.UserId == playerState.UserId);
+                        <div class="player-card @(isCurrentTurn ? "active" : "")">
+                            @if (hero != null)
+                            {
+                                <img src="@hero.TokenImage" alt="@hero.Name" class="player-token" />
+                            }
+                            <div class="player-details">
+                                <strong>@(gamePlayer?.User.Username ?? "Unknown")</strong>
+                                <span class="hero-name">@(hero?.Name ?? "Unknown")</span>
+                                <div class="player-stats">
+                                    <span title="Fame">⭐ @playerState.Fame</span>
+                                    <span title="Level">📈 Lv.@playerState.Level</span>
+                                    <span title="Reputation">🏛️ @playerState.Reputation</span>
+                                </div>
+                            </div>
+                            @if (isCurrentTurn)
+                            {
+                                <span class="turn-indicator">▶</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Mana Pool -->
+                <ManaPool Dice="@GetManaDice()"
+                          Crystals="@GetPlayerCrystals()"
+                          SelectedDieIndex="_selectedManaIndex"
+                          CanReroll="@CanRerollMana"
+                          OnDieSelected="SelectMana"
+                          OnRerollClicked="RerollMana" />
+                
+                <!-- Current player pools -->
+                @if (IsMyTurn && _myPlayerState != null)
+                {
+                    <div class="card pools-card">
+                        <h3>Current Pools</h3>
+                        <div class="pools-grid">
+                            <div class="pool-item move">
+                                <span class="pool-icon">🏃</span>
+                                <span class="pool-value">@_myPlayerState.MovementRemaining</span>
+                                <span class="pool-label">Move</span>
+                            </div>
+                            <div class="pool-item attack">
+                                <span class="pool-icon">⚔️</span>
+                                <span class="pool-value">@_myPlayerState.AttackPool</span>
+                                <span class="pool-label">Attack</span>
+                            </div>
+                            <div class="pool-item block">
+                                <span class="pool-icon">🛡️</span>
+                                <span class="pool-value">@_myPlayerState.BlockPool</span>
+                                <span class="pool-label">Block</span>
+                            </div>
+                            <div class="pool-item influence">
+                                <span class="pool-icon">👑</span>
+                                <span class="pool-value">@_myPlayerState.InfluencePool</span>
+                                <span class="pool-label">Influence</span>
+                            </div>
+                            @if (_myPlayerState.RangedAttack > 0)
+                            {
+                                <div class="pool-item ranged">
+                                    <span class="pool-icon">🏹</span>
+                                    <span class="pool-value">@_myPlayerState.RangedAttack</span>
+                                    <span class="pool-label">Ranged</span>
+                                </div>
+                            }
+                            @if (_myPlayerState.SiegeAttack > 0)
+                            {
+                                <div class="pool-item siege">
+                                    <span class="pool-icon">💣</span>
+                                    <span class="pool-value">@_myPlayerState.SiegeAttack</span>
+                                    <span class="pool-label">Siege</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </aside>
+
+            <!-- Main game board area -->
+            <main class="game-board">
+                @if (_gameState.Combat != null)
+                {
+                    <!-- Combat overlay -->
+                    <CombatPanel Combat="_gameState.Combat"
+                                 RangedAttack="@(_myPlayerState?.RangedAttack ?? 0)"
+                                 AttackPool="@(_myPlayerState?.AttackPool ?? 0)"
+                                 BlockPool="@(_myPlayerState?.BlockPool ?? 0)"
+                                 OnRangedAttack="HandleRangedAttack"
+                                 OnBlock="HandleBlock"
+                                 OnAttack="HandleAttack"
+                                 OnAssignDamage="HandleAssignDamage"
+                                 OnEndPhase="HandleEndCombatPhase"
+                                 OnFlee="HandleFlee" />
+                }
+                else
+                {
+                    <TileMap Width="900" 
+                             Height="700" 
+                             Scale="0.5"
+                             Tiles="_tiles"
+                             Hexes="_tileHexes"
+                             SelectedHex="_selectedTileHex"
+                             HighlightedHexes="_highlightedTileHexes"
+                             ShowCoordinates="@_showCoordinates"
+                             OnHexClicked="OnTileHexClicked"
+                             OnHexHovered="OnTileHexHovered" />
+                }
+            </main>
+
+            <!-- Right sidebar - Hand and actions -->
+            <aside class="action-sidebar">
+                <!-- Card Hand -->
+                <CardHand Cards="@GetHandCards()"
+                          SelectedCardIndex="_selectedCardIndex"
+                          CanPlayPowered="@(_selectedManaIndex.HasValue)"
+                          OnCardSelected="SelectCard"
+                          OnCardPlayed="PlayCard"
+                          OnCardPlayedPowered="PlayCardPowered"
+                          OnCardUsedSideways="UseSidewaysCard" />
+
+                <div class="card">
+                    <h3>Actions</h3>
+                    <div class="action-buttons">
+                        @if (IsMyTurn)
+                        {
+                            <button class="btn btn-primary" @onclick="EndTurn">End Turn</button>
+                            <button class="btn btn-secondary" @onclick="Rest" disabled="@(!CanRest)">Rest</button>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Waiting for @GetCurrentPlayerName()...</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="card units-card">
+                    <h3>Your Units (@(_myPlayerState?.Units.Count ?? 0))</h3>
+                    @if (_myPlayerState?.Units.Any() == true)
+                    {
+                        <div class="units-list">
+                            @foreach (var unit in _myPlayerState.Units)
+                            {
+                                var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unit.UnitId);
+                                <div class="unit-item @(unit.IsWounded ? "wounded" : "") @(!unit.IsReady ? "exhausted" : "")">
+                                    <span>@(unitDef?.Name ?? unit.UnitId)</span>
+                                    @if (unit.IsWounded)
+                                    {
+                                        <span class="wounded-badge" title="Wounded">💔</span>
+                                    }
+                                    @if (!unit.IsReady)
+                                    {
+                                        <span class="exhausted-badge" title="Exhausted">💤</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-sm">No units recruited yet</p>
+                    }
+                </div>
+            </aside>
+        </div>
+
+        @if (_showLog)
+        {
+            <div class="game-log-overlay" @onclick="ToggleLog">
+                <div class="game-log card" @onclick:stopPropagation="true">
+                    <div class="log-header">
+                        <h3>Game Log</h3>
+                        <button class="btn btn-sm btn-secondary" @onclick="ToggleLog">✕</button>
+                    </div>
+                    <div class="log-entries">
+                        @foreach (var entry in _gameState.GameLog.TakeLast(50).Reverse())
+                        {
+                            <div class="log-entry">
+                                <span class="log-time">@entry.Timestamp.ToString("HH:mm")</span>
+                                <span class="log-action">[@entry.Action]</span>
+                                <span class="log-message">@entry.Details</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .game-board-container {
+        height: calc(100vh - 80px);
+        display: flex;
+        flex-direction: column;
+        margin: calc(-1 * var(--spacing-lg));
+        padding: 0;
+    }
+
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-md) var(--spacing-lg);
+        background: var(--color-bg-medium);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .game-title h1 {
+        font-size: 1.25rem;
+        margin: 0;
+    }
+
+    .scenario-name {
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+    }
+
+    .game-controls {
+        display: flex;
+        gap: var(--spacing-lg);
+        align-items: center;
+    }
+
+    .round-indicator,
+    .time-indicator {
+        font-family: 'Cinzel', serif;
+        font-size: 0.9rem;
+        color: var(--color-gold);
+    }
+
+    .game-layout {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 280px 1fr 320px;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+        overflow: hidden;
+    }
+
+    .player-sidebar,
+    .action-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        overflow-y: auto;
+    }
+
+    .player-sidebar .card,
+    .action-sidebar .card {
+        padding: var(--spacing-md);
+    }
+
+    .player-sidebar h3,
+    .action-sidebar h3 {
+        font-size: 1rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .player-card {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-sm);
+        background: var(--color-bg-dark);
+        position: relative;
+    }
+
+    .player-card.active {
+        border: 2px solid var(--color-gold);
+        background: rgba(212, 168, 83, 0.1);
+    }
+
+    .player-token {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .player-details {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .hero-name {
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+    }
+
+    .player-stats {
+        display: flex;
+        gap: var(--spacing-sm);
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-top: 2px;
+    }
+
+    .turn-indicator {
+        color: var(--color-gold);
+        font-size: 1.2rem;
+    }
+
+    .game-board {
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+    }
+
+    .pools-card .pools-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .pool-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: var(--spacing-sm);
+        background: var(--color-bg-dark);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border);
+    }
+
+    .pool-icon {
+        font-size: 1.2rem;
+        margin-bottom: 2px;
+    }
+
+    .pool-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--color-gold);
+    }
+
+    .pool-label {
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+    }
+
+    .pool-item.move { border-color: #4CAF50; }
+    .pool-item.attack { border-color: #f44336; }
+    .pool-item.block { border-color: #2196F3; }
+    .pool-item.influence { border-color: #9C27B0; }
+    .pool-item.ranged { border-color: #FF9800; }
+    .pool-item.siege { border-color: #795548; }
+
+    .pool-item.move .pool-value { color: #4CAF50; }
+    .pool-item.attack .pool-value { color: #f44336; }
+    .pool-item.block .pool-value { color: #2196F3; }
+    .pool-item.influence .pool-value { color: #9C27B0; }
+    .pool-item.ranged .pool-value { color: #FF9800; }
+    .pool-item.siege .pool-value { color: #795548; }
+
+    .units-card .units-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .unit-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: var(--color-bg-dark);
+        border-radius: var(--radius-sm);
+        font-size: 0.85rem;
+    }
+
+    .unit-item.wounded {
+        opacity: 0.7;
+        border-left: 3px solid var(--color-error);
+    }
+
+    .unit-item.exhausted {
+        opacity: 0.5;
+    }
+
+    .wounded-badge, .exhausted-badge {
+        font-size: 0.75rem;
+    }
+
+    .game-log-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .game-log {
+        width: 500px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .log-header h3 {
+        margin: 0;
+    }
+
+    .log-entries {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .log-entry {
+        display: flex;
+        gap: var(--spacing-sm);
+        font-size: 0.85rem;
+        padding: var(--spacing-xs);
+        background: var(--color-bg-dark);
+        border-radius: var(--radius-sm);
+    }
+
+    .log-time {
+        color: var(--color-text-muted);
+        min-width: 50px;
+    }
+
+    .log-action {
+        color: var(--color-gold);
+        min-width: 80px;
+    }
+
+    .log-message {
+        color: var(--color-text-primary);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    private Game? _game;
+    private ScenarioDefinition? _scenario;
+    private List<HeroDefinition> _heroes = new();
+    private List<CardDefinition> _cardDefinitions = new();
+    private List<UnitDefinition> _unitDefinitions = new();
+    private List<TacticsDefinition> _availableTactics = new();
+    private bool _isLoading = true;
+
+    // Game state from database
+    private GameStateModel _gameState = new();
+    private PlayerState? _myPlayerState;
+
+    // UI state
+    private bool _showLog = false;
+    private bool _showCoordinates = true;
+    private List<HexGrid.HexData> _hexes = new();
+    private HexGrid.HexData? _selectedHex;
+    private List<HexGrid.HexData>? _highlightedHexes;
+    private int? _selectedCardIndex;
+    private int? _selectedManaIndex;
+
+    // TileMap state
+    private List<TileMap.TileData> _tiles = new();
+    private List<TileMap.HexData> _tileHexes = new();
+    private TileMap.HexData? _selectedTileHex;
+    private List<TileMap.HexData>? _highlightedTileHexes;
+    private Dictionary<string, MapTileDefinition> _tileDefinitions = new();
+
+    private bool IsMyTurn => _gameState.CurrentPlayerIndex >= 0 
+        && _gameState.CurrentPlayerIndex < _gameState.Players.Count
+        && _gameState.Players[_gameState.CurrentPlayerIndex].UserId == AuthService.CurrentUser?.Id;
+    
+    private bool CanRest => IsMyTurn && _myPlayerState?.Hand.Count > 0;
+    private bool CanRerollMana => IsMyTurn;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load all definitions
+        _heroes = (await DefinitionService.GetHeroesAsync()).ToList();
+        var basicActions = await DefinitionService.GetBasicActionsAsync();
+        var advancedActions = await DefinitionService.GetAdvancedActionsAsync();
+        _cardDefinitions = basicActions.Concat(advancedActions).ToList();
+        _unitDefinitions = (await DefinitionService.GetUnitsAsync()).ToList();
+        
+        // Load tile definitions
+        var mapTiles = await DefinitionService.GetMapTilesAsync();
+        _tileDefinitions = mapTiles.ToDictionary(t => t.Id);
+
+        await LoadGame();
+    }
+
+    // Tactics selection helpers
+    private HashSet<string> GetTakenTacticIds()
+    {
+        return _gameState.SelectedTactics.Values.ToHashSet();
+    }
+
+    private bool HasSelectedTactic()
+    {
+        var myPlayerIndex = _gameState.Players.FindIndex(p => p.UserId == AuthService.CurrentUser?.Id);
+        return myPlayerIndex >= 0 && _gameState.SelectedTactics.ContainsKey(myPlayerIndex);
+    }
+
+    private async Task OnTacticSelected(string tacticId)
+    {
+        var result = await GameService.SelectTacticAsync(GameId, AuthService.CurrentUser!.Id, tacticId);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task LoadGame()
+    {
+        _isLoading = true;
+        _game = await GameService.GetGameAsync(GameId);
+        
+        if (_game != null)
+        {
+            _scenario = await DefinitionService.GetScenarioAsync(_game.ScenarioId);
+            
+            // Parse game state from JSON
+            if (!string.IsNullOrEmpty(_game.GameState))
+            {
+                try
+                {
+                    _gameState = JsonSerializer.Deserialize<GameStateModel>(_game.GameState) ?? new GameStateModel();
+                }
+                catch
+                {
+                    _gameState = new GameStateModel();
+                }
+            }
+
+            // Get current user's player state
+            _myPlayerState = _gameState.Players.FirstOrDefault(p => p.UserId == AuthService.CurrentUser?.Id);
+
+            // Load tactics for tactics selection phase
+            if (_gameState.Phase == GamePhase.TacticsSelection)
+            {
+                var allTactics = _gameState.IsDay 
+                    ? await DefinitionService.GetDayTacticsAsync()
+                    : await DefinitionService.GetNightTacticsAsync();
+                _availableTactics = allTactics.ToList();
+            }
+
+            // Build hex grid from game state
+            BuildHexGrid();
+            
+            // Build tile map from game state
+            BuildTileMap();
+
+            // Update valid moves if it's our turn
+            if (_gameState.Phase == GamePhase.Movement)
+            {
+                await UpdateValidMoves();
+                await UpdateValidTileMoves();
+            }
+        }
+        
+        _isLoading = false;
+    }
+
+    private void BuildHexGrid()
+    {
+        _hexes.Clear();
+
+        // Build hex data from revealed hexes
+        foreach (var hexKey in _gameState.Map.RevealedHexes)
+        {
+            var parts = hexKey.Split(',');
+            if (parts.Length != 2) continue;
+
+            var q = int.Parse(parts[0]);
+            var r = int.Parse(parts[1]);
+
+            var terrainType = GetTerrainForHex(q, r);
+            var siteType = GetSiteForHex(q, r);
+            var enemyCount = GetEnemyCountForHex(q, r);
+
+            var hex = new HexGrid.HexData
+            {
+                Q = q,
+                R = r,
+                IsRevealed = true,
+                TerrainType = terrainType,
+                SiteType = siteType,
+                EnemyCount = enemyCount
+            };
+
+            // Add player tokens
+            foreach (var player in _gameState.Players)
+            {
+                if (player.Position.Q == q && player.Position.R == r)
+                {
+                    var hero = _heroes.FirstOrDefault(h => h.Id == player.HeroId);
+                    hex.PlayerTokens.Add(new HexGrid.PlayerToken
+                    {
+                        UserId = player.UserId,
+                        TokenImage = hero?.TokenImage ?? "",
+                        HeroName = hero?.Name ?? "Unknown"
+                    });
+                }
+            }
+
+            _hexes.Add(hex);
+        }
+
+        // Add some unrevealed hexes around the edges
+        AddUnrevealedNeighbors();
+    }
+
+    private int GetEnemyCountForHex(int q, int r)
+    {
+        var key = $"{q},{r}";
+        if (_gameState.Map.HexData.TryGetValue(key, out var hexState))
+        {
+            return hexState.Enemies?.Count ?? 0;
+        }
+        return 0;
+    }
+
+    // TileMap building methods
+    private void BuildTileMap()
+    {
+        _tiles.Clear();
+        _tileHexes.Clear();
+
+        // Build tiles from game state
+        foreach (var tileState in _gameState.Map.Tiles)
+        {
+            // Get tile definition
+            if (!_tileDefinitions.TryGetValue(tileState.TileId, out var tileDef))
+            {
+                // Try to find by partial match or keywords
+                var tileIdLower = tileState.TileId.ToLowerInvariant();
+                tileDef = _tileDefinitions.Values.FirstOrDefault(t => 
+                    tileState.TileId.Contains(t.Id) || 
+                    t.Id.Contains(tileState.TileId) ||
+                    (tileIdLower.Contains("start") && t.IsStartingTile));
+                
+                // Final fallback: use starting tile for any unmatched tile at position 0,0
+                if (tileDef == null && tileState.Position.Q == 0 && tileState.Position.R == 0)
+                {
+                    tileDef = _tileDefinitions.Values.FirstOrDefault(t => t.IsStartingTile);
+                }
+            }
+
+            var tile = new TileMap.TileData
+            {
+                TileId = tileState.TileId,
+                Q = tileState.Position.Q,
+                R = tileState.Position.R,
+                Rotation = tileState.Rotation,
+                IsRevealed = tileState.IsRevealed,
+                ImagePath = tileDef?.Image,
+                BackImagePath = tileDef?.BackImage
+            };
+            _tiles.Add(tile);
+        }
+
+        // Build hex overlays from revealed hexes
+        foreach (var hexKey in _gameState.Map.RevealedHexes)
+        {
+            var parts = hexKey.Split(',');
+            if (parts.Length != 2) continue;
+
+            var q = int.Parse(parts[0]);
+            var r = int.Parse(parts[1]);
+
+            var terrainType = GetTerrainForHex(q, r);
+            var siteType = GetSiteForHex(q, r);
+            var enemyCount = GetEnemyCountForHex(q, r);
+
+            var hex = new TileMap.HexData
+            {
+                Q = q,
+                R = r,
+                IsRevealed = true,
+                TerrainType = terrainType,
+                SiteType = siteType,
+                EnemyCount = enemyCount
+            };
+
+            // Add player tokens
+            foreach (var player in _gameState.Players)
+            {
+                if (player.Position.Q == q && player.Position.R == r)
+                {
+                    var hero = _heroes.FirstOrDefault(h => h.Id == player.HeroId);
+                    hex.PlayerTokens.Add(new TileMap.PlayerToken
+                    {
+                        UserId = player.UserId,
+                        TokenImage = hero?.TokenImage ?? "",
+                        HeroName = hero?.Name ?? "Unknown"
+                    });
+                }
+            }
+
+            _tileHexes.Add(hex);
+        }
+
+        // Add unrevealed hex placeholders around the edges
+        AddUnrevealedTileHexes();
+    }
+
+    private void AddUnrevealedTileHexes()
+    {
+        var directions = new[] 
+        {
+            (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
+        };
+
+        var existingKeys = _tileHexes.Select(h => $"{h.Q},{h.R}").ToHashSet();
+        var toAdd = new List<TileMap.HexData>();
+
+        foreach (var hex in _tileHexes.Where(h => h.IsRevealed))
+        {
+            foreach (var (dq, dr) in directions)
+            {
+                var nq = hex.Q + dq;
+                var nr = hex.R + dr;
+                var key = $"{nq},{nr}";
+
+                if (!existingKeys.Contains(key))
+                {
+                    toAdd.Add(new TileMap.HexData
+                    {
+                        Q = nq,
+                        R = nr,
+                        IsRevealed = false
+                    });
+                    existingKeys.Add(key);
+                }
+            }
+        }
+
+        _tileHexes.AddRange(toAdd);
+    }
+
+    private async Task UpdateValidTileMoves()
+    {
+        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
+        {
+            _highlightedTileHexes = null;
+            return;
+        }
+
+        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser!.Id);
+        _highlightedTileHexes = validMoves
+            .Select(m => _tileHexes.FirstOrDefault(h => h.Q == m.Q && h.R == m.R))
+            .Where(h => h != null)
+            .Cast<TileMap.HexData>()
+            .ToList();
+    }
+
+    private async Task OnTileHexClicked(TileMap.HexData hex)
+    {
+        _selectedTileHex = hex;
+        
+        if (!IsMyTurn || _myPlayerState == null) return;
+
+        // Check if this is a valid move destination
+        if (_highlightedTileHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) == true)
+        {
+            // This is a valid move - execute it
+            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+            if (result.Success)
+            {
+                await LoadGame();
+            }
+        }
+    }
+
+    private void OnTileHexHovered(TileMap.HexData hex)
+    {
+        // Could show terrain info tooltip
+    }
+
+    private void AddUnrevealedNeighbors()
+    {
+        var directions = new[] 
+        {
+            (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
+        };
+
+        var existingKeys = _hexes.Select(h => $"{h.Q},{h.R}").ToHashSet();
+        var toAdd = new List<HexGrid.HexData>();
+
+        foreach (var hex in _hexes.Where(h => h.IsRevealed))
+        {
+            foreach (var (dq, dr) in directions)
+            {
+                var nq = hex.Q + dq;
+                var nr = hex.R + dr;
+                var key = $"{nq},{nr}";
+
+                if (!existingKeys.Contains(key))
+                {
+                    toAdd.Add(new HexGrid.HexData
+                    {
+                        Q = nq,
+                        R = nr,
+                        IsRevealed = false
+                    });
+                    existingKeys.Add(key);
+                }
+            }
+        }
+
+        _hexes.AddRange(toAdd);
+    }
+
+    private string GetTerrainForHex(int q, int r)
+    {
+        var key = $"{q},{r}";
+        if (_gameState.Map.HexData.TryGetValue(key, out var hexState))
+        {
+            return hexState.Terrain.ToLower();
+        }
+        return "plains"; // Default
+    }
+
+    private string? GetSiteForHex(int q, int r)
+    {
+        var key = $"{q},{r}";
+        if (_gameState.Map.HexData.TryGetValue(key, out var hexState))
+        {
+            return hexState.SiteType?.ToLower();
+        }
+        return null;
+    }
+
+    private List<ManaPool.ManaDie> GetManaDice()
+    {
+        return _gameState.ManaPool.Select(color => new ManaPool.ManaDie
+        {
+            Color = color switch
+            {
+                ManaColor.Red => ManaPool.ManaColor.Red,
+                ManaColor.Blue => ManaPool.ManaColor.Blue,
+                ManaColor.Green => ManaPool.ManaColor.Green,
+                ManaColor.White => ManaPool.ManaColor.White,
+                ManaColor.Black => ManaPool.ManaColor.Black,
+                ManaColor.Gold => ManaPool.ManaColor.Gold,
+                _ => ManaPool.ManaColor.Red
+            }
+        }).ToList();
+    }
+
+    private Dictionary<ManaPool.ManaColor, int> GetPlayerCrystals()
+    {
+        if (_myPlayerState == null) return new();
+
+        var crystals = _myPlayerState.Crystals;
+        return new Dictionary<ManaPool.ManaColor, int>
+        {
+            { ManaPool.ManaColor.Red, crystals.Red },
+            { ManaPool.ManaColor.Blue, crystals.Blue },
+            { ManaPool.ManaColor.Green, crystals.Green },
+            { ManaPool.ManaColor.White, crystals.White },
+            { ManaPool.ManaColor.Gold, crystals.Gold }
+        };
+    }
+
+    private List<CardHand.CardData> GetHandCards()
+    {
+        if (_myPlayerState == null) return new();
+
+        return _myPlayerState.Hand.Select(cardId =>
+        {
+            var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
+            return new CardHand.CardData
+            {
+                Id = cardId,
+                Name = card?.Name ?? cardId,
+                Type = card?.Type ?? "Unknown",
+                BasicEffect = card?.BasicEffect ?? "",
+                PoweredEffect = card?.PoweredEffect,
+                PoweredManaColor = card?.ManaType,
+                ImageUrl = card?.Image
+            };
+        }).ToList();
+    }
+
+    private string GetCurrentPlayerName()
+    {
+        if (_gameState.CurrentPlayerIndex < 0 || _gameState.CurrentPlayerIndex >= _gameState.Players.Count)
+            return "Unknown";
+
+        var currentPlayer = _gameState.Players[_gameState.CurrentPlayerIndex];
+        var gamePlayer = _game?.Players.FirstOrDefault(p => p.UserId == currentPlayer.UserId);
+        return gamePlayer?.User.Username ?? "Unknown";
+    }
+
+    private void ToggleLog() => _showLog = !_showLog;
+
+    private async Task OnHexClicked(HexGrid.HexData hex)
+    {
+        _selectedHex = hex;
+        
+        if (!IsMyTurn || _myPlayerState == null) return;
+
+        // Check if this is a valid move destination
+        if (_highlightedHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) == true)
+        {
+            // This is a valid move - execute it
+            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+            if (result.Success)
+            {
+                await LoadGame(); // Reload game state
+                await UpdateValidMoves(); // Update highlighted hexes
+            }
+        }
+        else if (hex.IsRevealed)
+        {
+            // Clicked on a non-valid hex, just select it for info
+            _selectedHex = hex;
+        }
+    }
+
+    private void OnHexHovered(HexGrid.HexData hex)
+    {
+        // Show terrain cost tooltip or preview
+    }
+
+    private async Task UpdateValidMoves()
+    {
+        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
+        {
+            _highlightedHexes = null;
+            return;
+        }
+
+        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser!.Id);
+        _highlightedHexes = validMoves
+            .Select(m => _hexes.FirstOrDefault(h => h.Q == m.Q && h.R == m.R))
+            .Where(h => h != null)
+            .Cast<HexGrid.HexData>()
+            .ToList();
+    }
+
+    private void SelectCard(int index)
+    {
+        _selectedCardIndex = _selectedCardIndex == index ? null : index;
+    }
+
+    private async Task PlayCard(int index)
+    {
+        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        
+        var cardId = _myPlayerState.Hand[index];
+        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser!.Id, cardId, false);
+        
+        if (result.Success)
+        {
+            _selectedCardIndex = null;
+            await LoadGame();
+            await UpdateValidMoves();
+        }
+    }
+
+    private async Task PlayCardPowered(int index)
+    {
+        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        if (_selectedManaIndex == null)
+        {
+            // Show message that mana must be selected
+            return;
+        }
+        
+        var cardId = _myPlayerState.Hand[index];
+        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser!.Id, cardId, true, _selectedManaIndex);
+        
+        if (result.Success)
+        {
+            _selectedCardIndex = null;
+            _selectedManaIndex = null;
+            await LoadGame();
+            await UpdateValidMoves();
+        }
+    }
+
+    private async Task UseSidewaysCard(int index)
+    {
+        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        
+        var cardId = _myPlayerState.Hand[index];
+        var result = await GameService.UseCardSidewaysAsync(GameId, AuthService.CurrentUser!.Id, cardId);
+        
+        if (result.Success)
+        {
+            _selectedCardIndex = null;
+            await LoadGame();
+        }
+    }
+
+    private void SelectMana(int index)
+    {
+        _selectedManaIndex = _selectedManaIndex == index ? null : index;
+    }
+
+    private async Task RerollMana()
+    {
+        var result = await GameService.RerollManaAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task EndTurn()
+    {
+        var result = await GameService.EndTurnAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            _selectedCardIndex = null;
+            _selectedManaIndex = null;
+            await LoadGame();
+        }
+    }
+
+    // Combat handlers
+
+    private async Task HandleRangedAttack((int EnemyIndex, int Value) args)
+    {
+        var result = await GameService.RangedAttackAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleBlock((int EnemyIndex, int Value) args)
+    {
+        var result = await GameService.BlockEnemyAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleAttack((int EnemyIndex, int Value) args)
+    {
+        var result = await GameService.AttackEnemyAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleAssignDamage(int damage)
+    {
+        var result = await GameService.AssignDamageAsync(GameId, AuthService.CurrentUser!.Id, damage);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleEndCombatPhase()
+    {
+        var result = await GameService.EndCombatPhaseAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task HandleFlee()
+    {
+        var result = await GameService.FleeCombatAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+
+    private async Task Rest()
+    {
+        var result = await GameService.RestAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+    }
+}

@@ -1,0 +1,271 @@
+@namespace MageKnightOnline.Web.Components.Game
+@using MageKnightOnline.Core.GameEngine
+@using MageKnightOnline.Core.GameState
+
+<div class="site-panel @(IsVisible ? "visible" : "")">
+    <div class="site-panel-header">
+        <h3>@SiteName</h3>
+        <button class="close-btn" @onclick="OnClose">×</button>
+    </div>
+
+    <div class="site-panel-content">
+        @if (Interactions.Any())
+        {
+            <div class="interactions-list">
+                @foreach (var interaction in Interactions)
+                {
+                    <div class="interaction-option @(!interaction.IsAvailable ? "disabled" : "")">
+                        <div class="interaction-info">
+                            <span class="interaction-icon">@GetInteractionIcon(interaction.Type)</span>
+                            <div class="interaction-details">
+                                <span class="interaction-type">@interaction.Type</span>
+                                <span class="interaction-desc">@interaction.Description</span>
+                                @if (interaction.InfluenceCost.HasValue && interaction.InfluenceCost > 0)
+                                {
+                                    <span class="interaction-cost">Cost: @interaction.InfluenceCost Influence</span>
+                                }
+                            </div>
+                        </div>
+                        <button class="btn btn-sm @(interaction.IsAvailable ? "btn-primary" : "btn-disabled")"
+                                disabled="@(!interaction.IsAvailable)"
+                                @onclick="() => OnInteractionSelected.InvokeAsync(interaction.Type)">
+                            @(interaction.IsAvailable ? "Use" : interaction.UnavailableReason ?? "Unavailable")
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="no-interactions">No interactions available at this location.</p>
+        }
+
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <div class="interaction-message @(IsError ? "error" : "success")">
+                @Message
+            </div>
+        }
+    </div>
+
+    <div class="site-panel-footer">
+        <div class="player-resources">
+            <span class="resource">
+                <span class="resource-icon">⚔️</span>
+                <span class="resource-value">@AttackPool</span>
+            </span>
+            <span class="resource">
+                <span class="resource-icon">🛡️</span>
+                <span class="resource-value">@BlockPool</span>
+            </span>
+            <span class="resource">
+                <span class="resource-icon">💬</span>
+                <span class="resource-value">@InfluencePool</span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .site-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3a 100%);
+        border: 2px solid #d4a853;
+        border-radius: 12px;
+        min-width: 350px;
+        max-width: 450px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .site-panel.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .site-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #3a3a4a;
+        background: rgba(212, 168, 83, 0.1);
+    }
+
+    .site-panel-header h3 {
+        margin: 0;
+        color: #d4a853;
+        font-size: 1.25rem;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .close-btn:hover {
+        color: #d4a853;
+    }
+
+    .site-panel-content {
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .interactions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .interaction-option {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        border: 1px solid #3a3a4a;
+        transition: all 0.2s ease;
+    }
+
+    .interaction-option:hover:not(.disabled) {
+        border-color: #d4a853;
+        background: rgba(212, 168, 83, 0.1);
+    }
+
+    .interaction-option.disabled {
+        opacity: 0.5;
+    }
+
+    .interaction-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .interaction-icon {
+        font-size: 1.5rem;
+    }
+
+    .interaction-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .interaction-type {
+        font-weight: 600;
+        color: #e8e8e8;
+    }
+
+    .interaction-desc {
+        font-size: 0.85rem;
+        color: #a0a0a0;
+    }
+
+    .interaction-cost {
+        font-size: 0.8rem;
+        color: #d4a853;
+    }
+
+    .no-interactions {
+        text-align: center;
+        color: #888;
+        padding: 20px;
+    }
+
+    .interaction-message {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .interaction-message.success {
+        background: rgba(74, 222, 128, 0.2);
+        color: #4ade80;
+        border: 1px solid #4ade80;
+    }
+
+    .interaction-message.error {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+
+    .site-panel-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #3a3a4a;
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .player-resources {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+    }
+
+    .resource {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .resource-icon {
+        font-size: 1.1rem;
+    }
+
+    .resource-value {
+        font-weight: 600;
+        color: #e8e8e8;
+    }
+
+    .btn-disabled {
+        background: #3a3a4a;
+        color: #666;
+        cursor: not-allowed;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string SiteName { get; set; } = "Site";
+    [Parameter] public List<SiteInteractionOption> Interactions { get; set; } = new();
+    [Parameter] public int AttackPool { get; set; }
+    [Parameter] public int BlockPool { get; set; }
+    [Parameter] public int InfluencePool { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public EventCallback<string> OnInteractionSelected { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string GetInteractionIcon(string type)
+    {
+        return type.ToLower() switch
+        {
+            "recruit" => "⚔️",
+            "heal" => "❤️",
+            "plunder" => "💰",
+            "training" => "📚",
+            "learnspell" => "✨",
+            "empower" => "🔮",
+            "harvest" => "💎",
+            "combat" => "⚔️",
+            _ => "❓"
+        };
+    }
+}

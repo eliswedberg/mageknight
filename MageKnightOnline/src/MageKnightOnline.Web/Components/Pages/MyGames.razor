@@ -1,0 +1,182 @@
+@page "/my-games"
+@inject AuthStateService AuthService
+@inject IGameService GameService
+@inject IGameDefinitionService DefinitionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>My Games - Mage Knight Online</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        Please <a href="/login">login</a> to view your games.
+    </div>
+}
+else
+{
+    <div class="my-games">
+        <div class="page-header">
+            <h1>My Games</h1>
+            <p class="text-muted">View and manage your current and past games</p>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="text-center mt-lg">
+                <div class="spinner"></div>
+                <p class="text-muted mt-md">Loading your games...</p>
+            </div>
+        }
+        else if (_games.Count == 0)
+        {
+            <div class="card text-center">
+                <h3>No Games Yet</h3>
+                <p class="text-muted">You haven't joined any games yet.</p>
+                <a href="/" class="btn btn-primary mt-md">Browse Games</a>
+            </div>
+        }
+        else
+        {
+            <div class="games-sections">
+                @if (_activeGames.Any())
+                {
+                    <section class="games-section">
+                        <h2>Active Games</h2>
+                        <div class="game-list">
+                            @foreach (var game in _activeGames)
+                            {
+                                <div class="game-item">
+                                    <div class="game-info">
+                                        <h4>@game.Name</h4>
+                                        <div class="game-meta">
+                                            <span>@GetScenarioName(game.ScenarioId)</span>
+                                            <span>👥 @game.Players.Count / @game.MaxPlayers players</span>
+                                            <span class="badge @GetStatusBadgeClass(game.Status)">@game.Status</span>
+                                        </div>
+                                    </div>
+                                    <div class="game-actions">
+                                        @if (game.Status == GameStatus.WaitingForPlayers)
+                                        {
+                                            <a href="/game/@game.Id" class="btn btn-primary btn-sm">Enter Lobby</a>
+                                        }
+                                        else if (game.Status == GameStatus.InProgress)
+                                        {
+                                            <a href="/play/@game.Id" class="btn btn-primary btn-sm">Continue Playing</a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (_completedGames.Any())
+                {
+                    <section class="games-section">
+                        <h2>Completed Games</h2>
+                        <div class="game-list">
+                            @foreach (var game in _completedGames)
+                            {
+                                <div class="game-item completed">
+                                    <div class="game-info">
+                                        <h4>@game.Name</h4>
+                                        <div class="game-meta">
+                                            <span>@GetScenarioName(game.ScenarioId)</span>
+                                            <span>Ended: @game.EndedAt?.ToString("MMM d, yyyy")</span>
+                                        </div>
+                                    </div>
+                                    <div class="game-actions">
+                                        <a href="/game/@game.Id/results" class="btn btn-secondary btn-sm">View Results</a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .my-games {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .page-header h1 {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .games-sections {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xl);
+    }
+
+    .games-section h2 {
+        font-size: 1.25rem;
+        margin-bottom: var(--spacing-md);
+        color: var(--color-text-secondary);
+    }
+
+    .game-item.completed {
+        opacity: 0.7;
+    }
+
+    .game-item.completed:hover {
+        opacity: 1;
+    }
+</style>
+
+@code {
+    private List<Game> _games = new();
+    private List<ScenarioDefinition> _scenarios = new();
+    private bool _isLoading = true;
+
+    private IEnumerable<Game> _activeGames => _games.Where(g => 
+        g.Status == GameStatus.WaitingForPlayers || g.Status == GameStatus.InProgress);
+    
+    private IEnumerable<Game> _completedGames => _games.Where(g => 
+        g.Status == GameStatus.Completed || g.Status == GameStatus.Cancelled);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _scenarios = (await DefinitionService.GetScenariosAsync()).ToList();
+        await LoadGames();
+    }
+
+    private async Task LoadGames()
+    {
+        _isLoading = true;
+        _games = (await GameService.GetMyGamesAsync(AuthService.CurrentUser!.Id)).ToList();
+        _isLoading = false;
+    }
+
+    private string GetScenarioName(string scenarioId)
+    {
+        return _scenarios.FirstOrDefault(s => s.Id == scenarioId)?.Name ?? scenarioId;
+    }
+
+    private string GetStatusBadgeClass(GameStatus status)
+    {
+        return status switch
+        {
+            GameStatus.WaitingForPlayers => "badge-waiting",
+            GameStatus.InProgress => "badge-in-progress",
+            GameStatus.Completed => "badge-completed",
+            _ => ""
+        };
+    }
+}

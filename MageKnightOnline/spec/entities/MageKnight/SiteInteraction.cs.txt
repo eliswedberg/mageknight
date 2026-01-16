@@ -1,0 +1,47 @@
+public enum InteractionType
+{
+    None = 0,
+    Recruit,        // Rekrytera enhet
+    Heal,           // Läka
+    Plunder,        // Plundra by (ger kort, sänker rykte)
+    Training,       // Köpa Advanced Action
+    LearnSpell,     // Köpa Spell
+    Burn,           // Bränna kloster
+    Harvest,        // Kristaller från gruvor
+    Empower,        // Magical Glade effekt
+    Cleanse,        // Kasta bort wounds
+    Interact        // Generisk interaktion (t.ex. köpa fame)
+}
+
+public class SiteInteraction
+{
+    public InteractionType Type { get; set; }
+    
+    // Vad interaktionen påverkar (t.ex. "Unit_Regular" eller "SpellOffer")
+    public string Target { get; set; } 
+    
+    public int Value { get; set; } // Mängd (t.ex. Heal 1)
+    
+    // Kostnaden för interaktionen (om det inte är gratis)
+    public InteractionCost Cost { get; set; } 
+    
+    // Villkor i textform (som du får parsa), t.ex. "Reputation >= 0"
+    public string Condition { get; set; } 
+    
+    public string Effect { get; set; } // Beskrivande text om logiken är komplex
+}
+
+public class InteractionCost
+{
+    public int Influence { get; set; } // Kostar influence points
+    public int Mana { get; set; }      // Kostar mana (ofta "Any")
+    // Kan utökas om något kostar Guld eller Fame
+}
+
+public class SiteDefinition
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public List<SiteInteraction> Interactions { get; set; }
+    public List<string> Rules { get; set; } // T.ex. ["NightRules", "Battle Brown"]
+}

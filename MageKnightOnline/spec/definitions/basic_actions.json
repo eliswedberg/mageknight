@@ -1,0 +1,160 @@
+[
+  {
+    "id": "ba_01",
+    "name": "March",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 2,
+    "image": "images/deed_basic_march.jpg",
+    "effects_basic": [
+      { "type": "Move", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Move", "value": 4, "attributes": [] }
+    ]
+  },
+  {
+    "id": "ba_02",
+    "name": "Stamina",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_stamina.jpg",
+    "effects_basic": [
+      { "type": "Move", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Move", "value": 4, "attributes": ["Safe"] }
+    ]
+  },
+  {
+    "id": "ba_03",
+    "name": "Determination",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 2,
+    "image": "images/deed_basic_determination.jpg",
+    "effects_basic": [
+      { "type": "Block", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Block", "value": 5, "attributes": [] }
+    ]
+  },
+  {
+    "id": "ba_04",
+    "name": "Rage",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 2,
+    "image": "images/deed_basic_rage.jpg",
+    "effects_basic": [
+      { "type": "Attack", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Attack", "value": 4, "attributes": [] }
+    ]
+  },
+  {
+    "id": "ba_05",
+    "name": "Swiftness",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_swiftness.jpg",
+    "effects_basic": [
+      { "type": "Move", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Attack", "value": 3, "attributes": ["Ranged"] }
+    ]
+  },
+  {
+    "id": "ba_06",
+    "name": "Promise",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_promise.jpg",
+    "effects_basic": [
+      { "type": "Influence", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Influence", "value": 4, "attributes": [] }
+    ]
+  },
+  {
+    "id": "ba_07",
+    "name": "Threaten",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_threaten.jpg",
+    "effects_basic": [
+      { "type": "Influence", "value": 2, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "Attack", "value": 2, "attributes": ["Unblockable"] }
+    ]
+  },
+  {
+    "id": "ba_08",
+    "name": "Crystallize",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_crystallize.jpg",
+    "effects_basic": [
+      { "type": "GainMana", "value": 1, "attributes": [] }
+    ],
+    "effects_powered": [
+      { "type": "GainCrystal", "value": 1, "attributes": [] }
+    ]
+  },
+  {
+    "id": "ba_09",
+    "name": "Mana Draw",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_mana_draw.jpg",
+    "effects_basic": [
+      { "type": "GainMana", "value": 2, "attributes": [], "description": "Use 1 die + gain 1 mana token." }
+    ],
+    "effects_powered": [
+      { "type": "SetManaDie", "value": 2, "attributes": [] },
+      { "type": "GainMana", "value": 1, "attributes": [], "description": "Black mana token." }
+    ]
+  },
+  {
+    "id": "ba_10",
+    "name": "Concentration",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_concentration.jpg",
+    "effects_basic": [
+      { "type": "GainMana", "value": 0, "attributes": [], "description": "Next Action played is powered (Basic effect + 2)." }
+    ],
+    "effects_powered": [
+      { "type": "GainMana", "value": 0, "attributes": [], "description": "Next Action played is powered (Strong effect + 3)." }
+    ]
+  },
+  {
+    "id": "ba_11",
+    "name": "Improvisation",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_improvisation.jpg",
+    "effects_basic": [
+      { "type": "DrawCard", "value": 0, "attributes": [], "description": "Discard a card to gain Move/Attack/Block/Influence 3." }
+    ],
+    "effects_powered": [
+      { "type": "DrawCard", "value": 0, "attributes": [], "description": "Discard a card to gain Move/Attack/Block/Influence 5." }
+    ]
+  },
+  {
+    "id": "ba_12",
+    "name": "Tranquility",
+    "heroes": ["Tovak", "Arythea", "Goldyx", "Norowas"],
+    "count_per_hero": 1,
+    "image": "images/deed_basic_tranquility.jpg",
+    "effects_basic": [
+      { "type": "Heal", "value": 1, "attributes": [], "description": "OR Draw 1 card." }
+    ],
+    "effects_powered": [
+      { "type": "Heal", "value": 2, "attributes": [] },
+      { "type": "DrawCard", "value": 2, "attributes": [] }
+    ]
+  }
+]

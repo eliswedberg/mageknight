@@ -1,0 +1,319 @@
+@namespace MageKnightOnline.Web.Components.Game
+
+<div class="card-hand @(IsExpanded ? "expanded" : "")">
+    <div class="hand-header" @onclick="ToggleExpand">
+        <h4>Your Hand (@Cards.Count cards)</h4>
+        <span class="expand-icon">@(IsExpanded ? "▼" : "▲")</span>
+    </div>
+    
+    <div class="hand-cards">
+        @foreach (var (card, index) in Cards.Select((c, i) => (c, i)))
+        {
+            var isSelected = SelectedCardIndex == index;
+            var offset = CalculateCardOffset(index, Cards.Count);
+            
+            <div class="hand-card @(isSelected ? "selected" : "") @(card.CanPlay ? "" : "disabled")"
+                 style="--card-index: @index; --card-offset: @offset; z-index: @(isSelected ? 100 : index);"
+                 @onclick="() => OnCardClick(index)"
+                 @onclick:stopPropagation="true">
+                
+                @if (!string.IsNullOrEmpty(card.ImageUrl))
+                {
+                    <img src="@card.ImageUrl" alt="@card.Name" class="card-image" />
+                }
+                else
+                {
+                    <div class="card-placeholder">
+                        <div class="card-name">@card.Name</div>
+                        <div class="card-type">@card.Type</div>
+                    </div>
+                }
+
+                @if (isSelected)
+                {
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-primary" @onclick="() => PlayCard(index)" @onclick:stopPropagation="true"
+                                disabled="@(!card.CanPlay)">
+                            Play
+                        </button>
+                        @if (!string.IsNullOrEmpty(card.PoweredManaColor))
+                        {
+                            <button class="btn btn-sm btn-powered @(CanPlayPowered ? "" : "disabled")" 
+                                    @onclick="() => PlayCardPowered(index)" @onclick:stopPropagation="true"
+                                    disabled="@(!CanPlayPowered)"
+                                    title="@(CanPlayPowered ? "Play powered effect" : "Select mana first")">
+                                ⚡ Power
+                            </button>
+                        }
+                        <button class="btn btn-sm btn-secondary" @onclick="() => UseAsSidewaysCard(index)" @onclick:stopPropagation="true">
+                            +1
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (SelectedCardIndex.HasValue && SelectedCardIndex.Value < Cards.Count)
+    {
+        var selectedCard = Cards[SelectedCardIndex.Value];
+        <div class="card-details">
+            <h5>@selectedCard.Name</h5>
+            <div class="card-effects">
+                <div class="effect-section">
+                    <span class="effect-label">Basic:</span>
+                    <span class="effect-value">@selectedCard.BasicEffect</span>
+                </div>
+                @if (!string.IsNullOrEmpty(selectedCard.PoweredEffect))
+                {
+                    <div class="effect-section powered">
+                        <span class="effect-label">Powered (@selectedCard.PoweredManaColor):</span>
+                        <span class="effect-value">@selectedCard.PoweredEffect</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .card-hand {
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+        transition: all 0.3s ease;
+    }
+
+    .card-hand.expanded {
+        padding-bottom: var(--spacing-xl);
+    }
+
+    .hand-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .hand-header h4 {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .expand-icon {
+        color: var(--color-gold);
+        font-size: 0.8rem;
+    }
+
+    .hand-cards {
+        display: flex;
+        justify-content: center;
+        position: relative;
+        height: 140px;
+        perspective: 1000px;
+    }
+
+    .card-hand.expanded .hand-cards {
+        height: 200px;
+    }
+
+    .hand-card {
+        position: absolute;
+        width: 90px;
+        height: 126px;
+        background: var(--color-bg-dark);
+        border: 2px solid var(--color-border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        transform-origin: bottom center;
+        transform: translateX(calc(var(--card-offset) * 1px)) rotate(calc((var(--card-index) - 2) * 3deg));
+    }
+
+    .card-hand.expanded .hand-card {
+        width: 120px;
+        height: 168px;
+    }
+
+    .hand-card:hover {
+        transform: translateX(calc(var(--card-offset) * 1px)) translateY(-20px) rotate(0deg) scale(1.1);
+        z-index: 50 !important;
+        border-color: var(--color-gold);
+    }
+
+    .hand-card.selected {
+        transform: translateX(calc(var(--card-offset) * 1px)) translateY(-40px) rotate(0deg) scale(1.15);
+        border-color: var(--color-gold);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .hand-card.disabled {
+        opacity: 0.5;
+    }
+
+    .card-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: calc(var(--radius-md) - 2px);
+    }
+
+    .card-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: var(--spacing-sm);
+        text-align: center;
+    }
+
+    .card-name {
+        font-family: 'Cinzel', serif;
+        font-size: 0.7rem;
+        color: var(--color-gold);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .card-type {
+        font-size: 0.6rem;
+        color: var(--color-text-muted);
+    }
+
+    .card-actions {
+        position: absolute;
+        bottom: -45px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: var(--spacing-xs);
+        white-space: nowrap;
+    }
+
+    .card-details {
+        margin-top: var(--spacing-lg);
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .card-details h5 {
+        margin: 0 0 var(--spacing-sm) 0;
+        color: var(--color-gold);
+    }
+
+    .card-effects {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .effect-section {
+        display: flex;
+        gap: var(--spacing-sm);
+        font-size: 0.85rem;
+    }
+
+    .effect-label {
+        color: var(--color-text-muted);
+        min-width: 80px;
+    }
+
+    .effect-value {
+        color: var(--color-text-primary);
+    }
+
+    .effect-section.powered .effect-label {
+        color: var(--color-gold);
+    }
+
+    .btn-powered {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        border-color: #f59e0b;
+        color: white;
+    }
+
+    .btn-powered:hover:not(:disabled) {
+        background: linear-gradient(135deg, #d97706, #b45309);
+        border-color: #d97706;
+    }
+
+    .btn-powered.disabled,
+    .btn-powered:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
+@code {
+    [Parameter] public List<CardData> Cards { get; set; } = new();
+    [Parameter] public int? SelectedCardIndex { get; set; }
+    [Parameter] public bool CanPlayPowered { get; set; } = false;
+    [Parameter] public EventCallback<int> OnCardSelected { get; set; }
+    [Parameter] public EventCallback<int> OnCardPlayed { get; set; }
+    [Parameter] public EventCallback<int> OnCardPlayedPowered { get; set; }
+    [Parameter] public EventCallback<int> OnCardUsedSideways { get; set; }
+
+    private bool IsExpanded { get; set; } = true;
+
+    private void ToggleExpand()
+    {
+        IsExpanded = !IsExpanded;
+    }
+
+    private int CalculateCardOffset(int index, int total)
+    {
+        if (total <= 1) return 0;
+        var spread = Math.Min(total * 50, 300);
+        var step = spread / (total - 1);
+        return (int)(index * step - spread / 2);
+    }
+
+    private async Task OnCardClick(int index)
+    {
+        if (OnCardSelected.HasDelegate)
+        {
+            await OnCardSelected.InvokeAsync(index);
+        }
+    }
+
+    private async Task PlayCard(int index)
+    {
+        if (OnCardPlayed.HasDelegate)
+        {
+            await OnCardPlayed.InvokeAsync(index);
+        }
+    }
+
+    private async Task PlayCardPowered(int index)
+    {
+        if (OnCardPlayedPowered.HasDelegate)
+        {
+            await OnCardPlayedPowered.InvokeAsync(index);
+        }
+    }
+
+    private async Task UseAsSidewaysCard(int index)
+    {
+        if (OnCardUsedSideways.HasDelegate)
+        {
+            await OnCardUsedSideways.InvokeAsync(index);
+        }
+    }
+}
+
+@code {
+    public class CardData
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
+        public string BasicEffect { get; set; } = string.Empty;
+        public string? PoweredEffect { get; set; }
+        public string? PoweredManaColor { get; set; }
+        public bool CanPlay { get; set; } = true;
+    }
+}

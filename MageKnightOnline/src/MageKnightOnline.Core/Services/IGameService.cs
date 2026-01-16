@@ -1,0 +1,68 @@
+using MageKnightOnline.Core.Entities;
+
+namespace MageKnightOnline.Core.Services;
+
+public interface IGameService
+{
+    // Lobby operations
+    Task<IReadOnlyList<Game>> GetAvailableGamesAsync();
+    Task<IReadOnlyList<Game>> GetMyGamesAsync(Guid userId);
+    Task<Game?> GetGameAsync(Guid gameId);
+    
+    Task<GameResult> CreateGameAsync(Guid userId, CreateGameRequest request);
+    Task<GameResult> JoinGameAsync(Guid gameId, Guid userId);
+    Task<GameResult> LeaveGameAsync(Guid gameId, Guid userId);
+    Task<GameResult> StartGameAsync(Guid gameId, Guid userId);
+    Task<GameResult> CancelGameAsync(Guid gameId, Guid userId);
+    
+    Task<GameResult> SelectHeroAsync(Guid gameId, Guid userId, string heroId);
+    Task<GameResult> SetReadyAsync(Guid gameId, Guid userId, bool isReady);
+
+    // In-game operations
+    Task<GameResult> MovePlayerAsync(Guid gameId, Guid userId, int q, int r);
+    Task<GameResult> PlayCardAsync(Guid gameId, Guid userId, string cardId, bool powered, int? manaIndex = null);
+    Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId);
+    Task<GameResult> UseManaAsync(Guid gameId, Guid userId, int dieIndex);
+    Task<GameResult> UseCrystalAsync(Guid gameId, Guid userId, string color);
+    Task<GameResult> RerollManaAsync(Guid gameId, Guid userId);
+    Task<GameResult> EndTurnAsync(Guid gameId, Guid userId);
+    Task<GameResult> RestAsync(Guid gameId, Guid userId);
+    Task<GameResult> SelectTacticAsync(Guid gameId, Guid userId, string tacticId);
+    
+    // Query methods
+    Task<IReadOnlyList<(int Q, int R)>> GetValidMovesAsync(Guid gameId, Guid userId);
+
+    // Combat operations
+    Task<GameResult> InitiateCombatAsync(Guid gameId, Guid userId);
+    Task<GameResult> RangedAttackAsync(Guid gameId, Guid userId, int enemyIndex, int attackValue);
+    Task<GameResult> BlockEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int blockValue);
+    Task<GameResult> AttackEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int attackValue);
+    Task<GameResult> AssignDamageAsync(Guid gameId, Guid userId, int damage);
+    Task<GameResult> EndCombatPhaseAsync(Guid gameId, Guid userId);
+    Task<GameResult> FleeCombatAsync(Guid gameId, Guid userId);
+
+    // Site interaction operations
+    Task<GameResult> InteractWithSiteAsync(Guid gameId, Guid userId, string interactionType);
+    Task<GameResult> RecruitUnitAsync(Guid gameId, Guid userId, string unitId);
+    Task<GameResult> HealAtSiteAsync(Guid gameId, Guid userId, int woundsToHeal);
+
+    // Level up operations
+    Task<GameResult> LevelUpAsync(Guid gameId, Guid userId, string? advancedActionId, string? skillId);
+}
+
+public class CreateGameRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string ScenarioId { get; set; } = string.Empty;
+    public int MaxPlayers { get; set; } = 4;
+}
+
+public class GameResult
+{
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public Game? Game { get; set; }
+
+    public static GameResult Ok(Game game) => new() { Success = true, Game = game };
+    public static GameResult Fail(string message) => new() { Success = false, ErrorMessage = message };
+}

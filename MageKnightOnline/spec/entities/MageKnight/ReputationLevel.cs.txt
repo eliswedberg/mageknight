@@ -1,0 +1,7 @@
+public class ReputationLevel
+{
+    public int Position { get; set; } // 0-8
+    public string Title { get; set; } // "Villain", "Hero"
+    public int Modifier { get; set; } // -5 till +5
+    public bool IsStart { get; set; } // Startposition
+}

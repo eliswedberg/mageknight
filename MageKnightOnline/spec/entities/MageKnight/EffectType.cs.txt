@@ -1,0 +1,42 @@
+public enum EffectType
+{
+    None = 0,
+
+    // --- Movement ---
+    Move,               // Vanlig förflyttning
+    Teleport,           // "Space Bending" - flytta direkt till hex
+
+    // --- Combat: Offense ---
+    Attack,             // Vanlig attack
+    Block,              // Blockering
+
+    // --- Combat: Manipulation (Debuffs/Special) ---
+    ReduceArmor,        // T.ex. "Tremor" eller "Expose"
+    ReduceAttack,       // T.ex. "Chill" eller "Ice Trap"
+    DestroyEnemy,       // "Disintegrate" eller "Whirlwind" (insta-kill)
+    CancelAttack,       // Fienden attackerar inte ("Sleep", "Intimidate")
+
+    // --- Social / Interaction ---
+    Influence,          // Används för att rekrytera eller interagera i byar
+
+    // --- Health & Recovery ---
+    Heal,               // Läka enheter eller hjälten
+    ReviveUnit,         // Återuppliva en utslagen enhet (finns på Healing spell)
+    RemoveWound,        // "Restoration" - slänga/trasha wound cards
+
+    // --- Economy & Resources ---
+    GainMana,           // Få en mana token (försvinner efter turen)
+    GainCrystal,        // Få en kristall till inventory (sparas)
+    SetManaDie,         // Ändra färg på en tärning i "The Source"
+    
+    // --- Meta / Game State ---
+    DrawCard,           // Dra kort från leken
+    GainFame,           // Direkt ära (t.ex. Artifacts)
+    GainReputation,     // Öka rykte
+    LoseReputation,     // Minska rykte (t.ex. "Intimidate")
+    GainXp,             // "Learning" card
+
+    // --- Unit Management ---
+    Recruit,            // Rekrytera enhet (gratis/rabatterat)
+    ReadyUnit           // "Refresh" en exhausted unit
+}

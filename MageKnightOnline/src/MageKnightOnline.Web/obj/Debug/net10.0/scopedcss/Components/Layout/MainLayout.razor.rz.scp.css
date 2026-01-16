@@ -1,0 +1,15 @@
+.app-layout[b-vbxye88u4y] {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main[b-vbxye88u4y] {
+    flex: 1;
+}
+
+.app-footer[b-vbxye88u4y] {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    margin-top: auto;
+}

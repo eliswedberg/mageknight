@@ -1,0 +1,15 @@
+[
+  { "id": "tact_day_01", "name": "The Right Moment", "period": "Day", "position": 1, "effect": "Draw 1 card.", "image": "images/tactics_day (1).jpg" },
+  { "id": "tact_day_02", "name": "Planning", "period": "Day", "position": 2, "effect": "If you have >=2 cards in hand, draw 1 card.", "image": "images/tactics_day (2).jpg" },
+  { "id": "tact_day_03", "name": "Mana Steal", "period": "Day", "position": 3, "effect": "Use one die from Source. Reroll it after use.", "image": "images/tactics_day (3).jpg" },
+  { "id": "tact_day_04", "name": "Rethink", "period": "Day", "position": 4, "effect": "Discard any number of cards, then draw that many.", "image": "images/tactics_day (4).jpg" },
+  { "id": "tact_day_05", "name": "Great Start", "period": "Day", "position": 5, "effect": "Draw 2 cards.", "image": "images/tactics_day (5).jpg" },
+  { "id": "tact_day_06", "name": "Early Bird", "period": "Day", "position": 6, "effect": "Play first. No special benefit.", "image": "images/tactics_day (6).jpg" },
+
+  { "id": "tact_night_01", "name": "Mana Search", "period": "Night", "position": 1, "effect": "Take one die from Source to your area. It is black.", "image": "images/tactics_night_1.jpg" },
+  { "id": "tact_night_02", "name": "Sparing Power", "period": "Night", "position": 2, "effect": "Draw 2 cards.", "image": "images/tactics_night_2.jpg" },
+  { "id": "tact_night_03", "name": "Preparation", "period": "Night", "position": 3, "effect": "Look at top 2 cards of your deck. Keep or discard each.", "image": "images/tactics_night_3.jpg" },
+  { "id": "tact_night_04", "name": "Midnight Meditation", "period": "Night", "position": 4, "effect": "Gain 1 Crystal to Inventory.", "image": "images/tactics_night_4.jpg" },
+  { "id": "tact_night_05", "name": "Long Night", "period": "Night", "position": 5, "effect": "You may play up to 3 cards sideways (instead of 1) during movement.", "image": "images/tactics_night_5.jpg" },
+  { "id": "tact_night_06", "name": "From the Dusk", "period": "Night", "position": 6, "effect": "Play first. No special benefit.", "image": "images/tactics_night_6.jpg" }
+]

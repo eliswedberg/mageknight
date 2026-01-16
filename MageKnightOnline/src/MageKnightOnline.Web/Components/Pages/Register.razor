@@ -1,0 +1,120 @@
+@page "/register"
+@inject AuthStateService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Register - Mage Knight Online</PageTitle>
+
+<div class="auth-container">
+    <div class="card card-gold auth-card">
+        <div class="card-header text-center">
+            <h2>Join the Adventure</h2>
+            <p class="text-muted">Create your Mage Knight account</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-error">@_errorMessage</div>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleRegister" FormName="register">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <InputText @bind-Value="_model.Username" class="form-input" placeholder="Choose a username" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <InputText @bind-Value="_model.Email" type="email" class="form-input" placeholder="Enter your email" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <InputText @bind-Value="_model.Password" type="password" class="form-input" placeholder="Choose a password (min 6 characters)" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <InputText @bind-Value="_model.ConfirmPassword" type="password" class="form-input" placeholder="Confirm your password" />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;" disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span>Creating...</span>
+                }
+                else
+                {
+                    <span>Begin Your Journey</span>
+                }
+            </button>
+        </EditForm>
+
+        <div class="text-center mt-lg">
+            <p class="text-muted">Already have an account?</p>
+            <a href="/login" class="btn btn-secondary">Login</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 60vh;
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 420px;
+    }
+</style>
+
+@code {
+    private RegisterModel _model = new();
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _errorMessage = "Passwords do not match.";
+            _isLoading = false;
+            return;
+        }
+
+        var result = await AuthService.RegisterAsync(_model.Username, _model.Email, _model.Password);
+
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+
+        _isLoading = false;
+    }
+
+    private class RegisterModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

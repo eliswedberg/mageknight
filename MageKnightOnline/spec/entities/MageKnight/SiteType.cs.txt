@@ -1,0 +1,38 @@
+public enum SiteType
+{
+    None = 0,
+    
+    // --- Starting / Basic ---
+    Portal,             // Startpunkten
+    Village,            // Heal / Recruit
+    
+    // --- Adventures & Combat ---
+    OrcMarauders,       // Grön token (Enkel strid)
+    Keep,               // Grå token (Fortifierad)
+    MageTower,          // Lila token (Spellcasting enemy)
+    Ruins,              // Gul token (Blandat)
+    Draconum,           // Röd token (Svår strid)
+    SpawningGrounds,    // 2x Bruna tokens (Summoners)
+    
+    // --- Special Locations ---
+    MagicalGlade,       // Heal / Throw away wounds (Wounds = Mana)
+    CrystalMines,       // Ger kristaller (finns olika färger)
+    Mine_Green,         // Specifik gruva (Green)
+    Mine_Red,
+    Mine_Blue,
+    Mine_White,
+    
+    // --- Core / Advanced ---
+    Monastery,          // Advanced Action training
+    Labyrinth,          // Dungeon crawl
+    RefugeeCamp,        // Recruit cheap
+    Tomb,               // Spöken/Undead
+    Dungeon,            // Underjordisk
+    MonsterDen,         // Gömställe
+
+    // --- Cities ---
+    City_Blue,          // Nivå bestäms av scenario
+    City_Red,
+    City_Green,
+    City_White
+}

@@ -1,0 +1,355 @@
+@namespace MageKnightOnline.Web.Components.Game
+@using MageKnightOnline.Core.GameState
+
+<div class="combat-panel">
+    <div class="combat-header">
+        <h3>⚔️ Combat</h3>
+        <span class="combat-phase">@GetPhaseText()</span>
+    </div>
+
+    <div class="enemies-section">
+        <h4>Enemies</h4>
+        <div class="enemy-list">
+            @foreach (var (enemy, index) in Combat.Enemies.Select((e, i) => (e, i)))
+            {
+                var isSelected = SelectedEnemyIndex == index;
+                <div class="enemy-card @(enemy.IsDefeated ? "defeated" : "") @(isSelected ? "selected" : "")"
+                     @onclick="() => SelectEnemy(index)">
+                    <div class="enemy-name">@GetEnemyName(enemy.EnemyId)</div>
+                    <div class="enemy-stats">
+                        <span class="stat attack" title="Attack">⚔️ @enemy.Attack</span>
+                        <span class="stat armor" title="Armor">🛡️ @enemy.Armor@(enemy.IsFortified ? "+3" : "")</span>
+                    </div>
+                    @if (enemy.Abilities.Any())
+                    {
+                        <div class="enemy-abilities">
+                            @foreach (var ability in enemy.Abilities)
+                            {
+                                <span class="ability-badge">@ability</span>
+                            }
+                        </div>
+                    }
+                    @if (enemy.IsDefeated)
+                    {
+                        <div class="defeated-overlay">✓ Defeated</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="combat-actions">
+        @switch (Combat.Phase)
+        {
+            case CombatPhase.RangedAttack:
+                <div class="phase-info">
+                    <p>Use <strong>Ranged Attack</strong> to attack fortified enemies from range.</p>
+                    <p>Your Ranged Attack: <span class="value">@RangedAttack</span></p>
+                </div>
+                @if (SelectedEnemyIndex.HasValue && RangedAttack > 0)
+                {
+                    var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
+                    var requiredAttack = enemy.Armor + (enemy.IsFortified ? 3 : 0);
+                    <button class="btn btn-primary" @onclick="() => DoRangedAttack(SelectedEnemyIndex.Value)"
+                            disabled="@(RangedAttack < requiredAttack)">
+                        Ranged Attack (@requiredAttack needed)
+                    </button>
+                }
+                <button class="btn btn-secondary" @onclick="EndPhase">Skip to Block Phase</button>
+                break;
+
+            case CombatPhase.Block:
+                <div class="phase-info">
+                    <p>Block enemy attacks to prevent damage.</p>
+                    <p>Your Block: <span class="value">@BlockPool</span></p>
+                    <p>Incoming Damage: <span class="value damage">@GetIncomingDamage()</span></p>
+                </div>
+                @if (SelectedEnemyIndex.HasValue && BlockPool > 0)
+                {
+                    var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
+                    <button class="btn btn-primary" @onclick="() => DoBlock(SelectedEnemyIndex.Value)"
+                            disabled="@(enemy.IsDefeated)">
+                        Block @enemy.EnemyId (@enemy.Attack damage)
+                    </button>
+                }
+                <button class="btn btn-secondary" @onclick="EndPhase">End Block Phase</button>
+                break;
+
+            case CombatPhase.AssignDamage:
+                <div class="phase-info">
+                    <p>Assign <span class="value damage">@GetIncomingDamage()</span> unblocked damage as wounds.</p>
+                </div>
+                <button class="btn btn-danger" @onclick="() => TakeDamage(GetIncomingDamage())">
+                    Take @GetIncomingDamage() Wounds
+                </button>
+                break;
+
+            case CombatPhase.Attack:
+                <div class="phase-info">
+                    <p>Attack enemies with melee.</p>
+                    <p>Your Attack: <span class="value">@AttackPool</span></p>
+                </div>
+                @if (SelectedEnemyIndex.HasValue && AttackPool > 0)
+                {
+                    var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
+                    <button class="btn btn-primary" @onclick="() => DoAttack(SelectedEnemyIndex.Value)"
+                            disabled="@(enemy.IsDefeated || AttackPool < enemy.Armor)">
+                        Attack @enemy.EnemyId (@enemy.Armor needed)
+                    </button>
+                }
+                <button class="btn btn-secondary" @onclick="EndPhase">End Attack Phase</button>
+                break;
+        }
+
+        <button class="btn btn-outline-danger" @onclick="Flee">
+            🏃 Flee (Take @GetIncomingDamage() wounds)
+        </button>
+    </div>
+</div>
+
+<style>
+    .combat-panel {
+        background: linear-gradient(135deg, #2d1f1f 0%, #1a1a1a 100%);
+        border: 2px solid #8b0000;
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        box-shadow: 0 0 20px rgba(139, 0, 0, 0.3);
+    }
+
+    .combat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-lg);
+        padding-bottom: var(--spacing-md);
+        border-bottom: 1px solid #8b0000;
+    }
+
+    .combat-header h3 {
+        margin: 0;
+        color: #ff4444;
+        font-family: 'Cinzel', serif;
+    }
+
+    .combat-phase {
+        background: #8b0000;
+        color: white;
+        padding: 4px 12px;
+        border-radius: var(--radius-md);
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+
+    .enemies-section h4 {
+        color: var(--color-text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .enemy-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .enemy-card {
+        background: var(--color-bg-dark);
+        border: 2px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        min-width: 120px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .enemy-card:hover {
+        border-color: #ff4444;
+        transform: translateY(-2px);
+    }
+
+    .enemy-card.selected {
+        border-color: var(--color-gold);
+        box-shadow: 0 0 10px rgba(212, 168, 83, 0.3);
+    }
+
+    .enemy-card.defeated {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .enemy-name {
+        font-family: 'Cinzel', serif;
+        color: #ff6666;
+        font-size: 0.9rem;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .enemy-stats {
+        display: flex;
+        gap: var(--spacing-sm);
+        font-size: 0.85rem;
+    }
+
+    .stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stat.attack { color: #ff4444; }
+    .stat.armor { color: #4488ff; }
+
+    .enemy-abilities {
+        margin-top: var(--spacing-xs);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .ability-badge {
+        background: #333;
+        color: #ffcc00;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-size: 0.7rem;
+    }
+
+    .defeated-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 100, 0, 0.8);
+        color: white;
+        padding: 4px 12px;
+        border-radius: var(--radius-md);
+        font-weight: bold;
+    }
+
+    .phase-info {
+        background: rgba(0, 0, 0, 0.3);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .phase-info p {
+        margin: 0 0 var(--spacing-xs) 0;
+        font-size: 0.9rem;
+    }
+
+    .phase-info .value {
+        color: var(--color-gold);
+        font-weight: bold;
+    }
+
+    .phase-info .value.damage {
+        color: #ff4444;
+    }
+
+    .combat-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .combat-actions .btn {
+        width: 100%;
+    }
+
+    .btn-outline-danger {
+        background: transparent;
+        border: 1px solid #ff4444;
+        color: #ff4444;
+    }
+
+    .btn-outline-danger:hover {
+        background: rgba(255, 68, 68, 0.1);
+    }
+</style>
+
+@code {
+    [Parameter] public CombatState Combat { get; set; } = new();
+    [Parameter] public int RangedAttack { get; set; }
+    [Parameter] public int AttackPool { get; set; }
+    [Parameter] public int BlockPool { get; set; }
+    
+    [Parameter] public EventCallback<(int EnemyIndex, int Value)> OnRangedAttack { get; set; }
+    [Parameter] public EventCallback<(int EnemyIndex, int Value)> OnBlock { get; set; }
+    [Parameter] public EventCallback<(int EnemyIndex, int Value)> OnAttack { get; set; }
+    [Parameter] public EventCallback<int> OnAssignDamage { get; set; }
+    [Parameter] public EventCallback OnEndPhase { get; set; }
+    [Parameter] public EventCallback OnFlee { get; set; }
+
+    private int? SelectedEnemyIndex { get; set; }
+
+    private string GetPhaseText() => Combat.Phase switch
+    {
+        CombatPhase.RangedAttack => "Ranged Attack",
+        CombatPhase.Block => "Block",
+        CombatPhase.AssignDamage => "Assign Damage",
+        CombatPhase.Attack => "Melee Attack",
+        _ => "Combat"
+    };
+
+    private string GetEnemyName(string enemyId)
+    {
+        // Format enemy ID to display name
+        return enemyId.Replace("_", " ").Replace("enemy ", "");
+    }
+
+    private int GetIncomingDamage()
+    {
+        return Combat.Enemies
+            .Where(e => !e.IsDefeated)
+            .Sum(e => e.Attack);
+    }
+
+    private void SelectEnemy(int index)
+    {
+        if (Combat.Enemies[index].IsDefeated) return;
+        SelectedEnemyIndex = SelectedEnemyIndex == index ? null : index;
+    }
+
+    private async Task DoRangedAttack(int enemyIndex)
+    {
+        var enemy = Combat.Enemies[enemyIndex];
+        var requiredAttack = enemy.Armor + (enemy.IsFortified ? 3 : 0);
+        if (OnRangedAttack.HasDelegate)
+            await OnRangedAttack.InvokeAsync((enemyIndex, requiredAttack));
+    }
+
+    private async Task DoBlock(int enemyIndex)
+    {
+        var enemy = Combat.Enemies[enemyIndex];
+        if (OnBlock.HasDelegate)
+            await OnBlock.InvokeAsync((enemyIndex, enemy.Attack));
+    }
+
+    private async Task DoAttack(int enemyIndex)
+    {
+        var enemy = Combat.Enemies[enemyIndex];
+        if (OnAttack.HasDelegate)
+            await OnAttack.InvokeAsync((enemyIndex, enemy.Armor));
+    }
+
+    private async Task TakeDamage(int damage)
+    {
+        if (OnAssignDamage.HasDelegate)
+            await OnAssignDamage.InvokeAsync(damage);
+    }
+
+    private async Task EndPhase()
+    {
+        if (OnEndPhase.HasDelegate)
+            await OnEndPhase.InvokeAsync();
+    }
+
+    private async Task Flee()
+    {
+        if (OnFlee.HasDelegate)
+            await OnFlee.InvokeAsync();
+    }
+}

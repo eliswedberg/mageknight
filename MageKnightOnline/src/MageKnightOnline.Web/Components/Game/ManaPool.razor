@@ -1,0 +1,260 @@
+@namespace MageKnightOnline.Web.Components.Game
+
+<div class="mana-pool-container">
+    <div class="pool-header">
+        <h4>Mana Pool</h4>
+        @if (CanReroll)
+        {
+            <button class="btn btn-sm btn-secondary" @onclick="OnReroll">
+                🎲 Reroll
+            </button>
+        }
+    </div>
+
+    <div class="mana-dice">
+        @foreach (var (die, index) in Dice.Select((d, i) => (d, i)))
+        {
+            var isSelected = SelectedDieIndex == index;
+            
+            <div class="mana-die @die.Color.ToString().ToLower() @(isSelected ? "selected" : "") @(die.IsUsed ? "used" : "")"
+                 @onclick="() => SelectDie(index)"
+                 title="@die.Color Mana">
+                <img src="images/die_@(die.Color.ToString().ToLower()).png" alt="@die.Color" />
+                @if (die.IsUsed)
+                {
+                    <div class="used-overlay">✓</div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="crystals-section">
+        <h5>Your Crystals</h5>
+        <div class="crystal-counts">
+            @foreach (var crystal in Crystals.Where(c => c.Value > 0))
+            {
+                var isSelected = SelectedCrystalColor == crystal.Key;
+                <div class="crystal-item @crystal.Key.ToString().ToLower() @(isSelected ? "selected" : "")"
+                     title="@crystal.Key: @crystal.Value"
+                     @onclick="() => SelectCrystal(crystal.Key)">
+                    <img src="images/mana_crystal_@(crystal.Key.ToString().ToLower()).png" alt="@crystal.Key" />
+                    <span class="crystal-count">@crystal.Value</span>
+                </div>
+            }
+            @if (!Crystals.Any(c => c.Value > 0))
+            {
+                <span class="no-crystals">No crystals</span>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .mana-pool-container {
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+    }
+
+    .pool-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .pool-header h4 {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .mana-dice {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        justify-content: center;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .mana-die {
+        width: 45px;
+        height: 45px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        border: 2px solid transparent;
+    }
+
+    .mana-die img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .mana-die:hover {
+        transform: scale(1.1);
+    }
+
+    .mana-die.selected {
+        border-color: var(--color-gold);
+        box-shadow: var(--shadow-glow);
+        transform: scale(1.15);
+    }
+
+    .mana-die.used {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .mana-die.used:hover {
+        transform: none;
+    }
+
+    .used-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        color: var(--color-success);
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Mana color glows */
+    .mana-die.red:hover, .mana-die.red.selected {
+        box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+    }
+    .mana-die.blue:hover, .mana-die.blue.selected {
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+    }
+    .mana-die.green:hover, .mana-die.green.selected {
+        box-shadow: 0 0 15px rgba(22, 163, 74, 0.5);
+    }
+    .mana-die.white:hover, .mana-die.white.selected {
+        box-shadow: 0 0 15px rgba(245, 245, 244, 0.5);
+    }
+    .mana-die.black:hover, .mana-die.black.selected {
+        box-shadow: 0 0 15px rgba(107, 114, 128, 0.5);
+    }
+    .mana-die.gold:hover, .mana-die.gold.selected {
+        box-shadow: 0 0 15px rgba(212, 168, 83, 0.5);
+    }
+
+    .crystals-section {
+        padding-top: var(--spacing-md);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .crystals-section h5 {
+        font-size: 0.85rem;
+        margin: 0 0 var(--spacing-sm) 0;
+        color: var(--color-text-secondary);
+    }
+
+    .crystal-counts {
+        display: flex;
+        gap: var(--spacing-sm);
+        justify-content: center;
+    }
+
+    .crystal-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .crystal-item img {
+        width: 28px;
+        height: 28px;
+    }
+
+    .crystal-count {
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: var(--color-text-primary);
+    }
+
+    .crystal-item {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: var(--radius-md);
+        padding: 4px;
+    }
+
+    .crystal-item:hover {
+        transform: scale(1.1);
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .crystal-item.selected {
+        border: 2px solid var(--color-gold);
+        box-shadow: var(--shadow-glow);
+        transform: scale(1.15);
+    }
+
+    .no-crystals {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        font-style: italic;
+    }
+</style>
+
+@code {
+    [Parameter] public List<ManaDie> Dice { get; set; } = new();
+    [Parameter] public Dictionary<ManaColor, int> Crystals { get; set; } = new();
+    [Parameter] public int? SelectedDieIndex { get; set; }
+    [Parameter] public ManaColor? SelectedCrystalColor { get; set; }
+    [Parameter] public bool CanReroll { get; set; } = false;
+    [Parameter] public EventCallback<int> OnDieSelected { get; set; }
+    [Parameter] public EventCallback<ManaColor> OnCrystalSelected { get; set; }
+    [Parameter] public EventCallback OnRerollClicked { get; set; }
+
+    private async Task SelectDie(int index)
+    {
+        if (Dice[index].IsUsed) return;
+        
+        if (OnDieSelected.HasDelegate)
+        {
+            await OnDieSelected.InvokeAsync(index);
+        }
+    }
+
+    private async Task SelectCrystal(ManaColor color)
+    {
+        if (!Crystals.TryGetValue(color, out var count) || count <= 0) return;
+        
+        if (OnCrystalSelected.HasDelegate)
+        {
+            await OnCrystalSelected.InvokeAsync(color);
+        }
+    }
+
+    private async Task OnReroll()
+    {
+        if (OnRerollClicked.HasDelegate)
+        {
+            await OnRerollClicked.InvokeAsync();
+        }
+    }
+}
+
+@code {
+    public class ManaDie
+    {
+        public ManaColor Color { get; set; }
+        public bool IsUsed { get; set; }
+    }
+
+    public enum ManaColor
+    {
+        Red,
+        Blue,
+        Green,
+        White,
+        Black,
+        Gold
+    }
+}

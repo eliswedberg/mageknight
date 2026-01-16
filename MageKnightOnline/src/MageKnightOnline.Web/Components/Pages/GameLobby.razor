@@ -1,0 +1,508 @@
+@page "/game/{GameId:guid}"
+@inject AuthStateService AuthService
+@inject IGameService GameService
+@inject IGameDefinitionService DefinitionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(_game?.Name ?? "Game") - Mage Knight Online</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        Please <a href="/login">login</a> to view this game.
+    </div>
+}
+else if (_isLoading)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Loading game...</p>
+    </div>
+}
+else if (_game == null)
+{
+    <div class="alert alert-error">
+        Game not found. <a href="/">Return to lobby</a>
+    </div>
+}
+else if (_game.Status == GameStatus.InProgress)
+{
+    <div class="alert alert-info">
+        Game is in progress! Redirecting to game board...
+    </div>
+}
+else
+{
+    <div class="game-lobby">
+        <div class="lobby-header">
+            <div>
+                <h1>@_game.Name</h1>
+                <p class="text-muted">@GetScenarioName(_game.ScenarioId) • @_game.Players.Count / @_game.MaxPlayers players</p>
+            </div>
+            <div class="lobby-actions">
+                @if (_isCreator)
+                {
+                    <button class="btn btn-danger btn-sm" @onclick="CancelGame">Cancel Game</button>
+                    <button class="btn btn-primary" @onclick="StartGame" disabled="@(!CanStart)">
+                        Start Game
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-secondary" @onclick="LeaveGame">Leave Game</button>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-error">@_errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(_successMessage))
+        {
+            <div class="alert alert-success">@_successMessage</div>
+        }
+
+        <div class="grid grid-2">
+            <!-- Players Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Players</h3>
+                </div>
+                <div class="player-list">
+                    @foreach (var player in _game.Players.OrderBy(p => p.TurnOrder))
+                    {
+                        var hero = _heroes.FirstOrDefault(h => h.Id == player.HeroId);
+                        <div class="player-item @(player.UserId == AuthService.CurrentUser!.Id ? "current-player" : "")">
+                            <div class="player-info">
+                                @if (hero != null)
+                                {
+                                    <img src="@hero.TokenImage" alt="@hero.Name" class="player-hero-token" />
+                                }
+                                else
+                                {
+                                    <div class="player-hero-token placeholder">?</div>
+                                }
+                                <div>
+                                    <strong>@player.User.Username</strong>
+                                    @if (player.UserId == _game.CreatedByUserId)
+                                    {
+                                        <span class="badge badge-host">Host</span>
+                                    }
+                                    <div class="text-sm text-muted">
+                                        @(hero?.Name ?? "Selecting hero...")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="player-status">
+                                @if (player.IsReady)
+                                {
+                                    <span class="ready-badge">✓ Ready</span>
+                                }
+                                else
+                                {
+                                    <span class="not-ready-badge">Not Ready</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Hero Selection Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Choose Your Hero</h3>
+                </div>
+                <div class="hero-grid">
+                    @foreach (var hero in _heroes)
+                    {
+                        var isTaken = _game.Players.Any(p => p.HeroId == hero.Id && p.UserId != AuthService.CurrentUser!.Id);
+                        var isSelected = _currentPlayer?.HeroId == hero.Id;
+                        
+                        <div class="hero-card @(isSelected ? "selected" : "") @(isTaken ? "taken" : "")"
+                             @onclick="() => SelectHero(hero.Id)"
+                             style="@(isTaken ? "opacity: 0.5; cursor: not-allowed;" : "")">
+                            <img src="@hero.Image" alt="@hero.Name" />
+                            <h4 style="color: var(--color-@hero.ColorTheme.ToLower());">@hero.Name</h4>
+                            <p class="hero-title">@hero.Title</p>
+                            @if (isTaken)
+                            {
+                                var takenBy = _game.Players.First(p => p.HeroId == hero.Id);
+                                <span class="taken-badge">Taken by @takenBy.User.Username</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (_currentPlayer != null && !string.IsNullOrEmpty(_currentPlayer.HeroId))
+                {
+                    <div class="ready-section">
+                        <button class="btn @(_currentPlayer.IsReady ? "btn-secondary" : "btn-primary")" 
+                                @onclick="ToggleReady">
+                            @(_currentPlayer.IsReady ? "Not Ready" : "I'm Ready!")
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Scenario Info -->
+        @if (_scenario != null)
+        {
+            <div class="card mt-lg">
+                <div class="card-header">
+                    <h3>Scenario: @_scenario.Name</h3>
+                </div>
+                <div class="scenario-details">
+                    <div class="detail">
+                        <span class="detail-label">Type</span>
+                        <span class="detail-value">@_scenario.Type</span>
+                    </div>
+                    <div class="detail">
+                        <span class="detail-label">Rounds</span>
+                        <span class="detail-value">@_scenario.Rounds</span>
+                    </div>
+                    <div class="detail">
+                        <span class="detail-label">Map Shape</span>
+                        <span class="detail-value">@_scenario.MapShape</span>
+                    </div>
+                    <div class="detail">
+                        <span class="detail-label">Goal</span>
+                        <span class="detail-value">@_scenario.Goal</span>
+                    </div>
+                </div>
+                @if (_scenario.SpecialRules.Any())
+                {
+                    <div class="special-rules">
+                        <h4>Special Rules</h4>
+                        <ul>
+                            @foreach (var rule in _scenario.SpecialRules)
+                            {
+                                <li>@rule</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .game-lobby {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .lobby-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .lobby-header h1 {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .lobby-actions {
+        display: flex;
+        gap: var(--spacing-md);
+    }
+
+    .player-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .player-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-md);
+        background: var(--color-bg-dark);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+    }
+
+    .player-item.current-player {
+        border-color: var(--color-gold);
+    }
+
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+
+    .player-hero-token {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .player-hero-token.placeholder {
+        background: var(--color-bg-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--color-text-muted);
+    }
+
+    .badge-host {
+        background: var(--color-gold);
+        color: var(--color-bg-dark);
+        font-size: 0.7rem;
+        margin-left: var(--spacing-sm);
+    }
+
+    .ready-badge {
+        color: var(--color-success);
+        font-weight: 600;
+    }
+
+    .not-ready-badge {
+        color: var(--color-text-muted);
+    }
+
+    .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
+    }
+
+    .hero-card {
+        background: var(--color-bg-dark);
+        border: 2px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-md);
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .hero-card:hover:not(.taken) {
+        border-color: var(--color-gold-dark);
+        transform: translateY(-2px);
+    }
+
+    .hero-card.selected {
+        border-color: var(--color-gold);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .hero-card img {
+        width: 100%;
+        max-width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .hero-card h4 {
+        margin-bottom: 0;
+        font-size: 1rem;
+    }
+
+    .hero-card .hero-title {
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+        font-style: italic;
+        margin: var(--spacing-xs) 0 0 0;
+    }
+
+    .taken-badge {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--color-warning);
+        margin-top: var(--spacing-xs);
+    }
+
+    .ready-section {
+        margin-top: var(--spacing-lg);
+        text-align: center;
+        padding-top: var(--spacing-lg);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .scenario-details {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-md);
+    }
+
+    .detail {
+        text-align: center;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .detail-value {
+        font-family: 'Cinzel', serif;
+        font-size: 1.1rem;
+        color: var(--color-gold);
+    }
+
+    .special-rules {
+        margin-top: var(--spacing-lg);
+        padding-top: var(--spacing-lg);
+        border-top: 1px solid var(--color-border);
+    }
+
+    .special-rules h4 {
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .special-rules ul {
+        margin: 0;
+        padding-left: var(--spacing-lg);
+        color: var(--color-text-secondary);
+    }
+
+    .special-rules li {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    @@media (max-width: 768px) {
+        .scenario-details {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    private Game? _game;
+    private ScenarioDefinition? _scenario;
+    private List<HeroDefinition> _heroes = new();
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private bool _isCreator => _game?.CreatedByUserId == AuthService.CurrentUser?.Id;
+    private GamePlayer? _currentPlayer => _game?.Players.FirstOrDefault(p => p.UserId == AuthService.CurrentUser?.Id);
+    private bool CanStart => _game != null && 
+                             _game.Players.Count >= _game.MinPlayers && 
+                             _game.Players.All(p => !string.IsNullOrEmpty(p.HeroId)) &&
+                             _game.Players.Select(p => p.HeroId).Distinct().Count() == _game.Players.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _heroes = (await DefinitionService.GetHeroesAsync()).ToList();
+        await LoadGame();
+    }
+
+    private async Task LoadGame()
+    {
+        _isLoading = true;
+        _game = await GameService.GetGameAsync(GameId);
+        
+        if (_game != null)
+        {
+            _scenario = await DefinitionService.GetScenarioAsync(_game.ScenarioId);
+        }
+        
+        _isLoading = false;
+    }
+
+    private string GetScenarioName(string scenarioId)
+    {
+        return _scenario?.Name ?? scenarioId;
+    }
+
+    private async Task SelectHero(string heroId)
+    {
+        if (_game == null || _currentPlayer == null) return;
+        
+        // Check if hero is already taken
+        if (_game.Players.Any(p => p.HeroId == heroId && p.UserId != AuthService.CurrentUser!.Id))
+            return;
+
+        _errorMessage = null;
+        var result = await GameService.SelectHeroAsync(GameId, AuthService.CurrentUser!.Id, heroId);
+        
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+    }
+
+    private async Task ToggleReady()
+    {
+        if (_currentPlayer == null) return;
+
+        _errorMessage = null;
+        var result = await GameService.SetReadyAsync(GameId, AuthService.CurrentUser!.Id, !_currentPlayer.IsReady);
+        
+        if (result.Success)
+        {
+            await LoadGame();
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+    }
+
+    private async Task StartGame()
+    {
+        _errorMessage = null;
+        var result = await GameService.StartGameAsync(GameId, AuthService.CurrentUser!.Id);
+        
+        if (result.Success)
+        {
+            Navigation.NavigateTo($"/play/{GameId}");
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+    }
+
+    private async Task LeaveGame()
+    {
+        var result = await GameService.LeaveGameAsync(GameId, AuthService.CurrentUser!.Id);
+        
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+    }
+
+    private async Task CancelGame()
+    {
+        var result = await GameService.CancelGameAsync(GameId, AuthService.CurrentUser!.Id);
+        
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = result.ErrorMessage;
+        }
+    }
+}

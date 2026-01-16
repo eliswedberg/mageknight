@@ -1,0 +1,380 @@
+﻿@page "/"
+@implements IDisposable
+@inject AuthStateService AuthService
+@inject IGameService GameService
+@inject IGameDefinitionService DefinitionService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Mage Knight Online - Lobby</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="hero-section">
+        <div class="hero-content text-center">
+            <h1>Mage Knight Online</h1>
+            <p class="hero-subtitle">Experience the legendary board game in a new digital realm</p>
+            
+            <div class="hero-features">
+                <div class="feature">
+                    <img src="images/character_tovak.jpg" alt="Tovak" class="feature-img" />
+                    <h4>Choose Your Hero</h4>
+                    <p>Play as Tovak, Arythea, Goldyx, or Norowas</p>
+                </div>
+                <div class="feature">
+                    <img src="images/MK_map_tiles_01-A.png" alt="Map" class="feature-img" />
+                    <h4>Explore the Land</h4>
+                    <p>Discover mysterious locations and ancient ruins</p>
+                </div>
+                <div class="feature">
+                    <img src="images/enemy_draconum_fire_dragon_x2.png" alt="Dragon" class="feature-img" />
+                    <h4>Battle Enemies</h4>
+                    <p>Fight orcs, mages, and mighty dragons</p>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                <a href="/register" class="btn btn-primary btn-lg">Start Your Journey</a>
+                <a href="/login" class="btn btn-secondary btn-lg">Login</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="lobby">
+        <div class="lobby-header">
+            <div>
+                <h1>Game Lobby</h1>
+                <p class="text-muted">Join an existing game or create your own adventure</p>
+            </div>
+            <button class="btn btn-primary" @onclick="() => _showCreateModal = true">
+                Create New Game
+            </button>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="text-center mt-lg">
+                <div class="spinner"></div>
+                <p class="text-muted mt-md">Loading games...</p>
+            </div>
+        }
+        else if (_games.Count == 0)
+        {
+            <div class="card text-center">
+                <h3>No Games Available</h3>
+                <p class="text-muted">Be the first to create a game!</p>
+                <button class="btn btn-primary mt-md" @onclick="() => _showCreateModal = true">
+                    Create Game
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="game-list">
+                @foreach (var game in _games)
+                {
+                    <div class="game-item">
+                        <div class="game-info">
+                            <h4>@game.Name</h4>
+                            <div class="game-meta">
+                                <span>@GetScenarioName(game.ScenarioId)</span>
+                                <span>👥 @game.Players.Count / @game.MaxPlayers players</span>
+                                <span>Created by @game.CreatedBy.Username</span>
+                            </div>
+                        </div>
+                        <div class="game-actions">
+                            <span class="badge badge-waiting">Waiting</span>
+                            @if (!game.Players.Any(p => p.UserId == AuthService.CurrentUser!.Id))
+                            {
+                                <button class="btn btn-primary btn-sm" @onclick="() => JoinGame(game.Id)">
+                                    Join
+                                </button>
+                            }
+                            else
+                            {
+                                <a href="/game/@game.Id" class="btn btn-secondary btn-sm">
+                                    Enter
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (_showCreateModal)
+    {
+        <div class="modal-overlay" @onclick="() => _showCreateModal = false">
+            <div class="modal card card-gold" @onclick:stopPropagation="true">
+                <div class="card-header">
+                    <h3>Create New Game</h3>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_createError))
+                {
+                    <div class="alert alert-error">@_createError</div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label">Game Name</label>
+                    <input type="text" class="form-input" @bind="_createModel.Name" placeholder="Enter game name" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Scenario</label>
+                    <select class="form-input form-select" @bind="_createModel.ScenarioId">
+                        <option value="">Select a scenario...</option>
+                        @foreach (var scenario in _scenarios)
+                        {
+                            <option value="@scenario.Id">@scenario.Name (@scenario.Type)</option>
+                        }
+                    </select>
+                </div>
+
+                @if (_selectedScenario != null)
+                {
+                    <div class="form-group">
+                        <label class="form-label">Max Players</label>
+                        <select class="form-input form-select" @bind="_createModel.MaxPlayers">
+                            @for (int i = _selectedScenario.MinPlayers; i <= _selectedScenario.MaxPlayers; i++)
+                            {
+                                <option value="@i">@i players</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="scenario-info">
+                        <p><strong>Rounds:</strong> @_selectedScenario.Rounds</p>
+                        <p><strong>Goal:</strong> @_selectedScenario.Goal</p>
+                    </div>
+                }
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" @onclick="() => _showCreateModal = false">Cancel</button>
+                    <button class="btn btn-primary" @onclick="CreateGame" disabled="@_isCreating">
+                        @(_isCreating ? "Creating..." : "Create Game")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    .hero-section {
+        padding: var(--spacing-2xl) 0;
+    }
+
+    .hero-content h1 {
+        font-size: 3.5rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .hero-subtitle {
+        font-size: 1.3rem;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .hero-features {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--spacing-xl);
+        margin-bottom: var(--spacing-2xl);
+    }
+
+    .feature {
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+    }
+
+    .feature-img {
+        width: 100%;
+        max-width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .feature h4 {
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .feature p {
+        color: var(--color-text-secondary);
+        margin: 0;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: var(--spacing-md);
+        justify-content: center;
+    }
+
+    .lobby-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .lobby-header h1 {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal {
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: var(--spacing-md);
+        justify-content: flex-end;
+        margin-top: var(--spacing-lg);
+    }
+
+    .scenario-info {
+        background: var(--color-bg-dark);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-md);
+    }
+
+    .scenario-info p {
+        margin: var(--spacing-xs) 0;
+        font-size: 0.9rem;
+    }
+
+    @@media (max-width: 768px) {
+        .hero-features {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+@code {
+    private List<Game> _games = new();
+    private List<ScenarioDefinition> _scenarios = new();
+    private bool _isLoading = true;
+    private bool _showCreateModal;
+    private bool _isCreating;
+    private string? _createError;
+    private CreateGameModel _createModel = new();
+
+    private ScenarioDefinition? _selectedScenario => 
+        _scenarios.FirstOrDefault(s => s.Id == _createModel.ScenarioId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+        _scenarios = (await DefinitionService.GetScenariosAsync()).ToList();
+        
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadGames();
+        }
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadGames();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+    }
+
+    private async Task LoadGames()
+    {
+        _isLoading = true;
+        _games = (await GameService.GetAvailableGamesAsync()).ToList();
+        _isLoading = false;
+    }
+
+    private string GetScenarioName(string scenarioId)
+    {
+        return _scenarios.FirstOrDefault(s => s.Id == scenarioId)?.Name ?? scenarioId;
+    }
+
+    private async Task JoinGame(Guid gameId)
+    {
+        var result = await GameService.JoinGameAsync(gameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            Navigation.NavigateTo($"/game/{gameId}");
+        }
+    }
+
+    private async Task CreateGame()
+    {
+        _isCreating = true;
+        _createError = null;
+
+        if (string.IsNullOrEmpty(_createModel.ScenarioId))
+        {
+            _createError = "Please select a scenario.";
+            _isCreating = false;
+            return;
+        }
+
+        var request = new CreateGameRequest
+        {
+            Name = _createModel.Name,
+            ScenarioId = _createModel.ScenarioId,
+            MaxPlayers = _createModel.MaxPlayers
+        };
+
+        var result = await GameService.CreateGameAsync(AuthService.CurrentUser!.Id, request);
+
+        if (result.Success)
+        {
+            _showCreateModal = false;
+            Navigation.NavigateTo($"/game/{result.Game!.Id}");
+        }
+        else
+        {
+            _createError = result.ErrorMessage;
+        }
+
+        _isCreating = false;
+    }
+
+    private class CreateGameModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string ScenarioId { get; set; } = string.Empty;
+        public int MaxPlayers { get; set; } = 4;
+    }
+}

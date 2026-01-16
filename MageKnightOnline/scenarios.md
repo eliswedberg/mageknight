@@ -1,3 +1,0 @@
-# Scenarios
-
-Schema and framework.

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "ruin_loot_01",
+    "name": "Wealth",
+    "count": 2,
+    "type": "Resources",
+    "description": "Gain 2 Crystals of any color to inventory AND 1 Mana token of any color.",
+    "image": "images/ruins_altars01.png",
+    "effects": [
+      { "type": "GainCrystal", "value": 2 },
+      { "type": "GainMana", "value": 1 }
+    ]
+  },
+  {
+    "id": "ruin_loot_02",
+    "name": "Ancient Knowledge",
+    "count": 2,
+    "type": "Spell",
+    "description": "Gain a Spell from the Spell Offer. (If taken during interaction, follow site rules).",
+    "image": "images/ruins_altars02.png",
+    "effects": [
+      { "type": "GainCard", "target": "SpellOffer" }
+    ]
+  },
+  {
+    "id": "ruin_loot_03",
+    "name": "Lost Artifact",
+    "count": 2,
+    "type": "Artifact",
+    "description": "Gain an Artifact (Draw 2, keep 1, place other at bottom of deck).",
+    "image": "images/ruins_altars03.png",
+    "effects": [
+      { "type": "GainCard", "target": "ArtifactDeck", "value": 1 }
+    ]
+  },
+  {
+    "id": "ruin_loot_04",
+    "name": "Reinforcements",
+    "count": 1,
+    "type": "Unit",
+    "description": "Recruit 1 Unit for free from the Unit Offer.",
+    "image": "images/ruins_altars04.png",
+    "effects": [
+      { "type": "Recruit", "value": 0, "description": "Free recruit, ignore location requirements" }
+    ]
+  },
+  {
+    "id": "ruin_enemy_01",
+    "name": "Enemies (1 Green)",
+    "count": 2,
+    "type": "Combat",
+    "description": "Fight 1 Green enemy token.",
+    "image": "images/ruins_enemies01.png",
+    "enemies": [{ "type": "Green", "count": 1 }]
+  },
+  {
+    "id": "ruin_enemy_02",
+    "name": "Enemies (2 Green)",
+    "count": 2,
+    "type": "Combat",
+    "description": "Fight 2 Green enemy tokens.",
+    "image": "images/ruins_enemies02.png",
+    "enemies": [{ "type": "Green", "count": 2 }]
+  },
+  {
+    "id": "ruin_enemy_04",
+    "name": "Enemies (1 Brown)",
+    "count": 2,
+    "type": "Combat",
+    "description": "Fight 1 Brown enemy token.",
+    "image": "images/ruins_enemies04.png",
+    "enemies": [{ "type": "Brown", "count": 1 }]
+  },
+  {
+    "id": "ruin_enemy_05",
+    "name": "Enemies (1 Green + 1 Brown)",
+    "count": 1,
+    "type": "Combat",
+    "description": "Fight 1 Green and 1 Brown enemy token.",
+    "image": "images/ruins_enemies05.png",
+    "enemies": [{ "type": "Green", "count": 1 }, { "type": "Brown", "count": 1 }]
+  },
+  {
+    "id": "ruin_enemy_06",
+    "name": "Enemies (1 Grey)",
+    "count": 2,
+    "type": "Combat",
+    "description": "Fight 1 Grey enemy token.",
+    "image": "images/ruins_enemies06.png",
+    "enemies": [{ "type": "Grey", "count": 1 }]
+  },
+  {
+    "id": "ruin_enemy_07",
+    "name": "Enemies (1 Violet)",
+    "count": 1,
+    "type": "Combat",
+    "description": "Fight 1 Violet enemy token.",
+    "image": "images/ruins_enemies07.png",
+    "enemies": [{ "type": "Violet", "count": 1 }]
+  },
+  {
+    "id": "ruin_enemy_08",
+    "name": "Enemies (1 Red)",
+    "count": 1,
+    "type": "Combat",
+    "description": "Fight 1 Red enemy token (Draconum).",
+    "image": "images/ruins_enemies08.png",
+    "enemies": [{ "type": "Red", "count": 1 }]
+  }
+]

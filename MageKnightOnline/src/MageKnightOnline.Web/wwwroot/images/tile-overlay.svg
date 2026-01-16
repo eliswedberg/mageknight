@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="-311.769 -300 623.538 600"
+     width="623.538" height="600"
+     role="img" aria-label="tile-1-overlay">
+  <style>
+    .hit { cursor:pointer; fill:transparent; }
+    .overlay { pointer-events:none; fill:yellow; opacity:0; transition:opacity .15s; }
+    g.hover .overlay { opacity:.35; }
+    g.selected .overlay { opacity:.5; fill:deepskyblue; }
+  </style>
+
+  <!-- top row -->
+  <g id="top-left">
+    <polygon class="hit" data-name="top-left" 
+      points="0,-240 0,-120 -103.9,-60 -207.8,-120 -207.8,-240 -103.9,-300"/>
+    <polygon class="overlay" 
+      points="0,-240 0,-120 -103.9,-60 -207.8,-120 -207.8,-240 -103.9,-300"/>
+  </g>
+  <g id="top-right">
+    <polygon class="hit" data-name="top-right" 
+      points="207.8,-240 207.8,-120 103.9,-60 0,-120 0,-240 103.9,-300"/>
+    <polygon class="overlay" 
+      points="207.8,-240 207.8,-120 103.9,-60 0,-120 0,-240 103.9,-300"/>
+  </g>
+
+  <!-- mid row -->
+  <g id="mid-left">
+    <polygon class="hit" data-name="mid-left" 
+      points="-103.9,-60 -103.9,60 -207.8,120 -311.8,60 -311.8,-60 -207.8,-120"/>
+    <polygon class="overlay" 
+      points="-103.9,-60 -103.9,60 -207.8,120 -311.8,60 -311.8,-60 -207.8,-120"/>
+  </g>
+  <g id="mid-center">
+    <polygon class="hit" data-name="mid-center" 
+      points="103.9,-60 103.9,60 0,120 -103.9,60 -103.9,-60 0,-120"/>
+    <polygon class="overlay" 
+      points="103.9,-60 103.9,60 0,120 -103.9,60 -103.9,-60 0,-120"/>
+  </g>
+  <g id="mid-right">
+    <polygon class="hit" data-name="mid-right" 
+      points="311.8,-60 311.8,60 207.8,120 103.9,60 103.9,-60 207.8,-120"/>
+    <polygon class="overlay" 
+      points="311.8,-60 311.8,60 207.8,120 103.9,60 103.9,-60 207.8,-120"/>
+  </g>
+
+  <!-- bottom row -->
+  <g id="bottom-left">
+    <polygon class="hit" data-name="bottom-left" 
+      points="0,120 0,240 -103.9,300 -207.8,240 -207.8,120 -103.9,60"/>
+    <polygon class="overlay" 
+      points="0,120 0,240 -103.9,300 -207.8,240 -207.8,120 -103.9,60"/>
+  </g>
+  <g id="bottom-right">
+    <polygon class="hit" data-name="bottom-right" 
+      points="207.8,120 207.8,240 103.9,300 0,240 0,120 103.9,60"/>
+    <polygon class="overlay" 
+      points="207.8,120 207.8,240 103.9,300 0,240 0,120 103.9,60"/>
+  </g>
+
+  <script><![CDATA[
+    (function(){
+      const svg=document.querySelector('svg[aria-label="tile-1-overlay"]');
+      const hits=svg.querySelectorAll('.hit');
+      hits.forEach(hit=>{
+        const g=hit.parentNode;
+        hit.addEventListener('mouseenter',()=>g.classList.add('hover'));
+        hit.addEventListener('mouseleave',()=>g.classList.remove('hover'));
+        hit.addEventListener('click',()=>{
+          svg.querySelectorAll('g.selected').forEach(el=>el.classList.remove('selected'));
+          g.classList.add('selected');
+          svg.dispatchEvent(new CustomEvent('hex-selected',{detail:{name:hit.dataset.name}}));
+        });
+      });
+    })();
+  ]]></script>
+</svg>

@@ -1,0 +1,309 @@
+@namespace MageKnightOnline.Web.Components.Game
+@using System.Globalization
+
+<div class="tile-map-container" style="width: @(Width)px; height: @(Height)px;">
+    <svg class="tile-map" viewBox="@ViewBox" preserveAspectRatio="xMidYMid meet">
+        <defs>
+            <!-- Clip path for hexagonal tiles -->
+            <clipPath id="tileClip">
+                <polygon points="@TileClipPoints" />
+            </clipPath>
+            
+            <!-- Fog gradient for unrevealed tiles -->
+            <linearGradient id="tileFogGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#1a1a24;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#0d0d12;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+
+        <!-- Render each tile -->
+        @foreach (var tile in Tiles)
+        {
+            var tileCenter = TileToPixel(tile.Q, tile.R);
+            var isSelected = SelectedTile?.Q == tile.Q && SelectedTile?.R == tile.R;
+            var imagePath = !string.IsNullOrEmpty(tile.ImagePath) ? "/" + tile.ImagePath : null;
+
+            <g class="map-tile @(tile.IsRevealed ? "revealed" : "hidden") @(isSelected ? "selected" : "")"
+               transform="translate(@F(tileCenter.X), @F(tileCenter.Y))">
+                
+                @if (tile.IsRevealed && !string.IsNullOrEmpty(imagePath))
+                {
+                    <!-- Tile image - use actual tile dimensions (696 x 669 scaled) -->
+                    <image href="@imagePath" 
+                           x="@F(-TileImageWidth/2)" y="@F(-TileImageHeight/2)" 
+                           width="@F(TileImageWidth)" height="@F(TileImageHeight)" />
+                }
+                else if (tile.IsRevealed)
+                {
+                    <!-- Fallback: gray hex if no image -->
+                    <polygon points="@TileClipPoints" fill="#2a2a3a" />
+                    @((MarkupString)$"<text x=\"0\" y=\"5\" text-anchor=\"middle\" fill=\"#888\" font-size=\"10\">No image: {tile.TileId}</text>")
+                }
+                else
+                {
+                    <!-- Unrevealed tile (back) -->
+                    <polygon points="@TileClipPoints" fill="url(#tileFogGradient)" />
+                }
+            </g>
+        }
+
+        <!-- Render hex overlays (players, enemies, highlights) on top of tiles -->
+        @foreach (var hex in Hexes)
+        {
+            var center = HexToPixel(hex.Q, hex.R);
+            var isSelected = SelectedHex?.Q == hex.Q && SelectedHex?.R == hex.R;
+            var isHighlighted = HighlightedHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) ?? false;
+
+            <g class="hex-overlay @(isSelected ? "selected" : "") @(isHighlighted ? "highlighted" : "")"
+               transform="translate(@F(center.X), @F(center.Y))"
+               @onclick="() => OnHexClick(hex)"
+               @onmouseenter="() => OnHexHover(hex)"
+               style="cursor: pointer;">
+                
+                <!-- Clickable hex area (invisible) -->
+                <polygon points="@HexPoints" fill="transparent" />
+
+                <!-- Highlight for valid moves -->
+                @if (isHighlighted)
+                {
+                    <polygon points="@HexPoints" 
+                             fill="rgba(74, 222, 128, 0.3)" 
+                             stroke="#4ade80" 
+                             stroke-width="2" />
+                }
+
+                <!-- Selection highlight -->
+                @if (isSelected)
+                {
+                    <polygon points="@HexPoints" 
+                             fill="rgba(212, 168, 83, 0.2)" 
+                             stroke="#d4a853" 
+                             stroke-width="3" />
+                }
+
+                @if (hex.IsRevealed)
+                {
+                    <!-- Player tokens -->
+                    @foreach (var (token, index) in hex.PlayerTokens.Select((t, i) => (t, i)))
+                    {
+                        var offsetX = (index - hex.PlayerTokens.Count / 2.0) * 30;
+                        var offsetY = 0.0;
+                        
+                        <circle cx="@F(offsetX)" cy="@F(offsetY)" r="18" 
+                                fill="#1e1e2e" stroke="#d4a853" stroke-width="3"/>
+                        @if (!string.IsNullOrEmpty(token.TokenImage))
+                        {
+                            <image href="@token.TokenImage" 
+                                   x="@F(offsetX - 14)" y="@F(offsetY - 14)" 
+                                   width="28" height="28" />
+                        }
+                        else
+                        {
+                            @((MarkupString)$"<text x=\"{F(offsetX)}\" y=\"{F(offsetY + 5)}\" text-anchor=\"middle\" fill=\"#d4a853\" font-size=\"14\">🧙</text>")
+                        }
+                    }
+
+                    <!-- Enemy indicators -->
+                    @if (hex.EnemyCount > 0)
+                    {
+                        <circle cx="@F(HexOverlaySize * 0.5)" cy="@F(-HexOverlaySize * 0.4)" r="12" 
+                                fill="#dc2626" stroke="#fef2f2" stroke-width="2" />
+                        @((MarkupString)$"<text x=\"{F(HexOverlaySize * 0.5)}\" y=\"{F(-HexOverlaySize * 0.4 + 4)}\" text-anchor=\"middle\" fill=\"white\" font-size=\"10\" font-weight=\"bold\">{hex.EnemyCount}</text>")
+                    }
+                }
+
+                <!-- Coordinate labels (debug) -->
+                @if (ShowCoordinates && hex.IsRevealed)
+                {
+                    <rect x="-12" y="@F(-HexOverlaySize * 0.6)" width="24" height="12" fill="rgba(0,0,0,0.7)" rx="2"/>
+                    @((MarkupString)$"<text x=\"0\" y=\"{F(-HexOverlaySize * 0.6 + 9)}\" text-anchor=\"middle\" fill=\"white\" font-size=\"8\">{hex.Q},{hex.R}</text>")
+                }
+            </g>
+        }
+    </svg>
+</div>
+
+<style>
+    .tile-map-container {
+        position: relative;
+        overflow: auto;
+        background: #0a0a0f;
+        border-radius: var(--radius-lg);
+        border: 2px solid #2a2a3a;
+    }
+
+    .tile-map {
+        width: 100%;
+        height: 100%;
+    }
+
+    .map-tile {
+        transition: all 0.3s ease;
+    }
+
+    .map-tile.selected polygon {
+        filter: drop-shadow(0 0 10px rgba(212, 168, 83, 0.6));
+    }
+
+    .hex-overlay {
+        transition: all 0.2s ease;
+    }
+
+    .hex-overlay:hover polygon {
+        fill: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .hex-overlay.highlighted polygon {
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { fill: rgba(74, 222, 128, 0.2); }
+        50% { fill: rgba(74, 222, 128, 0.4); }
+    }
+</style>
+
+@code {
+    [Parameter] public int Width { get; set; } = 900;
+    [Parameter] public int Height { get; set; } = 700;
+    [Parameter] public double Scale { get; set; } = 0.5; // Scale factor for the map (1.0 = full size)
+    [Parameter] public List<TileData> Tiles { get; set; } = new();
+    [Parameter] public List<HexData> Hexes { get; set; } = new();
+    [Parameter] public TileData? SelectedTile { get; set; }
+    [Parameter] public HexData? SelectedHex { get; set; }
+    [Parameter] public List<HexData>? HighlightedHexes { get; set; }
+    [Parameter] public bool ShowCoordinates { get; set; } = false;
+    [Parameter] public EventCallback<HexData> OnHexClicked { get; set; }
+    [Parameter] public EventCallback<HexData> OnHexHovered { get; set; }
+
+    // Mage Knight tile image dimensions (from actual image analysis):
+    // Tile image: 696 x 669 px
+    // Hex width (flat-to-flat): 232 px
+    // Hex height (point-to-point): 267.6 px
+    // For pointy-top hex: size (radius) = height / 2 = 133.8 px
+    
+    private const double BaseHexHeight = 267.6;  // Point-to-point height of one hex in the image
+    private const double BaseHexWidth = 232.0;   // Flat-to-flat width of one hex in the image
+    private const double BaseTileWidth = 696.0;  // Full tile image width
+    private const double BaseTileHeight = 669.0; // Full tile image height
+    
+    // Scaled dimensions
+    private double HexHeight => BaseHexHeight * Scale;
+    private double HexWidth => BaseHexWidth * Scale;
+    private double TileImageWidth => BaseTileWidth * Scale;
+    private double TileImageHeight => BaseTileHeight * Scale;
+    
+    // HexSize is the radius (center to vertex) for pointy-top hex
+    private double HexSize => HexHeight / 2;
+    
+    // For hex overlay polygons - use slightly smaller to account for hex borders in image
+    private double HexOverlaySize => HexSize * 0.92;
+
+    private string ViewBox => $"{F(-Width/2)} {F(-Height/2)} {Width} {Height}";
+    
+    // Debug info
+    private string DebugInfo => $"Tiles: {Tiles.Count}, Scale: {Scale}, HexSize: {HexSize:F0}, TileW: {TileImageWidth:F0}";
+
+    private string HexPoints
+    {
+        get
+        {
+            var points = new List<string>();
+            for (int i = 0; i < 6; i++)
+            {
+                var angle = Math.PI / 3 * i - Math.PI / 6;
+                var x = HexOverlaySize * Math.Cos(angle);
+                var y = HexOverlaySize * Math.Sin(angle);
+                points.Add($"{F(x)},{F(y)}");
+            }
+            return string.Join(" ", points);
+        }
+    }
+
+    private string TileClipPoints
+    {
+        get
+        {
+            // Larger hex shape for the tile (encompasses 7 hexes)
+            // Use tile dimensions to create outer boundary
+            var halfWidth = TileImageWidth / 2;
+            var halfHeight = TileImageHeight / 2;
+            var points = new List<string>();
+            for (int i = 0; i < 6; i++)
+            {
+                var angle = Math.PI / 3 * i - Math.PI / 6;
+                // Scale to fit the tile image dimensions
+                var x = halfWidth * Math.Cos(angle);
+                var y = halfHeight * Math.Sin(angle);
+                points.Add($"{F(x)},{F(y)}");
+            }
+            return string.Join(" ", points);
+        }
+    }
+
+    private (double X, double Y) HexToPixel(int q, int r)
+    {
+        // Axial to pixel conversion for pointy-top hexes
+        // Using the actual hex dimensions from the tile image
+        // For pointy-top: x uses hex width, y uses 3/4 of hex height for vertical spacing
+        var x = HexWidth * (q + r * 0.5);
+        var y = HexHeight * 0.75 * r;
+        return (x, y);
+    }
+
+    private (double X, double Y) TileToPixel(int q, int r)
+    {
+        // For the starting tile at (0,0), center it at origin
+        // Tiles use the same coordinate system as hexes
+        return HexToPixel(q, r);
+    }
+
+    private string F(double value) => value.ToString("F2", CultureInfo.InvariantCulture);
+
+    private async Task OnHexClick(HexData hex)
+    {
+        if (OnHexClicked.HasDelegate)
+        {
+            await OnHexClicked.InvokeAsync(hex);
+        }
+    }
+
+    private async Task OnHexHover(HexData hex)
+    {
+        if (OnHexHovered.HasDelegate)
+        {
+            await OnHexHovered.InvokeAsync(hex);
+        }
+    }
+}
+
+@code {
+    public class TileData
+    {
+        public string TileId { get; set; } = string.Empty;
+        public int Q { get; set; } // Tile position in tile-grid
+        public int R { get; set; }
+        public int Rotation { get; set; } = 0; // 0-5
+        public bool IsRevealed { get; set; }
+        public string? ImagePath { get; set; }
+        public string? BackImagePath { get; set; }
+    }
+
+    public class HexData
+    {
+        public int Q { get; set; }
+        public int R { get; set; }
+        public bool IsRevealed { get; set; }
+        public string? TerrainType { get; set; }
+        public string? SiteType { get; set; }
+        public int EnemyCount { get; set; }
+        public List<PlayerToken> PlayerTokens { get; set; } = new();
+    }
+
+    public class PlayerToken
+    {
+        public Guid UserId { get; set; }
+        public string TokenImage { get; set; } = string.Empty;
+        public string HeroName { get; set; } = string.Empty;
+    }
+}

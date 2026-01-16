@@ -1,3 +1,0 @@
-# Movement
-
-Pseudocode and costs.

@@ -1,0 +1,455 @@
+[
+  {
+    "id": "skill_tovak_01",
+    "name": "Cold Toughness",
+    "hero": "Tovak",
+    "image": "images/skill_blue1.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Gain Ice Resistance. Once per turn: Block 2 (Ice/Phys) or Block 1 (Fire).",
+    "effects": [
+      { "type": "Passive", "description": "Gain Ice Resistance" },
+      { "type": "Block", "value": 2, "attributes": ["Ice", "Physical"], "description": "Once per turn bonus." }
+    ]
+  },
+  {
+    "id": "skill_tovak_02",
+    "name": "I Feel No Pain",
+    "hero": "Tovak",
+    "image": "images/skill_blue2.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "You may use Wounds from hand as sideways cards (Block 1 / Attack 1 / Move 1 / Influence 1).",
+    "effects": [
+      { "type": "Passive", "description": "Wounds are playable as basic cards." }
+    ]
+  },
+  {
+    "id": "skill_tovak_03",
+    "name": "Shield Mastery",
+    "hero": "Tovak",
+    "image": "images/skill_blue3.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "When you Block: +1 Block for each shield token/card played (min +1).",
+    "effects": [
+      { "type": "Passive", "description": "Boosts all Block actions." }
+    ]
+  },
+  {
+    "id": "skill_tovak_04",
+    "name": "Double Time",
+    "hero": "Tovak",
+    "image": "images/skill_blue4.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: You may play one Action card sideways for Move 4 instead of Move 1.",
+    "effects": [
+      { "type": "Move", "value": 4, "description": "Exhaust skill to boost sideways card." }
+    ]
+  },
+  {
+    "id": "skill_tovak_05",
+    "name": "Who Needs Magic",
+    "hero": "Tovak",
+    "image": "images/skill_blue5.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: Gain 1 White Crystal to inventory. Or use as Mana during turn.",
+    "effects": [
+      { "type": "GainCrystal", "value": 1, "attributes": ["White"] }
+    ]
+  },
+  {
+    "id": "skill_tovak_06",
+    "name": "Mana Draw",
+    "hero": "Tovak",
+    "image": "images/skill_blue6.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: When playing 'Mana Draw' card, gain +2 Move/Influence/Block/Attack.",
+    "effects": [
+      { "type": "Passive", "description": "Boosts Mana Draw card." }
+    ]
+  },
+  {
+    "id": "skill_tovak_07",
+    "name": "Night Sharpshooting",
+    "hero": "Tovak",
+    "image": "images/skill_blue7.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Attacks from Units are considered Ranged during Night (or inside Dungeons).",
+    "effects": [
+      { "type": "Passive", "description": "Units gain Ranged in darkness." }
+    ]
+  },
+  {
+    "id": "skill_tovak_08",
+    "name": "Resistance",
+    "hero": "Tovak",
+    "image": "images/skill_blue8.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: Gain Physical Resistance for one attack.",
+    "effects": [
+      { "type": "Block", "value": 0, "attributes": ["ResistantPhysical"] }
+    ]
+  },
+  {
+    "id": "skill_tovak_09",
+    "name": "Motivation",
+    "hero": "Tovak",
+    "image": "images/skill_blue9.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: When you draw cards, draw +2 cards, then put 2 from hand to bottom of deck.",
+    "effects": [
+      { "type": "DrawCard", "value": 2, "description": "Cycle hand." }
+    ]
+  },
+  {
+    "id": "skill_tovak_10",
+    "name": "Refreshing Walk",
+    "hero": "Tovak",
+    "image": "images/skill_blue10.jpg",
+    "back_image": "images/skill_blue_back.jpg",
+    "description": "Once per round: Move 2. Heal 1.",
+    "effects": [
+      { "type": "Move", "value": 2 },
+      { "type": "Heal", "value": 1 }
+    ]
+  },
+
+  {
+    "id": "skill_arythea_01",
+    "name": "Hot Blood",
+    "hero": "Arythea",
+    "image": "images/skill_red1.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "You may use Wounds sideways as Attack 2 or Block 2.",
+    "effects": [
+      { "type": "Passive", "description": "Wounds act as Attack/Block 2." }
+    ]
+  },
+  {
+    "id": "skill_arythea_02",
+    "name": "Power of Pain",
+    "hero": "Arythea",
+    "image": "images/skill_red2.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per turn: Use 1 Wound as a Mana of any color.",
+    "effects": [
+      { "type": "GainMana", "value": 1, "description": "Spend Wound card." }
+    ]
+  },
+  {
+    "id": "skill_arythea_03",
+    "name": "Dark Fire",
+    "hero": "Arythea",
+    "image": "images/skill_red3.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Attack 3 (Fire/Cold) OR Ranged Attack 2 (Fire/Cold).",
+    "effects": [
+      { "type": "Attack", "value": 3, "attributes": ["Fire", "Cold"] }
+    ]
+  },
+  {
+    "id": "skill_arythea_04",
+    "name": "Burning Power",
+    "hero": "Arythea",
+    "image": "images/skill_red4.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Gain 1 Red Crystal to inventory. Or use as Mana.",
+    "effects": [
+      { "type": "GainCrystal", "value": 1, "attributes": ["Red"] }
+    ]
+  },
+  {
+    "id": "skill_arythea_05",
+    "name": "Invocation",
+    "hero": "Arythea",
+    "image": "images/skill_red5.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Use 1 Mana Die from source as Black Mana. Reroll after.",
+    "effects": [
+      { "type": "GainMana", "value": 1, "attributes": ["Black"] }
+    ]
+  },
+  {
+    "id": "skill_arythea_06",
+    "name": "Healing Ritual",
+    "hero": "Arythea",
+    "image": "images/skill_red6.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Discard a non-Wound card to Heal 2. Or discard Wound to Heal 1.",
+    "effects": [
+      { "type": "Heal", "value": 2 }
+    ]
+  },
+  {
+    "id": "skill_arythea_07",
+    "name": "Dark Paths",
+    "hero": "Arythea",
+    "image": "images/skill_red7.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Movement cost to enter Swamp/Wasteland/Desert is 1 during Night (or Day if using Black mana).",
+    "effects": [
+      { "type": "Passive", "description": "Terrain cost reduction." }
+    ]
+  },
+  {
+    "id": "skill_arythea_08",
+    "name": "Pain Ritual",
+    "hero": "Arythea",
+    "image": "images/skill_red8.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Take a Wound to gain +3 to any Action (Attack/Block/Move/Influence).",
+    "effects": [
+      { "type": "Passive", "description": "Take wound -> +3 Value." }
+    ]
+  },
+  {
+    "id": "skill_arythea_09",
+    "name": "Polarizing",
+    "hero": "Arythea",
+    "image": "images/skill_red9.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Flip one Mana Die in source to its opposite color.",
+    "effects": [
+      { "type": "SetManaDie", "value": 1, "description": "Flip to opposite." }
+    ]
+  },
+  {
+    "id": "skill_arythea_10",
+    "name": "Motivation",
+    "hero": "Arythea",
+    "image": "images/skill_red10.jpg",
+    "back_image": "images/skill_red_back.jpg",
+    "description": "Once per round: Draw 2 cards, then cycle 2 cards.",
+    "effects": [
+      { "type": "DrawCard", "value": 2 }
+    ]
+  },
+
+  {
+    "id": "skill_goldyx_01",
+    "name": "Flight",
+    "hero": "Goldyx",
+    "image": "images/skill_green1.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Move 2. You have Flight for this turn.",
+    "effects": [
+      { "type": "Move", "value": 2, "attributes": ["Flight"] }
+    ]
+  },
+  {
+    "id": "skill_goldyx_02",
+    "name": "Potion Making",
+    "hero": "Goldyx",
+    "image": "images/skill_green2.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Heal 2. OR Gain 1 Green Crystal.",
+    "effects": [
+      { "type": "Heal", "value": 2 },
+      { "type": "GainCrystal", "value": 1, "attributes": ["Green"] }
+    ]
+  },
+  {
+    "id": "skill_goldyx_03",
+    "name": "Freezing Power",
+    "hero": "Goldyx",
+    "image": "images/skill_green3.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Siege Attack 2 (Ice). OR Gain 1 Blue Crystal.",
+    "effects": [
+      { "type": "Attack", "value": 2, "attributes": ["Siege", "Ice"] },
+      { "type": "GainCrystal", "value": 1, "attributes": ["Blue"] }
+    ]
+  },
+  {
+    "id": "skill_goldyx_04",
+    "name": "Power of the Air",
+    "hero": "Goldyx",
+    "image": "images/skill_green4.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Move 2 (White). OR Gain 1 White Crystal.",
+    "effects": [
+      { "type": "Move", "value": 2, "attributes": ["White"] },
+      { "type": "GainCrystal", "value": 1, "attributes": ["White"] }
+    ]
+  },
+  {
+    "id": "skill_goldyx_05",
+    "name": "Fire Power",
+    "hero": "Goldyx",
+    "image": "images/skill_green5.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Attack 2 (Fire). OR Gain 1 Red Crystal.",
+    "effects": [
+      { "type": "Attack", "value": 2, "attributes": ["Fire"] },
+      { "type": "GainCrystal", "value": 1, "attributes": ["Red"] }
+    ]
+  },
+  {
+    "id": "skill_goldyx_06",
+    "name": "Spell Sucker",
+    "hero": "Goldyx",
+    "image": "images/skill_green6.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: When an enemy casts a spell/attack (Violet/White/Red enemy), cancel it or gain mana.",
+    "effects": [
+      { "type": "CancelAttack", "value": 1 },
+      { "type": "GainMana", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_goldyx_07",
+    "name": "Universal Power",
+    "hero": "Goldyx",
+    "image": "images/skill_green7.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Gain 1 Mana of any basic color (Red/Blue/Green/White).",
+    "effects": [
+      { "type": "GainMana", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_goldyx_08",
+    "name": "Glittering",
+    "hero": "Goldyx",
+    "image": "images/skill_green8.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Influence 2. Gain 1 Fame for every different color crystal in inventory.",
+    "effects": [
+      { "type": "Influence", "value": 2 },
+      { "type": "GainFame", "value": 0, "description": "Based on crystals." }
+    ]
+  },
+  {
+    "id": "skill_goldyx_09",
+    "name": "Source Control",
+    "hero": "Goldyx",
+    "image": "images/skill_green9.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Reroll any number of Mana Dice in source. You may set one to a color of your choice.",
+    "effects": [
+      { "type": "SetManaDie", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_goldyx_10",
+    "name": "Motivation",
+    "hero": "Goldyx",
+    "image": "images/skill_green10.jpg",
+    "back_image": "images/skill_green_back.jpg",
+    "description": "Once per round: Draw 2 cards, then cycle 2 cards.",
+    "effects": [
+      { "type": "DrawCard", "value": 2 }
+    ]
+  },
+
+  {
+    "id": "skill_norowas_01",
+    "name": "Noble Manners",
+    "hero": "Norowas",
+    "image": "images/skill_silver1.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Influence 2. When interacting, gain +1 Reputation.",
+    "effects": [
+      { "type": "Influence", "value": 2 },
+      { "type": "GainReputation", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_norowas_02",
+    "name": "Leadership",
+    "hero": "Norowas",
+    "image": "images/skill_silver2.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Ready a Unit (Level I, II, or III).",
+    "effects": [
+      { "type": "ReadyUnit", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_norowas_03",
+    "name": "Forward March",
+    "hero": "Norowas",
+    "image": "images/skill_silver3.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Move 2. You may move with your Units (Units add their Move value).",
+    "effects": [
+      { "type": "Move", "value": 2 }
+    ]
+  },
+  {
+    "id": "skill_norowas_04",
+    "name": "Leaves in the Wind",
+    "hero": "Norowas",
+    "image": "images/skill_silver4.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Move 2. Forest costs 0 to enter.",
+    "effects": [
+      { "type": "Move", "value": 2, "description": "Forest costs 0." }
+    ]
+  },
+  {
+    "id": "skill_norowas_05",
+    "name": "Day Sharpshooting",
+    "hero": "Norowas",
+    "image": "images/skill_silver5.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Attacks from Units are considered Ranged during Day.",
+    "effects": [
+      { "type": "Passive", "description": "Units gain Ranged in daylight." }
+    ]
+  },
+  {
+    "id": "skill_norowas_06",
+    "name": "Whispering in the Trees",
+    "hero": "Norowas",
+    "image": "images/skill_silver6.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Gain 1 Green Crystal. Or use as White Crystal.",
+    "effects": [
+      { "type": "GainCrystal", "value": 1, "attributes": ["Green"] }
+    ]
+  },
+  {
+    "id": "skill_norowas_07",
+    "name": "Bonds of Loyalty",
+    "hero": "Norowas",
+    "image": "images/skill_silver7.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Recruit a unit in a Village, Keep or Tower with -5 Influence cost (min 0).",
+    "effects": [
+      { "type": "Recruit", "description": "Discount 5." }
+    ]
+  },
+  {
+    "id": "skill_norowas_08",
+    "name": "Inspiration",
+    "hero": "Norowas",
+    "image": "images/skill_silver8.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: When using a Unit, it gets +2 to its value (Attack/Block).",
+    "effects": [
+      { "type": "Passive", "description": "Unit boost +2." }
+    ]
+  },
+  {
+    "id": "skill_norowas_09",
+    "name": "Prayer",
+    "hero": "Norowas",
+    "image": "images/skill_silver9.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Heal 1 (Unit or Hero). OR Remove 1 Wound from hand.",
+    "effects": [
+      { "type": "Heal", "value": 1 },
+      { "type": "RemoveWound", "value": 1 }
+    ]
+  },
+  {
+    "id": "skill_norowas_10",
+    "name": "Motivation",
+    "hero": "Norowas",
+    "image": "images/skill_silver10.jpg",
+    "back_image": "images/skill_silver_back.jpg",
+    "description": "Once per round: Draw 2 cards, then cycle 2 cards.",
+    "effects": [
+      { "type": "DrawCard", "value": 2 }
+    ]
+  }
+]

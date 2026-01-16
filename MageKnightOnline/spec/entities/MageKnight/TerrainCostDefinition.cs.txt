@@ -1,0 +1,12 @@
+public enum TimeOfDay
+{
+    Day,
+    Night
+}
+
+public class TerrainCostDefinition
+{
+    public TerrainType Terrain { get; set; }
+    public int CostDay { get; set; }
+    public int CostNight { get; set; }
+}

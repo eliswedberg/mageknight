@@ -1,0 +1,46 @@
+[
+  {
+    "id": "hero_tovak",
+    "name": "Tovak",
+    "title": "The Mage Knight",
+    "color_theme": "Blue/Silver",
+    "starting_cards_ref": "basic_actions", 
+    "skill_pool_ref": "Tovak",
+    "image": "images/character_tovak.jpg",
+    "token_image": "images/character_token_tovak_trans.png",
+    "mat_image": "images/TovakMat_01.jpg"
+  },
+  {
+    "id": "hero_arythea",
+    "name": "Arythea",
+    "title": "The Blood Cultist",
+    "color_theme": "Red/Blood",
+    "starting_cards_ref": "basic_actions",
+    "skill_pool_ref": "Arythea",
+    "image": "images/character_arythea.jpg",
+    "token_image": "images/character_token_arythea_trans.png",
+    "mat_image": "images/ArytheaMat_01.jpg"
+  },
+  {
+    "id": "hero_goldyx",
+    "name": "Goldyx",
+    "title": "The Draconum",
+    "color_theme": "Green/Gold",
+    "starting_cards_ref": "basic_actions",
+    "skill_pool_ref": "Goldyx",
+    "image": "images/character_goldyx.jpg",
+    "token_image": "images/character_token_goldyx_trans.png",
+    "mat_image": "images/GoldyxMat_01.jpg"
+  },
+  {
+    "id": "hero_norowas",
+    "name": "Norowas",
+    "title": "The Elven Lord",
+    "color_theme": "White/Green",
+    "starting_cards_ref": "basic_actions",
+    "skill_pool_ref": "Norowas",
+    "image": "images/character_norowas.jpg",
+    "token_image": "images/character_token_norowas_trans.png",
+    "mat_image": "images/NorowasMat_01.jpg"
+  }
+]

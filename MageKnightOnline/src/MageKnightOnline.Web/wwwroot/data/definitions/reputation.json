@@ -1,0 +1,11 @@
+[
+  { "position": 0, "title": "X", "modifier": -5, "image": "images/fame_board.jpg" },
+  { "position": 1, "title": "Villain", "modifier": -3 },
+  { "position": 2, "title": "Thug", "modifier": -2 },
+  { "position": 3, "title": "Mercenary", "modifier": -1 },
+  { "position": 4, "title": "Wanderer", "modifier": 0, "is_start": true },
+  { "position": 5, "title": "Captain", "modifier": 1 },
+  { "position": 6, "title": "Guardian", "modifier": 2 },
+  { "position": 7, "title": "Hero", "modifier": 3 },
+  { "position": 8, "title": "Legend", "modifier": 5 }
+]

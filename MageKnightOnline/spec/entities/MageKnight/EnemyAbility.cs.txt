@@ -1,0 +1,25 @@
+[Flags]
+public enum EnemyAbility
+{
+    None = 0,
+    
+    // --- Defensive ---
+    Fortified = 1 << 0,   // Kan inte attackeras med Ranged i Ranged Phase (om inte Siege)
+    ResistantPhysical = 1 << 1, // Tar halv skada av Fysisk
+    ResistantFire = 1 << 2,     // Tar halv skada av Eld
+    ResistantIce = 1 << 3,      // Tar halv skada av Is
+    Elusive = 1 << 4,     // Armor är högre om man inte blockar helt (Lösare regel, kräver logik)
+    
+    // --- Offensive ---
+    Swift = 1 << 5,       // Kräver dubbel mängd Block
+    Brutal = 1 << 6,      // Skadan gör dubbelt så mycket skada om den går igenom (2 Wounds per damage)
+    Poison = 1 << 7,      // Ger Poison Wounds (i discard pile)
+    Paralyze = 1 << 8,    // Om skadan går igenom, förstör kort/units
+    Vampiric = 1 << 9,    // Heal fienden om den gör skada
+    Cumbersome = 1 << 10, // Attack requires more movement to block (expansion)
+    
+    // --- Special ---
+    Summon_Brown = 1 << 11, // Kallar på en brun token
+    Summon_Red = 1 << 12,   // Kallar på en röd token
+    High_Dragon = 1 << 13   // Immunitet mot vissa effekter
+}

@@ -1,0 +1,278 @@
+[
+  { 
+    "id": "aa_01", 
+    "name": "Ambush", 
+    "image": "images/adv_action_ambush.jpg",
+    "effects_basic": [{"type":"Move","value":2},{"type":"Attack","value":2}], 
+    "effects_powered": [{"type":"Move","value":4},{"type":"Attack","value":4,"attributes":["Unblockable"]}] 
+  },
+  { 
+    "id": "aa_02", 
+    "name": "Blood Rage", 
+    "image": "images/adv_action_blood_rage.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"description":"+1 per Wound"}], 
+    "effects_powered": [{"type":"Attack","value":3,"description":"+1 per Wound"}] 
+  },
+  { 
+    "id": "aa_03", 
+    "name": "Blood Ritual", 
+    "image": "images/adv_action_blood_ritual.jpg",
+    "effects_basic": [{"type":"GainCrystal","value":1,"description":"Take 1 Wound"}], 
+    "effects_powered": [{"type":"GainCrystal","value":2,"description":"Take 1 Wound"}] 
+  },
+  { 
+    "id": "aa_04", 
+    "name": "Crushing Bolt", 
+    "image": "images/adv_action_crushing_blot.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Siege"]}], 
+    "effects_powered": [{"type":"Attack","value":5,"attributes":["Siege"]},{"type":"ReduceArmor","value":1}] 
+  },
+  { 
+    "id": "aa_05", 
+    "name": "Crystal Mastery", 
+    "image": "images/adv_action_crystal_mastery.jpg",
+    "effects_basic": [{"type":"GainCrystal","value":1}], 
+    "effects_powered": [{"type":"GainCrystal","value":2}] 
+  },
+  { 
+    "id": "aa_06", 
+    "name": "Decompose", 
+    "image": "images/adv_action_decompose.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"description":"If kill: Gain Crystal"}], 
+    "effects_powered": [{"type":"Attack","value":2,"description":"If kill: Gain 2 Crystals or Heal 2"}] 
+  },
+  { 
+    "id": "aa_07", 
+    "name": "Diplomacy", 
+    "image": "images/adv_action_diplomacy.jpg",
+    "effects_basic": [{"type":"Influence","value":4}], 
+    "effects_powered": [{"type":"Influence","value":6}] 
+  },
+  { 
+    "id": "aa_08", 
+    "name": "Heroic Tales", 
+    "image": "images/adv_action_heroic_tale.jpg",
+    "effects_basic": [{"type":"Influence","value":3},{"type":"GainReputation","value":1}], 
+    "effects_powered": [{"type":"Influence","value":6},{"type":"GainReputation","value":2}] 
+  },
+  { 
+    "id": "aa_09", 
+    "name": "In Need", 
+    "image": "images/adv_action_in_need.jpg",
+    "effects_basic": [{"type":"Heal","value":1}], 
+    "effects_powered": [{"type":"Heal","value":2,"description":"Heal 4 if >2 Wounds"}] 
+  },
+  { 
+    "id": "aa_10", 
+    "name": "Intimidate", 
+    "image": "images/adv_action_intimidate.jpg",
+    "effects_basic": [{"type":"Influence","value":4},{"type":"LoseReputation","value":1}], 
+    "effects_powered": [{"type":"CancelAttack","value":1},{"type":"Block","value":4}] 
+  },
+  { 
+    "id": "aa_11", 
+    "name": "Learning", 
+    "image": "images/adv_action_learning.jpg",
+    "effects_basic": [{"type":"Influence","value":2,"description":"OR Block 2. Gain 1 XP."}], 
+    "effects_powered": [{"type":"Influence","value":4,"description":"OR Block 4. Gain 2 XP."}] 
+  },
+  { 
+    "id": "aa_12", 
+    "name": "Mana Storm", 
+    "image": "images/adv_action_mana_storm.jpg",
+    "effects_basic": [{"type":"GainCrystal","value":1,"description":"Reroll source"}], 
+    "effects_powered": [{"type":"GainCrystal","value":1},{"type":"SetManaDie","value":2}] 
+  },
+  { 
+    "id": "aa_13", 
+    "name": "Maximal Effect", 
+    "image": "images/adv_action_maximal_effect.jpg",
+    "effects_basic": [{"type":"Passive","description":"Play next action as Powered"}], 
+    "effects_powered": [{"type":"Passive","description":"Play Action+Spell. Action is powered."}] 
+  },
+  { 
+    "id": "aa_14", 
+    "name": "Path Finding", 
+    "image": "images/adv_action_path_finding.jpg",
+    "effects_basic": [{"type":"Move","value":4}], 
+    "effects_powered": [{"type":"Move","value":6,"attributes":["Safe"]}] 
+  },
+  { 
+    "id": "aa_15", 
+    "name": "Refreshing Walk", 
+    "image": "images/adv_action_refreshing_walk.jpg",
+    "effects_basic": [{"type":"Move","value":2},{"type":"Heal","value":1}], 
+    "effects_powered": [{"type":"Move","value":4},{"type":"Heal","value":2}] 
+  },
+  { 
+    "id": "aa_16", 
+    "name": "Regeneration", 
+    "image": "images/adv_action_regeneration.jpg",
+    "effects_basic": [{"type":"Heal","value":2},{"type":"ReadyUnit","value":1,"description":"Level 1-2"}], 
+    "effects_powered": [{"type":"Heal","value":4},{"type":"ReadyUnit","value":1}] 
+  },
+  { 
+    "id": "aa_17", 
+    "name": "Song of Wind", 
+    "image": "images/adv_action_song_of_wind.jpg",
+    "effects_basic": [{"type":"Move","value":3,"description":"Plains cost 0"}], 
+    "effects_powered": [{"type":"Move","value":5,"description":"Plains/Forest cost 0"}] 
+  },
+  { 
+    "id": "aa_18", 
+    "name": "Training", 
+    "image": "images/adv_action_training.jpg",
+    "effects_basic": [{"type":"DrawCard","value":2}], 
+    "effects_powered": [{"type":"DrawCard","value":2},{"type":"Passive","description":"Play next Action free"}] 
+  },
+  { 
+    "id": "aa_19", 
+    "name": "Agility", 
+    "image": "images/adv_action_agility.jpg",
+    "effects_basic": [{"type":"Move","value":2},{"type":"Block","value":2}], 
+    "effects_powered": [{"type":"Move","value":4},{"type":"Block","value":4}] 
+  },
+  { 
+    "id": "aa_20", 
+    "name": "Fire Bolt", 
+    "image": "images/adv_action_fire_bolt.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Ranged","Fire"]}], 
+    "effects_powered": [{"type":"Attack","value":4,"attributes":["Ranged","Fire"]}] 
+  },
+  { 
+    "id": "aa_21", 
+    "name": "Frost Bridge", 
+    "image": "images/adv_action_frost_bridge.jpg",
+    "effects_basic": [{"type":"Move","value":2,"description":"Water/Swamp cost 0"}], 
+    "effects_powered": [{"type":"Move","value":4,"description":"Water/Swamp cost 0"}] 
+  },
+  { 
+    "id": "aa_22", 
+    "name": "Ice Bolt", 
+    "image": "images/adv_action_ice_bolt.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Ranged","Ice"]}], 
+    "effects_powered": [{"type":"Attack","value":4,"attributes":["Ranged","Ice"]}] 
+  },
+  { 
+    "id": "aa_23", 
+    "name": "Ice Shield", 
+    "image": "images/adv_action_ice_shield.jpg",
+    "effects_basic": [{"type":"Block","value":3,"attributes":["Ice"]}], 
+    "effects_powered": [{"type":"Block","value":6,"attributes":["Ice"]}] 
+  },
+  { 
+    "id": "aa_24", 
+    "name": "Into the Heat", 
+    "image": "images/adv_action_into_the_heat.jpg",
+    "effects_basic": [{"type":"Move","value":2,"description":"Desert cost 0"}], 
+    "effects_powered": [{"type":"Move","value":4,"description":"Desert/Wasteland cost 0"}] 
+  },
+  { 
+    "id": "aa_25", 
+    "name": "Magic Talent", 
+    "image": "images/adv_action_magic_talent.jpg",
+    "effects_basic": [{"type":"GainMana","value":1}], 
+    "effects_powered": [{"type":"GainMana","value":2}] 
+  },
+  { 
+    "id": "aa_26", 
+    "name": "Pure Magic", 
+    "image": "images/adv_action_pure_magic.jpg",
+    "effects_basic": [{"type":"GainMana","value":1,"description":"Any color"}], 
+    "effects_powered": [{"type":"GainCrystal","value":1,"description":"Any color"}] 
+  },
+  { 
+    "id": "aa_27", 
+    "name": "Steady Tempo", 
+    "image": "images/adv_action_steady_tempo.jpg",
+    "effects_basic": [{"type":"Move","value":2},{"type":"Influence","value":2}], 
+    "effects_powered": [{"type":"Move","value":4},{"type":"Influence","value":4}] 
+  },
+  { 
+    "id": "aa_28", 
+    "name": "Swift Bolt", 
+    "image": "images/adv_action_swift_bolt.jpg",
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Ranged"]}], 
+    "effects_powered": [{"type":"Attack","value":4,"attributes":["Ranged"]}] 
+  },
+  { 
+    "id": "aa_29", 
+    "name": "Deadly Strike", 
+    "image": null,
+    "effects_basic": [{"type":"Attack","value":3}], 
+    "effects_powered": [{"type":"Attack","value":6}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_30", 
+    "name": "Dodge and Weave", 
+    "image": null,
+    "effects_basic": [{"type":"Move","value":3,"description":"OR Block 3"}], 
+    "effects_powered": [{"type":"Move","value":5,"description":"OR Block 6"}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_31", 
+    "name": "Explosive Bolt", 
+    "image": null,
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Ranged"]}], 
+    "effects_powered": [{"type":"Attack","value":4,"attributes":["Siege","Fire"]}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_32", 
+    "name": "Force of Nature", 
+    "image": null,
+    "effects_basic": [{"type":"Block","value":3,"description":"OR Attack 3"}], 
+    "effects_powered": [{"type":"Block","value":5,"description":"OR Attack 5"}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_33", 
+    "name": "Glittering Fortune", 
+    "image": null,
+    "effects_basic": [{"type":"Influence","value":2,"description":"Per Crystal in inventory"}], 
+    "effects_powered": [{"type":"Influence","value":3,"description":"Per Crystal + 1 Fame"}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_34", 
+    "name": "Ice Trap", 
+    "image": null,
+    "effects_basic": [{"type":"Block","value":2},{"type":"ReduceAttack","value":2}], 
+    "effects_powered": [{"type":"Block","value":4},{"type":"ReduceAttack","value":4}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_35", 
+    "name": "Mountain Lore", 
+    "image": null,
+    "effects_basic": [{"type":"Move","value":3,"description":"Hills cost 0"}], 
+    "effects_powered": [{"type":"Move","value":5,"description":"Hills/Mount cost 0"}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_36", 
+    "name": "Peaceful Moment", 
+    "image": null,
+    "effects_basic": [{"type":"DrawCard","value":0,"description":"1 per terrain type adjacent"}], 
+    "effects_powered": [{"type":"Heal","value":1},{"type":"DrawCard","value":0}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_37", 
+    "name": "Pure Wish", 
+    "image": null,
+    "effects_basic": [{"type":"Heal","value":2,"description":"Cost: 3 Influence"}], 
+    "effects_powered": [{"type":"GainCrystal","value":2,"description":"Cost: 3 Influence"}],
+    "note": "No image available"
+  },
+  { 
+    "id": "aa_38", 
+    "name": "Swift Reflexes", 
+    "image": null,
+    "effects_basic": [{"type":"Attack","value":2,"attributes":["Ranged"],"description":"OR Block 3"}], 
+    "effects_powered": [{"type":"Attack","value":4,"attributes":["Ranged"],"description":"OR Block 6"}],
+    "note": "No image available"
+  }
+]

@@ -1,0 +1,65 @@
+// Motsvarar "type" i scenarios.json
+public enum ScenarioType
+{
+    Training,
+    Standard,
+    Competitive,
+    Cooperative,
+    Short
+}
+
+// Motsvarar "map_shape"
+public enum MapShape
+{
+    Wedge,      // Den vanliga "tårtbiten"
+    FullyOpen,  // Öppen karta (t.ex. Mines Liberation)
+    Long,       // Lång smal karta
+    Random      // Helt slumpad
+}
+
+// Motsvarar strängarna i "special_rules" listan
+[Flags]
+public enum ScenarioRule
+{
+    None = 0,
+    NoPvP = 1 << 0,
+    CityLevelsDependsOnPlayerCount = 1 << 1,
+    MinesAreFortified = 1 << 2,
+    GreenTokensInMines = 1 << 3,
+    DoubleFameForAdventureSites = 1 << 4,
+    ScorePointsForSitesOwned = 1 << 5,
+    TrainingWheels = 1 << 6 // Enklare regler för tutorial
+}
+
+// DTO för att läsa in själva scenariot
+public class ScenarioDefinition
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public ScenarioType Type { get; set; }
+    public int Rounds { get; set; }
+    public MapShape MapShape { get; set; }
+    
+    // Motsvarar "tiles_deck" objektet
+    public TileDeckConfig TilesDeck { get; set; } 
+    
+    public List<int> CityLevels { get; set; }
+    public string Goal { get; set; }
+    
+    // Konvertera listan av strings i JSON till Enum-flags i koden
+    public List<string> SpecialRules { get; set; } 
+
+    public ScenarioRule GetRulesEnum()
+    {
+        // Helper för att slå ihop stränglistan till en [Flags] enum
+        // Implementation kräver Enum.Parse loop
+        return ScenarioRule.None; 
+    }
+}
+
+public class TileDeckConfig
+{
+    public int Countryside { get; set; }
+    public int Core { get; set; }
+    public int Cities { get; set; }
+}

@@ -1,0 +1,11 @@
+[
+  { "terrain": "Plains", "cost_day": 2, "cost_night": 2 },
+  { "terrain": "Hills", "cost_day": 3, "cost_night": 3 },
+  { "terrain": "Forest", "cost_day": 3, "cost_night": 5 },
+  { "terrain": "Wasteland", "cost_day": 4, "cost_night": 4 },
+  { "terrain": "Desert", "cost_day": 5, "cost_night": 3 },
+  { "terrain": "Swamp", "cost_day": 5, "cost_night": 5 },
+  { "terrain": "Mountain", "cost_day": 99, "cost_night": 99, "note": "Impassable without special ability" },
+  { "terrain": "Water", "cost_day": 99, "cost_night": 99, "note": "Impassable" },
+  { "terrain": "City", "cost_day": 2, "cost_night": 2 }
+]

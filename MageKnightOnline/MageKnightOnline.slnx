@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MageKnightOnline.Core/MageKnightOnline.Core.csproj" />
+    <Project Path="src/MageKnightOnline.Data/MageKnightOnline.Data.csproj" />
+    <Project Path="src/MageKnightOnline.Web/MageKnightOnline.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MageKnightOnline.Tests/MageKnightOnline.Tests.csproj" />
+  </Folder>
+</Solution>

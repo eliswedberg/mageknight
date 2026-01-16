@@ -1,0 +1,217 @@
+@using MageKnightOnline.Core.Definitions
+@using MageKnightOnline.Core.GameState
+
+<div class="tactics-selection">
+    <div class="tactics-header">
+        <h2>Select Your Tactic</h2>
+        <p class="text-muted">Round @Round - @(IsDay ? "Day" : "Night") Phase</p>
+    </div>
+
+    <div class="tactics-grid">
+        @foreach (var tactic in AvailableTactics.OrderBy(t => t.Position))
+        {
+            var isSelected = SelectedTacticId == tactic.Id;
+            var isTaken = TakenTacticIds.Contains(tactic.Id);
+            
+            <div class="tactic-card @(isSelected ? "selected" : "") @(isTaken ? "taken" : "")"
+                 @onclick="() => SelectTactic(tactic)">
+                @if (!string.IsNullOrEmpty(tactic.Image))
+                {
+                    <img src="@tactic.Image" alt="@tactic.Name" class="tactic-image" />
+                }
+                <div class="tactic-info">
+                    <div class="tactic-position">@tactic.Position</div>
+                    <h3>@tactic.Name</h3>
+                    <p class="tactic-effect">@tactic.Effect</p>
+                </div>
+                @if (isTaken)
+                {
+                    <div class="taken-overlay">
+                        <span>Taken</span>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="tactics-footer">
+        @if (HasSelected)
+        {
+            <p class="text-success">✓ You have selected your tactic. Waiting for other players...</p>
+        }
+        else if (SelectedTacticId != null)
+        {
+            <button class="btn btn-primary btn-lg" @onclick="ConfirmSelection">
+                Confirm Selection
+            </button>
+        }
+        else
+        {
+            <p class="text-muted">Click a tactic card to select it</p>
+        }
+    </div>
+</div>
+
+<style>
+    .tactics-selection {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--spacing-lg);
+    }
+
+    .tactics-header {
+        text-align: center;
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .tactics-header h2 {
+        font-size: 2rem;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .tactics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .tactic-card {
+        background: var(--color-bg-card);
+        border: 2px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .tactic-card:hover:not(.taken) {
+        border-color: var(--color-gold);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .tactic-card.selected {
+        border-color: var(--color-gold);
+        box-shadow: 0 0 20px rgba(212, 168, 83, 0.3);
+    }
+
+    .tactic-card.taken {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .tactic-image {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+    }
+
+    .tactic-info {
+        padding: var(--spacing-md);
+        position: relative;
+    }
+
+    .tactic-position {
+        position: absolute;
+        top: calc(-1 * var(--spacing-md) - 20px);
+        right: var(--spacing-md);
+        width: 40px;
+        height: 40px;
+        background: var(--color-gold);
+        color: var(--color-bg-dark);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        font-family: 'Cinzel', serif;
+    }
+
+    .tactic-info h3 {
+        font-size: 1.1rem;
+        margin-bottom: var(--spacing-sm);
+        color: var(--color-text-primary);
+    }
+
+    .tactic-effect {
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+        line-height: 1.4;
+    }
+
+    .taken-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .taken-overlay span {
+        background: var(--color-error);
+        color: white;
+        padding: var(--spacing-sm) var(--spacing-lg);
+        border-radius: var(--radius-md);
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .tactics-footer {
+        text-align: center;
+    }
+
+    .tactics-footer .btn-lg {
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-size: 1.1rem;
+    }
+
+    .text-success {
+        color: var(--color-success);
+        font-size: 1.1rem;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Round { get; set; } = 1;
+
+    [Parameter]
+    public bool IsDay { get; set; } = true;
+
+    [Parameter]
+    public List<TacticsDefinition> AvailableTactics { get; set; } = new();
+
+    [Parameter]
+    public HashSet<string> TakenTacticIds { get; set; } = new();
+
+    [Parameter]
+    public bool HasSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnTacticSelected { get; set; }
+
+    private string? SelectedTacticId { get; set; }
+
+    private void SelectTactic(TacticsDefinition tactic)
+    {
+        if (HasSelected || TakenTacticIds.Contains(tactic.Id))
+            return;
+
+        SelectedTacticId = tactic.Id;
+    }
+
+    private async Task ConfirmSelection()
+    {
+        if (SelectedTacticId != null)
+        {
+            await OnTacticSelected.InvokeAsync(SelectedTacticId);
+        }
+    }
+}

@@ -1,8 +1,0 @@
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\bin\Debug\net9.0\.msCoverageSourceRootsMapping_MageKnightOnline.Tests
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\bin\Debug\net9.0\CoverletSourceRootsMapping_MageKnightOnline.Tests
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.csproj.AssemblyReference.cache
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.AssemblyInfoInputs.cache
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.AssemblyInfo.cs
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.csproj.CoreCompileInputs.cache
-C:\Users\eliwe\repos\mageknight\MageKnightOnline\MageKnightOnline.Tests\obj\Debug\net9.0\MageKnightOnline.Tests.sourcelink.json
