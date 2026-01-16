@@ -49,6 +49,10 @@ public class GameStateModel
     [JsonPropertyName("combat")]
     public CombatState? Combat { get; set; }
 
+    // Ruins token currently being resolved
+    [JsonPropertyName("active_ruins_token")]
+    public ActiveRuinsToken? ActiveRuinsToken { get; set; }
+
     // Victory state
     [JsonPropertyName("victory")]
     public VictoryState? Victory { get; set; }
@@ -178,6 +182,54 @@ public enum CombatPhase
 }
 
 /// <summary>
+/// State for a ruins token currently being resolved by the player.
+/// </summary>
+public class ActiveRuinsToken
+{
+    [JsonPropertyName("token_id")]
+    public string TokenId { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("is_resolved")]
+    public bool IsResolved { get; set; } = false;
+
+    /// <summary>
+    /// For loot tokens with choices (e.g., choose crystal colors).
+    /// </summary>
+    [JsonPropertyName("pending_choices")]
+    public List<RuinsChoice>? PendingChoices { get; set; }
+}
+
+/// <summary>
+/// A choice that needs to be made for a ruins token effect.
+/// </summary>
+public class RuinsChoice
+{
+    [JsonPropertyName("choice_type")]
+    public string ChoiceType { get; set; } = string.Empty; // CrystalColor, ManaColor, SpellFromOffer, ArtifactDraw, UnitFromOffer
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; } = 1;
+
+    [JsonPropertyName("options")]
+    public List<string>? Options { get; set; }
+
+    [JsonPropertyName("is_resolved")]
+    public bool IsResolved { get; set; } = false;
+}
+
+/// <summary>
 /// An enemy in combat.
 /// </summary>
 public class CombatEnemy
@@ -221,7 +273,14 @@ public class CombatEnemy
     public bool IsBrutal => Abilities.Contains("Brutal");
     public bool IsPoison => Abilities.Contains("Poison");
     public bool IsParalyze => Abilities.Contains("Paralyze");
+    public bool IsVampiric => Abilities.Contains("Vampiric");
     public bool CanSummon => Abilities.Any(a => a.StartsWith("Summon"));
+
+    /// <summary>
+    /// For Vampiric enemies - damage that has been healed through their ability.
+    /// </summary>
+    [JsonPropertyName("healed_damage")]
+    public int HealedDamage { get; set; } = 0;
 }
 
 public enum GamePhase
@@ -304,8 +363,20 @@ public class PlayerState
     [JsonPropertyName("movement_remaining")]
     public int MovementRemaining { get; set; } = 0;
 
+    [JsonPropertyName("flight_remaining")]
+    public int FlightRemaining { get; set; } = 0;
+
+    [JsonPropertyName("safe_movement_remaining")]
+    public int SafeMovementRemaining { get; set; } = 0;
+
     [JsonPropertyName("has_rested")]
     public bool HasRested { get; set; } = false;
+
+    [JsonPropertyName("temporary_mana")]
+    public ManaColor? TemporaryMana { get; set; } = null; // Mana taken from Source this round
+
+    [JsonPropertyName("used_mana_die_index")]
+    public int? UsedManaDieIndex { get; set; } = null; // Index of die taken from pool (for rerolling at end of round)
 
     // Accumulated effects for current turn/action
     [JsonPropertyName("attack_pool")]
@@ -504,6 +575,10 @@ public class DeckState
     // Enemy decks by type
     [JsonPropertyName("enemy_decks")]
     public Dictionary<string, List<string>> EnemyDecks { get; set; } = new();
+
+    // Ruins tokens deck (face-down)
+    [JsonPropertyName("ruins_tokens")]
+    public List<string> RuinsTokens { get; set; } = new();
 }
 
 /// <summary>

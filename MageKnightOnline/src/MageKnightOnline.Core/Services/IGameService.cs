@@ -31,6 +31,10 @@ public interface IGameService
     
     // Query methods
     Task<IReadOnlyList<(int Q, int R)>> GetValidMovesAsync(Guid gameId, Guid userId);
+    Task<bool> CanExploreTileAsync(Guid gameId, Guid userId);
+    
+    // Exploration
+    Task<GameResult> ExploreTileAsync(Guid gameId, Guid userId, int q, int r);
 
     // Combat operations
     Task<GameResult> InitiateCombatAsync(Guid gameId, Guid userId);

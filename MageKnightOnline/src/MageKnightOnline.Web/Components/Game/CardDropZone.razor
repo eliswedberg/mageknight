@@ -1,0 +1,172 @@
+@namespace MageKnightOnline.Web.Components.Game
+
+<div class="card-drop-zone @(IsActive ? "active" : "") @(IsDragOver ? "drag-over" : "") @ZoneType"
+     @ondragover="OnDragOver"
+     @ondragover:preventDefault="true"
+     @ondragleave="OnDragLeave"
+     @ondrop="OnDrop">
+    <div class="drop-zone-content">
+        <div class="drop-icon">@GetDropIcon()</div>
+        <div class="drop-label">@Label</div>
+        @if (!string.IsNullOrEmpty(Hint) && IsActive)
+        {
+            <div class="drop-hint">@Hint</div>
+        }
+    </div>
+</div>
+
+<style>
+    .card-drop-zone {
+        min-height: 120px;
+        border: 2px dashed var(--color-border);
+        border-radius: var(--radius-lg);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s ease;
+        opacity: 0.5;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-drop-zone.active {
+        opacity: 1;
+        border-color: var(--color-gold);
+        animation: pulse-border 2s infinite;
+    }
+
+    .card-drop-zone.drag-over {
+        background: rgba(212, 168, 83, 0.1);
+        border-color: var(--color-gold);
+        border-style: solid;
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(212, 168, 83, 0.3);
+    }
+
+    @@keyframes pulse-border {
+        0%, 100% { border-color: var(--color-gold); }
+        50% { border-color: var(--color-border); }
+    }
+
+    .drop-zone-content {
+        text-align: center;
+        color: var(--color-text-muted);
+        pointer-events: none;
+    }
+
+    .drop-icon {
+        font-size: 2rem;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .card-drop-zone.active .drop-icon {
+        color: var(--color-gold);
+    }
+
+    .drop-label {
+        font-family: 'Cinzel', serif;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .card-drop-zone.active .drop-label {
+        color: var(--color-gold);
+    }
+
+    .drop-hint {
+        font-size: 0.75rem;
+        margin-top: var(--spacing-xs);
+        color: var(--color-text-muted);
+    }
+
+    /* Zone type variations */
+    .card-drop-zone.play {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(22, 163, 74, 0.05) 100%);
+    }
+
+    .card-drop-zone.play.drag-over {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.15) 100%);
+        border-color: #22c55e;
+    }
+
+    .card-drop-zone.sideways {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%);
+    }
+
+    .card-drop-zone.sideways.drag-over {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+        border-color: #3b82f6;
+    }
+
+    .card-drop-zone.discard {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%);
+    }
+
+    .card-drop-zone.discard.drag-over {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
+        border-color: #ef4444;
+    }
+
+    .card-drop-zone.combat {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+    }
+
+    .card-drop-zone.combat.drag-over {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+        border-color: #a855f7;
+    }
+</style>
+
+@code {
+    [Parameter] public string ZoneType { get; set; } = "play"; // play, sideways, discard, combat
+    [Parameter] public string Label { get; set; } = "Drop Card Here";
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public bool IsActive { get; set; } = false;
+    [Parameter] public EventCallback<CardDropEventArgs> OnCardDropped { get; set; }
+
+    private bool IsDragOver { get; set; } = false;
+
+    private void OnDragOver()
+    {
+        if (IsActive)
+        {
+            IsDragOver = true;
+        }
+    }
+
+    private void OnDragLeave()
+    {
+        IsDragOver = false;
+    }
+
+    private async Task OnDrop()
+    {
+        IsDragOver = false;
+        if (IsActive && OnCardDropped.HasDelegate)
+        {
+            await OnCardDropped.InvokeAsync(new CardDropEventArgs
+            {
+                ZoneType = ZoneType
+            });
+        }
+    }
+
+    private string GetDropIcon()
+    {
+        return ZoneType switch
+        {
+            "play" => "🎴",
+            "sideways" => "↔️",
+            "discard" => "🗑️",
+            "combat" => "⚔️",
+            _ => "📥"
+        };
+    }
+
+    public class CardDropEventArgs
+    {
+        public string ZoneType { get; set; } = string.Empty;
+    }
+}
+

@@ -1,4 +1,5 @@
 @namespace MageKnightOnline.Web.Components.Game
+@inject IJSRuntime JSRuntime
 
 <div class="card-hand @(IsExpanded ? "expanded" : "")">
     <div class="hand-header" @onclick="ToggleExpand">
@@ -11,11 +12,43 @@
         {
             var isSelected = SelectedCardIndex == index;
             var offset = CalculateCardOffset(index, Cards.Count);
+            var isDragging = _draggedCardIndex == index;
             
-            <div class="hand-card @(isSelected ? "selected" : "") @(card.CanPlay ? "" : "disabled")"
-                 style="--card-index: @index; --card-offset: @offset; z-index: @(isSelected ? 100 : index);"
+            <div class="hand-card @(isSelected ? "selected" : "") @(card.CanPlay ? "" : "disabled") @GetCardTypeClass(card) @(isDragging ? "dragging" : "")"
+                 style="--card-index: @index; --card-offset: @offset; z-index: @(isSelected ? 100 : (isDragging ? 150 : index));"
+                 draggable="@(card.CanPlay.ToString().ToLower())"
+                 @ondragstart="() => OnDragStart(index, card)"
+                 @ondragend="OnDragEnd"
                  @onclick="() => OnCardClick(index)"
                  @onclick:stopPropagation="true">
+                
+                <!-- Tooltip -->
+                <div class="card-tooltip">
+                    <div class="tooltip-header">
+                        <span class="tooltip-name">@card.Name</span>
+                        <span class="tooltip-type @GetCardTypeClass(card)">@card.Type</span>
+                    </div>
+                    <div class="tooltip-body">
+                        <div class="tooltip-effect">
+                            <span class="effect-icon">📜</span>
+                            <span>Basic: @card.BasicEffect</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(card.PoweredEffect))
+                        {
+                            <div class="tooltip-effect powered">
+                                <span class="effect-icon">⚡</span>
+                                <span>Powered (@card.PoweredManaColor): @card.PoweredEffect</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(card.Note))
+                        {
+                            <div class="tooltip-note">
+                                <span class="note-icon">💡</span>
+                                <span>@card.Note</span>
+                            </div>
+                        }
+                    </div>
+                </div>
                 
                 @if (!string.IsNullOrEmpty(card.ImageUrl))
                 {
@@ -26,6 +59,7 @@
                     <div class="card-placeholder">
                         <div class="card-name">@card.Name</div>
                         <div class="card-type">@card.Type</div>
+                        <div class="card-value">@card.BasicEffect</div>
                     </div>
                 }
 
@@ -36,16 +70,19 @@
                                 disabled="@(!card.CanPlay)">
                             Play
                         </button>
-                        @if (!string.IsNullOrEmpty(card.PoweredManaColor))
+                        @if (!string.IsNullOrEmpty(card.PoweredEffect) || !string.IsNullOrEmpty(card.PoweredManaColor))
                         {
-                            <button class="btn btn-sm btn-powered @(CanPlayPowered ? "" : "disabled")" 
+                            var canPlayThisCardPowered = CanPlayPoweredForCard?.Invoke(card) ?? CanPlayPowered;
+                            var manaRequirement = !string.IsNullOrEmpty(card.PoweredManaColor) ? card.PoweredManaColor : "mana";
+                            <button class="btn btn-sm btn-powered @(canPlayThisCardPowered ? "" : "disabled")" 
                                     @onclick="() => PlayCardPowered(index)" @onclick:stopPropagation="true"
-                                    disabled="@(!CanPlayPowered)"
-                                    title="@(CanPlayPowered ? "Play powered effect" : "Select mana first")">
-                                ⚡ Power
+                                    disabled="@(!canPlayThisCardPowered)"
+                                    title="@(canPlayThisCardPowered ? $"Play powered effect (requires {manaRequirement} mana)" : $"Requires {manaRequirement} mana from Source - take a mana die first")">
+                                ⚡ Powered
                             </button>
                         }
-                        <button class="btn btn-sm btn-secondary" @onclick="() => UseAsSidewaysCard(index)" @onclick:stopPropagation="true">
+                        <button class="btn btn-sm btn-secondary" @onclick="() => UseAsSidewaysCard(index)" @onclick:stopPropagation="true"
+                                title="Use sideways for +1 @card.Type">
                             +1
                         </button>
                     </div>
@@ -111,34 +148,38 @@
         display: flex;
         justify-content: center;
         position: relative;
-        height: 140px;
+        height: 180px;
         perspective: 1000px;
+        padding: 20px 0 60px 0; /* Extra padding top for tooltip, bottom for actions */
+        overflow: visible; /* Allow tooltips to show outside */
+        min-height: 250px; /* Ensure enough space for hover effects */
     }
 
     .card-hand.expanded .hand-cards {
-        height: 200px;
+        height: 240px;
+        min-height: 320px;
     }
 
     .hand-card {
         position: absolute;
-        width: 90px;
-        height: 126px;
+        width: 100px;
+        height: 140px;
         background: var(--color-bg-dark);
         border: 2px solid var(--color-border);
         border-radius: var(--radius-md);
         cursor: pointer;
         transition: all 0.2s ease;
         transform-origin: bottom center;
-        transform: translateX(calc(var(--card-offset) * 1px)) rotate(calc((var(--card-index) - 2) * 3deg));
+        transform: translateX(calc(var(--card-offset) * 1px)) rotate(calc((var(--card-index) - 2) * 2deg));
     }
 
     .card-hand.expanded .hand-card {
-        width: 120px;
-        height: 168px;
+        width: 130px;
+        height: 182px;
     }
 
     .hand-card:hover {
-        transform: translateX(calc(var(--card-offset) * 1px)) translateY(-20px) rotate(0deg) scale(1.1);
+        transform: translateX(calc(var(--card-offset) * 1px)) translateY(-30px) rotate(0deg) scale(1.15);
         z-index: 50 !important;
         border-color: var(--color-gold);
     }
@@ -151,6 +192,21 @@
 
     .hand-card.disabled {
         opacity: 0.5;
+    }
+
+    .hand-card.dragging {
+        opacity: 0.7;
+        transform: scale(1.05) rotate(5deg) !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        cursor: grabbing;
+    }
+
+    .hand-card[draggable="true"] {
+        cursor: grab;
+    }
+
+    .hand-card[draggable="true"]:active {
+        cursor: grabbing;
     }
 
     .card-image {
@@ -242,8 +298,168 @@
 
     .btn-powered.disabled,
     .btn-powered:disabled {
-        opacity: 0.5;
+        opacity: 0.6;
         cursor: not-allowed;
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        border-color: #6b7280;
+    }
+
+    .btn-powered.disabled:hover,
+    .btn-powered:disabled:hover {
+        background: linear-gradient(135deg, #6b7280, #4b5563);
+        border-color: #6b7280;
+    }
+
+    /* Card Type Classes */
+    .hand-card.move {
+        border-color: #22c55e;
+    }
+
+    .hand-card.attack {
+        border-color: #ef4444;
+    }
+
+    .hand-card.block {
+        border-color: #3b82f6;
+    }
+
+    .hand-card.influence {
+        border-color: #a855f7;
+    }
+
+    .hand-card.heal {
+        border-color: #f472b6;
+    }
+
+    .hand-card.wound {
+        border-color: #6b7280;
+        background: #2a1a1a;
+    }
+
+    /* Tooltip Styles */
+    .card-tooltip {
+        position: absolute;
+        bottom: calc(100% + 15px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 280px;
+        max-width: 90vw; /* Don't exceed viewport */
+        background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3a 100%);
+        border: 2px solid var(--color-gold);
+        border-radius: 8px;
+        padding: 12px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        z-index: 1000; /* High z-index to show above map */
+        pointer-events: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        white-space: normal;
+        word-wrap: break-word;
+    }
+
+    /* Tooltip always shows above card (since cards are at bottom) */
+    .hand-card:hover .card-tooltip {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .hand-card.selected .card-tooltip {
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    .tooltip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(212, 168, 83, 0.3);
+    }
+
+    .tooltip-name {
+        font-family: 'Cinzel', serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--color-gold);
+    }
+
+    .tooltip-type {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .tooltip-type.move {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22c55e;
+    }
+
+    .tooltip-type.attack {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .tooltip-type.block {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+
+    .tooltip-type.influence {
+        background: rgba(168, 85, 247, 0.2);
+        color: #a855f7;
+    }
+
+    .tooltip-type.heal {
+        background: rgba(244, 114, 182, 0.2);
+        color: #f472b6;
+    }
+
+    .tooltip-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tooltip-effect {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: #b0b0b0;
+    }
+
+    .tooltip-effect.powered {
+        color: #f59e0b;
+    }
+
+    .effect-icon {
+        flex-shrink: 0;
+    }
+
+    .tooltip-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 0.75rem;
+        color: #888;
+        font-style: italic;
+        margin-top: 4px;
+        padding-top: 8px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .note-icon {
+        flex-shrink: 0;
+    }
+
+    .card-value {
+        font-size: 0.55rem;
+        color: var(--color-text-muted);
+        margin-top: var(--spacing-xs);
     }
 </style>
 
@@ -251,12 +467,16 @@
     [Parameter] public List<CardData> Cards { get; set; } = new();
     [Parameter] public int? SelectedCardIndex { get; set; }
     [Parameter] public bool CanPlayPowered { get; set; } = false;
+    [Parameter] public Func<CardData, bool>? CanPlayPoweredForCard { get; set; }
     [Parameter] public EventCallback<int> OnCardSelected { get; set; }
     [Parameter] public EventCallback<int> OnCardPlayed { get; set; }
     [Parameter] public EventCallback<int> OnCardPlayedPowered { get; set; }
     [Parameter] public EventCallback<int> OnCardUsedSideways { get; set; }
+    [Parameter] public EventCallback<CardDragData> OnCardDragStarted { get; set; }
+    [Parameter] public EventCallback OnCardDragEnded { get; set; }
 
     private bool IsExpanded { get; set; } = true;
+    private int? _draggedCardIndex = null;
 
     private void ToggleExpand()
     {
@@ -266,9 +486,10 @@
     private int CalculateCardOffset(int index, int total)
     {
         if (total <= 1) return 0;
-        var spread = Math.Min(total * 50, 300);
-        var step = spread / (total - 1);
-        return (int)(index * step - spread / 2);
+        // Increase spread for more cards to prevent overlap
+        var maxSpread = Math.Min(total * 60, 500); // Wider spread for more cards
+        var step = maxSpread / Math.Max(total - 1, 1);
+        return (int)(index * step - maxSpread / 2);
     }
 
     private async Task OnCardClick(int index)
@@ -302,6 +523,35 @@
             await OnCardUsedSideways.InvokeAsync(index);
         }
     }
+
+    private async Task OnDragStart(int index, CardData card)
+    {
+        _draggedCardIndex = index;
+        if (OnCardDragStarted.HasDelegate)
+        {
+            await OnCardDragStarted.InvokeAsync(new CardDragData
+            {
+                CardIndex = index,
+                CardId = card.Id,
+                CardName = card.Name,
+                CardType = card.Type
+            });
+        }
+    }
+
+    private async Task OnDragEnd()
+    {
+        _draggedCardIndex = null;
+        if (OnCardDragEnded.HasDelegate)
+        {
+            await OnCardDragEnded.InvokeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Gets the currently dragged card index, if any.
+    /// </summary>
+    public int? GetDraggedCardIndex() => _draggedCardIndex;
 }
 
 @code {
@@ -314,6 +564,29 @@
         public string BasicEffect { get; set; } = string.Empty;
         public string? PoweredEffect { get; set; }
         public string? PoweredManaColor { get; set; }
+        public string? Note { get; set; }
         public bool CanPlay { get; set; } = true;
+    }
+
+    public class CardDragData
+    {
+        public int CardIndex { get; set; }
+        public string CardId { get; set; } = string.Empty;
+        public string CardName { get; set; } = string.Empty;
+        public string CardType { get; set; } = string.Empty;
+    }
+    
+    private string GetCardTypeClass(CardData card)
+    {
+        return card.Type?.ToLower() switch
+        {
+            "move" => "move",
+            "attack" => "attack",
+            "block" => "block",
+            "influence" => "influence",
+            "heal" => "heal",
+            "wound" => "wound",
+            _ => ""
+        };
     }
 }

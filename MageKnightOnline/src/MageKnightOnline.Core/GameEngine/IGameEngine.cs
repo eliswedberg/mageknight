@@ -43,6 +43,31 @@ public interface IGameEngine
     GameActionResult MovePlayer(HexPosition destination);
 
     /// <summary>
+    /// Moves the current player using flight (ignores terrain cost, costs 1 per hex).
+    /// </summary>
+    GameActionResult MovePlayerWithFlight(HexPosition destination);
+
+    /// <summary>
+    /// Explores a new tile at the edge of the map. Costs movement and requires being at an edge hex.
+    /// </summary>
+    GameActionResult ExploreTile(HexPosition edgeHex, int? edgePosition = null);
+
+    /// <summary>
+    /// Moves the current player using safe movement (avoids provoking enemies).
+    /// </summary>
+    GameActionResult MovePlayerSafely(HexPosition destination);
+
+    /// <summary>
+    /// Gets valid flight destinations for the current player.
+    /// </summary>
+    IEnumerable<HexPosition> GetValidFlightMoves(int flightPoints);
+
+    /// <summary>
+    /// Gets hexes with rampaging enemies that the player would provoke.
+    /// </summary>
+    IEnumerable<HexPosition> GetRampagingEnemyHexes();
+
+    /// <summary>
     /// Plays a card from the current player's hand.
     /// </summary>
     GameActionResult PlayCard(string cardId, bool powered = false, ManaColor? manaUsed = null);
@@ -193,6 +218,18 @@ public interface IGameEngine
     /// </summary>
     GameActionResult Plunder();
 
+    // Ruins token operations
+
+    /// <summary>
+    /// Gets the currently active ruins token being resolved, if any.
+    /// </summary>
+    ActiveRuinsToken? GetActiveRuinsToken();
+
+    /// <summary>
+    /// Resolves a pending choice for the active ruins token.
+    /// </summary>
+    GameActionResult ResolveRuinsChoice(int choiceIndex, string selection);
+
     // Level Up
 
     /// <summary>
@@ -263,6 +300,7 @@ public class UnitCombatOption
     public int UnitIndex { get; set; }
     public string UnitId { get; set; } = string.Empty;
     public string UnitName { get; set; } = string.Empty;
+    public int Armor { get; set; } = 3;
     public bool IsWounded { get; set; }
     public bool IsReady { get; set; }
     public bool UsedThisCombat { get; set; }

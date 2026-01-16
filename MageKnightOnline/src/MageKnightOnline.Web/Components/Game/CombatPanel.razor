@@ -78,22 +78,65 @@
                     var isUnitSelected = SelectedUnitIndex == unit.UnitIndex;
                     <div class="unit-card @(unit.IsWounded ? "wounded" : "") @(!unit.IsReady ? "exhausted" : "") @(unit.UsedThisCombat ? "used" : "") @(isUnitSelected ? "selected" : "")"
                          @onclick="() => SelectUnit(unit.UnitIndex)">
+                        <!-- Unit Tooltip -->
+                        <div class="unit-tooltip">
+                            <div class="tooltip-header">
+                                <span class="unit-tooltip-name">@unit.UnitName</span>
+                                <span class="unit-armor">🛡️ @unit.Armor</span>
+                            </div>
+                            <div class="tooltip-status">
+                                @if (unit.IsWounded)
+                                {
+                                    <span class="status-badge wounded">💔 Wounded - Can block but takes extra damage</span>
+                                }
+                                @if (!unit.IsReady)
+                                {
+                                    <span class="status-badge exhausted">😴 Exhausted - Needs rest to recover</span>
+                                }
+                                @if (unit.UsedThisCombat)
+                                {
+                                    <span class="status-badge used">✓ Used - Can't use again this combat</span>
+                                }
+                            </div>
+                            <div class="tooltip-abilities">
+                                @foreach (var ability in unit.AvailableAbilities)
+                                {
+                                    <div class="tooltip-ability">
+                                        <span class="ability-icon">@GetAbilityTypeIcon(ability.AbilityType)</span>
+                                        <span>@ability.Description</span>
+                                        @if (ability.IsRanged)
+                                        {
+                                            <span class="ability-tag ranged">Ranged</span>
+                                        }
+                                        @if (ability.IsSiege)
+                                        {
+                                            <span class="ability-tag siege">Siege</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        
                         <div class="unit-name">
                             @unit.UnitName
                             @if (unit.IsWounded)
                             {
-                                <span class="wound-icon" title="Wounded">💔</span>
+                                <span class="wound-icon" title="Wounded - Can block but takes extra damage">💔</span>
                             }
                             @if (!unit.IsReady)
                             {
-                                <span class="exhausted-icon" title="Exhausted">😴</span>
+                                <span class="exhausted-icon" title="Exhausted - Needs rest to recover">😴</span>
                             }
+                        </div>
+                        <div class="unit-stats">
+                            <span class="unit-armor-badge" title="Unit Armor">🛡️ @unit.Armor</span>
                         </div>
                         <div class="unit-abilities">
                             @foreach (var ability in unit.AvailableAbilities)
                             {
-                                <span class="unit-ability-badge @(CanUseAbility(unit, ability) ? "available" : "unavailable")">
-                                    @ability.Description
+                                <span class="unit-ability-badge @(CanUseAbility(unit, ability) ? "available" : "unavailable")"
+                                      title="@GetAbilityTooltip(ability)">
+                                    @GetAbilityTypeIcon(ability.AbilityType) @ability.Value
                                 </span>
                             }
                         </div>
@@ -443,6 +486,125 @@
         border-style: dashed;
     }
 
+    /* Unit Tooltip Styles */
+    .unit-tooltip {
+        position: absolute;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 240px;
+        background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3a 100%);
+        border: 2px solid var(--color-gold);
+        border-radius: 8px;
+        padding: 12px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        z-index: 200;
+        pointer-events: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .unit-card:hover .unit-tooltip {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .unit-tooltip .tooltip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(212, 168, 83, 0.3);
+    }
+
+    .unit-tooltip-name {
+        font-family: 'Cinzel', serif;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--color-gold);
+    }
+
+    .unit-armor {
+        font-size: 0.85rem;
+        color: #3b82f6;
+    }
+
+    .tooltip-status {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+    .status-badge.wounded {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .status-badge.exhausted {
+        background: rgba(100, 100, 100, 0.2);
+        color: #888;
+    }
+
+    .status-badge.used {
+        background: rgba(168, 85, 247, 0.2);
+        color: #a855f7;
+    }
+
+    .tooltip-abilities {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .tooltip-ability {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: #b0b0b0;
+    }
+
+    .ability-icon {
+        flex-shrink: 0;
+    }
+
+    .ability-tag {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 4px;
+    }
+
+    .ability-tag.ranged {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+    }
+
+    .ability-tag.siege {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+    }
+
+    .unit-stats {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .unit-armor-badge {
+        font-size: 0.75rem;
+        color: #3b82f6;
+    }
+
     .defeated-overlay, .blocked-overlay {
         position: absolute;
         top: 50%;
@@ -626,9 +788,30 @@
         "Brutal" => "Double damage if unblocked",
         "Poison" => "Wounds go to discard pile",
         "Paralyze" => "Ineffective attacks cause wounds",
+        "Vampiric" => "Heals damage when dealing wounds",
         _ when ability.Contains("Summon") => "Can summon additional enemies",
         _ => ability
     };
+    
+    private string GetAbilityTypeIcon(string abilityType) => abilityType switch
+    {
+        "Attack" => "⚔️",
+        "Ranged" => "🏹",
+        "Block" => "🛡️",
+        "Influence" => "💬",
+        "Move" => "🦶",
+        "Heal" => "❤️",
+        _ => "•"
+    };
+    
+    private string GetAbilityTooltip(UnitAbilityOption ability)
+    {
+        var tooltip = ability.Description;
+        if (ability.IsRanged) tooltip += " (Ranged)";
+        if (ability.IsSiege) tooltip += " (Siege)";
+        if (!string.IsNullOrEmpty(ability.Element)) tooltip += $" [{ability.Element}]";
+        return tooltip;
+    }
 
     private string GetAbilityButtonClass(string abilityType) => abilityType switch
     {

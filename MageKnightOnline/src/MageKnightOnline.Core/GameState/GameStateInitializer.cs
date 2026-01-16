@@ -63,21 +63,56 @@ public class GameStateInitializer
 
     private async Task<PlayerState> CreatePlayerStateAsync(GamePlayer player)
     {
-        var heroId = player.HeroId ?? "tovak";
+        var heroId = player.HeroId ?? "hero_tovak";
+        
+        // Extract hero name from heroId (e.g., "hero_tovak" -> "Tovak")
+        // First try to get hero definition to get the proper name
+        var hero = await _definitions.GetHeroAsync(heroId);
+        var heroName = hero?.Name ?? ExtractHeroName(heroId);
+        
         var basicActions = await _definitions.GetBasicActionsAsync();
 
         // Get hero-specific starting cards
+        // A card is available if:
+        // 1. Heroes list is null/empty (available to all), OR
+        // 2. Hero name is in the Heroes list (case-insensitive match)
         var startingCards = basicActions
-            .Where(c => c.Heroes == null || c.Heroes.Contains(heroId) || c.Heroes.Count == 0)
+            .Where(c => 
+            {
+                if (c.Heroes == null || c.Heroes.Count == 0)
+                    return true; // Available to all heroes
+                
+                // Case-insensitive match
+                return c.Heroes.Any(h => 
+                    string.Equals(h, heroName, StringComparison.OrdinalIgnoreCase));
+            })
             .SelectMany(c => Enumerable.Repeat(c.Id, c.CountPerHero ?? 1))
             .ToList();
+
+        // Validate we got cards
+        if (startingCards.Count == 0)
+        {
+            var availableHeroes = basicActions
+                .SelectMany(c => c.Heroes ?? new List<string>())
+                .Distinct()
+                .ToList();
+            throw new InvalidOperationException(
+                $"No starting cards found for hero '{heroId}' (name: '{heroName}'). " +
+                $"Available heroes in cards: {string.Join(", ", availableHeroes)}. " +
+                $"Total basic actions: {basicActions.Count}");
+        }
 
         // Shuffle the deed deck
         Shuffle(startingCards);
 
-        // Draw initial hand (5 cards)
+        // Draw initial hand (5 cards) - according to Mage Knight rules
         var hand = startingCards.Take(5).ToList();
         var deck = startingCards.Skip(5).ToList();
+
+        // Log for debugging (can be removed in production)
+        System.Diagnostics.Debug.WriteLine(
+            $"Player {player.UserId}: Hero={heroId}, Name={heroName}, " +
+            $"Total cards={startingCards.Count}, Hand={hand.Count}, Deck={deck.Count}");
 
         return new PlayerState
         {
@@ -90,8 +125,8 @@ public class GameStateInitializer
             Armor = 2,
             HandLimit = 5,
             Hand = hand,
-            Deck = deck, // Main deck for drawing
-            DeedDeck = deck.ToList(), // Copy for reference
+            Deck = new List<string>(), // Deck is for drawing during game (starts empty after initial draw)
+            DeedDeck = deck, // DeedDeck is the main deck - remaining cards after initial hand
             DiscardPile = new List<string>(),
             Units = new List<UnitState>(),
             Skills = new List<string>(),
@@ -101,6 +136,28 @@ public class GameStateInitializer
             MovementRemaining = 0,
             HasRested = false
         };
+    }
+
+    /// <summary>
+    /// Extracts hero name from heroId (e.g., "hero_tovak" -> "Tovak").
+    /// </summary>
+    private string ExtractHeroName(string heroId)
+    {
+        if (string.IsNullOrEmpty(heroId))
+            return "Tovak"; // Default
+        
+        // Remove "hero_" prefix if present
+        var name = heroId.StartsWith("hero_", StringComparison.OrdinalIgnoreCase)
+            ? heroId.Substring(5)
+            : heroId;
+        
+        // Capitalize first letter (Tovak, Arythea, etc.)
+        if (name.Length > 0)
+        {
+            return char.ToUpperInvariant(name[0]) + (name.Length > 1 ? name.Substring(1).ToLowerInvariant() : "");
+        }
+        
+        return name;
     }
 
     private async Task<DeckState> CreateDeckStateAsync(ScenarioDefinition scenario)
@@ -132,6 +189,13 @@ public class GameStateInitializer
                 }
             );
 
+        // Create ruins token deck - each token appears 'count' times
+        var ruinsTokens = await _definitions.GetRuinsTokensAsync();
+        var ruinsTokenDeck = ruinsTokens
+            .SelectMany(r => Enumerable.Repeat(r.Id, r.Count))
+            .ToList();
+        Shuffle(ruinsTokenDeck);
+
         return new DeckState
         {
             AdvancedActions = advancedActions,
@@ -139,19 +203,46 @@ public class GameStateInitializer
             Artifacts = artifacts,
             RegularUnits = regularUnits,
             EliteUnits = eliteUnits,
-            CountrysideTiles = CreateTileDeck("countryside", scenario.TilesDeck.Countryside),
-            CoreTiles = CreateTileDeck("core", scenario.TilesDeck.Core),
-            CityTiles = CreateTileDeck("city", scenario.TilesDeck.Cities),
-            EnemyDecks = enemyDecks
+            CountrysideTiles = await CreateTileDeck("Countryside", scenario.TilesDeck.Countryside),
+            CoreTiles = await CreateTileDeck("Core", scenario.TilesDeck.Core),
+            CityTiles = await CreateTileDeck("City", scenario.TilesDeck.Cities),
+            EnemyDecks = enemyDecks,
+            RuinsTokens = ruinsTokenDeck
         };
     }
 
-    private List<string> CreateTileDeck(string type, int count)
+    private async Task<List<string>> CreateTileDeck(string type, int count)
     {
-        // Generate tile IDs based on type
-        var tiles = Enumerable.Range(1, count).Select(i => $"{type}_{i}").ToList();
-        Shuffle(tiles);
-        return tiles;
+        // Get actual tile definitions from JSON
+        var allTiles = await _definitions.GetMapTilesAsync();
+        
+        // Filter tiles by back_type (Countryside, Core, City)
+        var matchingTiles = allTiles
+            .Where(t => string.Equals(t.BackType, type, StringComparison.OrdinalIgnoreCase) && 
+                       !t.IsStartingTile)
+            .Select(t => t.Id)
+            .ToList();
+        
+        // If we have enough tiles, use them; otherwise generate placeholders
+        if (matchingTiles.Count >= count)
+        {
+            // Take the number we need and shuffle
+            var selected = matchingTiles.Take(count).ToList();
+            Shuffle(selected);
+            return selected;
+        }
+        else
+        {
+            // Use available tiles and generate placeholders for the rest
+            var result = matchingTiles.ToList();
+            var needed = count - result.Count;
+            for (int i = 1; i <= needed; i++)
+            {
+                result.Add($"{type.ToLower()}_{i}");
+            }
+            Shuffle(result);
+            return result;
+        }
     }
 
     private async Task<MapState> CreateInitialMapAsync(ScenarioDefinition scenario, int playerCount)

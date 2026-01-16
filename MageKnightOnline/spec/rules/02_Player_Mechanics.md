@@ -15,7 +15,19 @@ Mana fuels strong card effects.
 * **Colors**: 
     * **Basic**: Red, Blue, White, Green.
     * **Special**: Gold (Day only), Black (Night only).
-* **Usage**: You can use one die from the Source per turn. Crystals can be used freely.
+* **Temporary Mana (from Source)**:
+    * You can take **one mana die** from the Source per round.
+    * Taking a die gives you **temporary mana** of the same color as the die.
+    * Temporary mana persists until the end of your round.
+    * When you use temporary mana for a powered card effect, the mana is consumed but the die stays in the Source pool.
+    * At the end of the round, the used die is rerolled and returned to the Source pool.
+    * You can only have one temporary mana at a time.
+* **Powered Card Effects**:
+    * Cards with powered effects (indicated by `effects_powered` in card definitions) can be played with enhanced effects.
+    * Basic Actions: Can use any temporary mana color for powered effects (no specific color requirement).
+    * Advanced Actions/Spells: May require a specific mana color (indicated by `color` field in card definition).
+    * Gold mana can be used as a substitute for any color requirement.
+* **Crystals**: Can be used freely and persist between turns.
 
 ## Units
 Players can recruit Units (Regular or Elite) at various sites (Villages, Keeps, Mage Towers).

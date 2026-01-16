@@ -161,9 +161,6 @@ public class GameEngine : IGameEngine
         player.Position = destination;
         player.MovementRemaining -= cost;
 
-        // Check if we're at edge of revealed area - trigger exploration
-        CheckForExploration(destination);
-
         // Check for enemies at destination
         var hexState = GetHexStateAt(destination);
         if (hexState?.Enemies.Any() == true)
@@ -184,30 +181,242 @@ public class GameEngine : IGameEngine
         return GameActionResult.Ok($"Moved to ({destination.Q}, {destination.R})");
     }
 
-    private void CheckForExploration(HexPosition position)
+    public IEnumerable<HexPosition> GetValidFlightMoves(int flightPoints)
     {
-        // Check each adjacent hex - if any are unrevealed, we might be able to explore
+        var player = GetCurrentPlayer();
+        if (player == null)
+            yield break;
+
+        var visited = new Dictionary<string, int>();
+        var toVisit = new Queue<(HexPosition pos, int remaining)>();
+
+        visited[PosKey(player.Position)] = flightPoints;
+        toVisit.Enqueue((player.Position, flightPoints));
+
+        while (toVisit.Count > 0)
+        {
+            var (current, remaining) = toVisit.Dequeue();
+
+            foreach (var dir in HexDirections)
+            {
+                var neighbor = current + dir;
+                var key = PosKey(neighbor);
+
+                // Flight ignores terrain but still needs revealed hex
+                var terrain = GetTerrainAt(neighbor);
+                if (terrain == null) continue;
+
+                // Flight costs 1 per hex regardless of terrain
+                var newRemaining = remaining - 1;
+                if (newRemaining < 0) continue;
+
+                if (visited.TryGetValue(key, out var existing) && existing >= newRemaining)
+                    continue;
+
+                visited[key] = newRemaining;
+                toVisit.Enqueue((neighbor, newRemaining));
+            }
+        }
+
+        var startKey = PosKey(player.Position);
+        foreach (var kvp in visited)
+        {
+            if (kvp.Key != startKey)
+            {
+                var parts = kvp.Key.Split(',');
+                yield return new HexPosition { Q = int.Parse(parts[0]), R = int.Parse(parts[1]) };
+            }
+        }
+    }
+
+    public GameActionResult MovePlayerWithFlight(HexPosition destination)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.Phase != GamePhase.Movement)
+            return GameActionResult.Fail("Can only move during movement phase");
+
+        var terrain = GetTerrainAt(destination);
+        if (terrain == null)
+            return GameActionResult.Fail("Cannot fly to unrevealed hex");
+
+        // Flight costs 1 per hex
+        if (player.FlightRemaining < 1)
+            return GameActionResult.Fail("No flight points remaining");
+
+        if (!IsAdjacent(player.Position, destination))
+            return GameActionResult.Fail("Can only fly to adjacent hexes");
+
+        // Move the player
+        var oldPosition = player.Position;
+        player.Position = destination;
+        player.FlightRemaining -= 1;
+
+        // Check for enemies at destination - flight doesn't avoid combat when landing
+        var hexState = GetHexStateAt(destination);
+        if (hexState?.Enemies.Any() == true)
+        {
+            _state.Phase = GamePhase.Combat;
+            AddLogEntry("Combat", $"Flew to hex with {hexState.Enemies.Count} enemies - Combat initiated!");
+            return GameActionResult.Ok($"Flew to ({destination.Q}, {destination.R}) - Combat initiated!");
+        }
+
+        if (!string.IsNullOrEmpty(hexState?.SiteType) && hexState.SiteType != "Portal")
+        {
+            AddLogEntry("Move", $"Flew to {hexState.SiteType} at ({destination.Q}, {destination.R})");
+            return GameActionResult.Ok($"Flew to {hexState.SiteType}");
+        }
+
+        AddLogEntry("Move", $"Flew from ({oldPosition.Q},{oldPosition.R}) to ({destination.Q},{destination.R}) over {terrain}");
+        return GameActionResult.Ok($"Flew to ({destination.Q}, {destination.R})");
+    }
+
+    public GameActionResult MovePlayerSafely(HexPosition destination)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.Phase != GamePhase.Movement)
+            return GameActionResult.Fail("Can only move during movement phase");
+
+        var terrain = GetTerrainAt(destination);
+        if (terrain == null)
+            return GameActionResult.Fail("Cannot move to unrevealed hex");
+
+        var cost = GetTerrainCost(terrain);
+        if (cost >= 99)
+            return GameActionResult.Fail($"Cannot enter {terrain} - impassable terrain");
+
+        // Safe movement uses safe movement pool first, then regular movement
+        var totalSafeAvailable = player.SafeMovementRemaining;
+        
+        if (totalSafeAvailable < cost)
+            return GameActionResult.Fail($"Not enough safe movement points (need {cost}, have {totalSafeAvailable})");
+
+        if (!IsAdjacent(player.Position, destination))
+            return GameActionResult.Fail("Can only move to adjacent hexes");
+
+        // Move the player
+        var oldPosition = player.Position;
+        player.Position = destination;
+        player.SafeMovementRemaining -= cost;
+
+        // Safe movement does NOT provoke rampaging enemies - but entering hex with enemies still triggers combat
+        var hexState = GetHexStateAt(destination);
+        if (hexState?.Enemies.Any() == true)
+        {
+            _state.Phase = GamePhase.Combat;
+            AddLogEntry("Combat", $"Entered hex with {hexState.Enemies.Count} enemies - Combat initiated!");
+            return GameActionResult.Ok($"Safely moved to ({destination.Q}, {destination.R}) - Combat initiated!");
+        }
+
+        if (!string.IsNullOrEmpty(hexState?.SiteType) && hexState.SiteType != "Portal")
+        {
+            AddLogEntry("Move", $"Safely moved to {hexState.SiteType} at ({destination.Q}, {destination.R})");
+            return GameActionResult.Ok($"Safely moved to {hexState.SiteType}");
+        }
+
+        AddLogEntry("Move", $"Safely moved from ({oldPosition.Q},{oldPosition.R}) to ({destination.Q},{destination.R}), cost {cost} ({terrain})");
+        return GameActionResult.Ok($"Safely moved to ({destination.Q}, {destination.R})");
+    }
+
+    public IEnumerable<HexPosition> GetRampagingEnemyHexes()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            yield break;
+
+        // Return all revealed hexes with enemies that are adjacent to the player's current position
         foreach (var dir in HexDirections)
         {
-            var neighbor = position + dir;
-            var key = PosKey(neighbor);
-            
-            // If this hex is not revealed, check if we should reveal a new tile
-            if (!_state.Map.RevealedHexes.Contains(key))
+            var neighbor = player.Position + dir;
+            var hexState = GetHexStateAt(neighbor);
+            if (hexState?.Enemies.Any() == true && !hexState.IsConquered)
             {
-                // Check if there's a tile deck to draw from
-                if (_state.Decks.CountrysideTiles.Any() || _state.Decks.CoreTiles.Any())
+                yield return neighbor;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets hexes at the edge of the revealed map where exploration is possible.
+    /// </summary>
+    public IEnumerable<HexPosition> GetExplorableEdges()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null) yield break;
+
+        // Find revealed hexes that have at least one unrevealed neighbor
+        foreach (var revealedKey in _state.Map.RevealedHexes)
+        {
+            var parts = revealedKey.Split(',');
+            var hex = new HexPosition { Q = int.Parse(parts[0]), R = int.Parse(parts[1]) };
+            
+            // Check if this hex has an unrevealed neighbor (edge hex)
+            foreach (var dir in HexDirections)
+            {
+                var neighbor = hex + dir;
+                var neighborKey = PosKey(neighbor);
+                
+                if (!_state.Map.RevealedHexes.Contains(neighborKey))
                 {
-                    // For now, auto-reveal adjacent unrevealed hexes when exploring
-                    // In a full implementation, this would place entire tiles
-                    RevealNewTile(neighbor);
-                    break; // Only reveal one tile at a time
+                    yield return hex; // This is an edge hex
+                    break;
                 }
             }
         }
     }
 
-    private void RevealNewTile(HexPosition centerPosition)
+    public GameActionResult ExploreTile(HexPosition edgeHex, int? edgePosition = null)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.Phase != GamePhase.Movement)
+            return GameActionResult.Fail("Can only explore during movement phase");
+
+        // Check if player is at the edge hex
+        if (player.Position.Q != edgeHex.Q || player.Position.R != edgeHex.R)
+            return GameActionResult.Fail("You must be at the edge hex to explore");
+
+        // Check if this is actually an edge hex (has unrevealed neighbors)
+        var isEdgeHex = false;
+        HexPosition? unrevealedNeighbor = null;
+        foreach (var dir in HexDirections)
+        {
+            var neighbor = edgeHex + dir;
+            var key = PosKey(neighbor);
+            if (!_state.Map.RevealedHexes.Contains(key))
+            {
+                isEdgeHex = true;
+                unrevealedNeighbor = neighbor;
+                break;
+            }
+        }
+
+        if (!isEdgeHex || unrevealedNeighbor == null)
+            return GameActionResult.Fail("This hex is not at the edge of the map");
+
+        // Exploration costs 1 movement point
+        if (player.MovementRemaining < 1)
+            return GameActionResult.Fail("Not enough movement points to explore (need 1)");
+
+        // Draw tile and place it edge-to-edge
+        var result = PlaceNewTileAtEdge(edgeHex, unrevealedNeighbor, edgePosition);
+        if (result.Success)
+        {
+            player.MovementRemaining -= 1;
+            AddLogEntry("Explore", $"Explored new tile at edge ({edgeHex.Q}, {edgeHex.R})");
+        }
+
+        return result;
+    }
+
+    private GameActionResult PlaceNewTileAtEdge(HexPosition edgeHex, HexPosition unrevealedNeighbor, int? preferredEdgePosition)
     {
         // Draw a tile from the appropriate deck
         string? tileId = null;
@@ -223,28 +432,219 @@ public class GameEngine : IGameEngine
             _state.Decks.CoreTiles.RemoveAt(0);
         }
 
-        if (tileId == null) return;
+        if (tileId == null)
+            return GameActionResult.Fail("No tiles available to explore");
+
+        // Get tile definition
+        var tileDef = _definitions.GetMapTilesAsync().Result.FirstOrDefault(t => 
+            t.Id == tileId || 
+            (tileId.StartsWith("countryside_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "Countryside") ||
+            (tileId.StartsWith("core_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "Core") ||
+            (tileId.StartsWith("city_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "City"));
+
+        // Fallback to random tile of correct type if exact match not found
+        if (tileDef == null)
+        {
+            var allTiles = _definitions.GetMapTilesAsync().Result.ToList();
+            if (tileId.StartsWith("countryside_", StringComparison.OrdinalIgnoreCase))
+            {
+                var countrysideTiles = allTiles.Where(t => t.BackType == "Countryside" && !t.IsStartingTile).ToList();
+                if (countrysideTiles.Any())
+                    tileDef = countrysideTiles[_random.Next(countrysideTiles.Count)];
+            }
+            else if (tileId.StartsWith("core_", StringComparison.OrdinalIgnoreCase))
+            {
+                var coreTiles = allTiles.Where(t => t.BackType == "Core" && !t.IsStartingTile).ToList();
+                if (coreTiles.Any())
+                    tileDef = coreTiles[_random.Next(coreTiles.Count)];
+            }
+            else if (tileId.StartsWith("city_", StringComparison.OrdinalIgnoreCase))
+            {
+                var cityTiles = allTiles.Where(t => t.BackType == "City" && !t.IsStartingTile).ToList();
+                if (cityTiles.Any())
+                    tileDef = cityTiles[_random.Next(cityTiles.Count)];
+            }
+        }
+
+        if (tileDef == null)
+            return GameActionResult.Fail("Could not find tile definition");
+
+        // Calculate direction from edgeHex to unrevealedNeighbor
+        // This is the direction we want the new tile to extend into
+        var direction = new HexPosition 
+        { 
+            Q = unrevealedNeighbor.Q - edgeHex.Q, 
+            R = unrevealedNeighbor.R - edgeHex.R 
+        };
+
+        // Find which direction index this corresponds to
+        int directionIndex = -1;
+        for (int i = 0; i < HexDirections.Length; i++)
+        {
+            if (HexDirections[i].Q == direction.Q && HexDirections[i].R == direction.R)
+            {
+                directionIndex = i;
+                break;
+            }
+        }
+
+        if (directionIndex == -1)
+            return GameActionResult.Fail("Invalid exploration direction");
+
+        // Tile placement rule: The new tile's center is placed in the direction of exploration
+        // from edgeHex. One of the tile's edge hexes will connect back to edgeHex.
+        // So: tileCenter = edgeHex + direction
+        var tileCenter = edgeHex + direction;
+        
+        // The edge hex that connects to edgeHex is in the OPPOSITE direction from tile center
+        // So we need to rotate the tile so that the edge hex in the opposite direction matches edgeHex
+        var oppositeDirectionIndex = GetOppositeDirection(directionIndex);
+        
+        // Map HexDirections index to tile edge position
+        // HexDirections: [East(0), Northeast(1), Northwest(2), West(3), Southwest(4), Southeast(5)]
+        // Tile positions according to map_tiles.json.desc:
+        // 1: Top (Northwest) = direction 2
+        // 2: Top-Right (Northeast) = direction 1  
+        // 3: Bottom-Right (Southeast) = direction 5
+        // 4: Bottom (Southwest) = direction 4
+        // 5: Bottom-Left = direction ? (need to check)
+        // 6: Top-Left (West) = direction 3
+        
+        // Mapping: direction index -> tile edge position
+        var directionToTileEdge = new Dictionary<int, int>
+        {
+            { 0, 0 }, // East - not a standard edge, use closest
+            { 1, 2 }, // Northeast -> Top-Right
+            { 2, 1 }, // Northwest -> Top
+            { 3, 6 }, // West -> Top-Left
+            { 4, 4 }, // Southwest -> Bottom
+            { 5, 3 }  // Southeast -> Bottom-Right
+        };
+        
+        // Find which tile edge should connect to edgeHex (opposite direction from tile center)
+        var connectingEdgePosition = directionToTileEdge.GetValueOrDefault(oppositeDirectionIndex, 1);
+
+        // Check if tile center position is already occupied
+        var tileCenterKey = PosKey(tileCenter);
+        if (_state.Map.HexData.ContainsKey(tileCenterKey) && _state.Map.RevealedHexes.Contains(tileCenterKey))
+        {
+            // Try alternative placement - rotate tile
+            var alternativeRotation = _random.Next(6);
+            // For now, just place it adjacent in a different direction
+            var altDirection = (directionIndex + 2) % HexDirections.Length;
+            tileCenter = edgeHex + HexDirections[altDirection];
+            tileCenterKey = PosKey(tileCenter);
+        }
 
         // Create the tile
         var tile = new MapTileState
         {
-            TileId = tileId,
-            Position = centerPosition,
-            Rotation = _random.Next(6), // Random rotation
+            TileId = tileDef.Id,
+            Position = tileCenter,
+            Rotation = 0, // We'll handle rotation by adjusting edge positions
             IsRevealed = true
         };
         _state.Map.Tiles.Add(tile);
 
-        // Generate hex data for the new tile (7 hexes in a hex pattern)
-        var tileHexes = GenerateTileHexes(centerPosition, tileId);
+        // Generate hex data for the new tile
+        // We need to rotate the tile so that the correct edge hex connects to edgeHex
+        // The edge hex at connectingEdgePosition should be at oppositeDirectionIndex from center
+        var rotationOffset = CalculateRotationOffset(connectingEdgePosition, oppositeDirectionIndex);
+        var tileHexes = GenerateTileHexesWithRotation(tileCenter, tileDef, rotationOffset);
+        
         foreach (var (hexPos, hexState) in tileHexes)
         {
             var key = PosKey(hexPos);
-            _state.Map.RevealedHexes.Add(key);
-            _state.Map.HexData[key] = hexState;
+            // Don't overwrite existing revealed hexes
+            if (!_state.Map.RevealedHexes.Contains(key))
+            {
+                _state.Map.RevealedHexes.Add(key);
+                _state.Map.HexData[key] = hexState;
+            }
         }
 
-        AddLogEntry("Explore", $"Revealed new tile: {tileId} at ({centerPosition.Q}, {centerPosition.R})");
+        AddLogEntry("Explore", $"Placed new tile {tileDef.Id} at center ({tileCenter.Q}, {tileCenter.R})");
+        return GameActionResult.Ok($"Explored new tile: {tileDef.Name ?? tileDef.Id}");
+    }
+
+    private int GetOppositeDirection(int directionIndex)
+    {
+        return (directionIndex + 3) % 6; // Opposite direction in hex grid
+    }
+
+    private int CalculateRotationOffset(int tileEdgePosition, int directionIndex)
+    {
+        // Calculate how much to rotate the tile so that tileEdgePosition aligns with directionIndex
+        // Tile edge positions: 1=East, 2=Top-Right, 3=Bottom-Right, 4=Bottom, 5=Bottom-Left, 6=Top-Left
+        // Direction indices: 0=East, 1=Northeast, 2=Northwest, 3=West, 4=Southwest, 5=Southeast
+        
+        // We want tile edge at position (tileEdgePosition - 1) to point in direction directionIndex
+        // Rotation offset = directionIndex - (tileEdgePosition - 1)
+        int offset = directionIndex - (tileEdgePosition - 1);
+        if (offset < 0) offset += 6;
+        return offset % 6;
+    }
+
+    private List<(HexPosition Position, HexState State)> GenerateTileHexesWithRotation(HexPosition center, MapTileDefinition tileDef, int rotationOffset)
+    {
+        var hexes = new List<(HexPosition, HexState)>();
+        
+        // Tile hex positions according to map_tiles.json.desc:
+        // 0: Center
+        // 1: Top (Kl 12) = Northwest (0, -1)
+        // 2: Top-Right (Kl 2) = Northeast (1, -1)
+        // 3: Bottom-Right (Kl 4) = Southeast (1, 1)
+        // 4: Bottom (Kl 6) = Southwest (0, 1)
+        // 5: Bottom-Left (Kl 8) = Southwest (-1, 1)
+        // 6: Top-Left (Kl 10) = Northwest (-1, 0)
+        
+        // Direction mapping for rotation:
+        // 0 = no rotation, 1 = 60° clockwise, etc.
+        var positionToDirection = new[]
+        {
+            new HexPosition { Q = 0, R = 0 },   // 0: Center
+            new HexPosition { Q = 0, R = -1 },  // 1: Top (Northwest)
+            new HexPosition { Q = 1, R = -1 },   // 2: Top-Right (Northeast)
+            new HexPosition { Q = 1, R = 1 },    // 3: Bottom-Right (Southeast)
+            new HexPosition { Q = 0, R = 1 },   // 4: Bottom (Southwest)
+            new HexPosition { Q = -1, R = 1 },  // 5: Bottom-Left
+            new HexPosition { Q = -1, R = 0 }   // 6: Top-Left (West)
+        };
+
+        foreach (var hexDef in tileDef.Hexes)
+        {
+            // Apply rotation to the position
+            var rotatedPosition = RotateTilePosition(hexDef.Position, rotationOffset);
+            var direction = positionToDirection[rotatedPosition];
+            var hexPos = center + direction;
+            var key = PosKey(hexPos);
+            
+            // Don't overwrite existing hexes
+            if (!_state.Map.HexData.ContainsKey(key) || !_state.Map.RevealedHexes.Contains(key))
+            {
+                hexes.Add((hexPos, new HexState
+                {
+                    Terrain = hexDef.Terrain,
+                    SiteType = hexDef.Site,
+                    Enemies = GenerateEnemiesForSite(hexDef.Site)
+                }));
+            }
+        }
+
+        return hexes;
+    }
+
+    private int RotateTilePosition(int position, int rotation)
+    {
+        if (position == 0) return 0; // Center doesn't rotate
+        
+        // Rotate edge positions (1-6) by rotation steps
+        // Position 1-6 rotate: 1->2->3->4->5->6->1
+        int rotated = ((position - 1 + rotation) % 6) + 1;
+        return rotated;
     }
 
     private List<(HexPosition Position, HexState State)> GenerateTileHexes(HexPosition center, string tileId)
@@ -252,7 +652,45 @@ public class GameEngine : IGameEngine
         var hexes = new List<(HexPosition, HexState)>();
         
         // Try to get tile definition from JSON
-        var tileDef = _definitions.GetMapTilesAsync().Result.FirstOrDefault(t => t.Id == tileId);
+        // Handle both formats: "tile_02_countryside" and "countryside_1"
+        var tileDef = _definitions.GetMapTilesAsync().Result.FirstOrDefault(t => 
+            t.Id == tileId || 
+            (tileId.StartsWith("countryside_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "Countryside") ||
+            (tileId.StartsWith("core_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "Core") ||
+            (tileId.StartsWith("city_", StringComparison.OrdinalIgnoreCase) && 
+             t.BackType == "City"));
+        
+        // If exact match not found but we have a type match, use a random tile of that type
+        if (tileDef == null)
+        {
+            var allTiles = _definitions.GetMapTilesAsync().Result.ToList();
+            if (tileId.StartsWith("countryside_", StringComparison.OrdinalIgnoreCase))
+            {
+                var countrysideTiles = allTiles.Where(t => t.BackType == "Countryside" && !t.IsStartingTile).ToList();
+                if (countrysideTiles.Any())
+                {
+                    tileDef = countrysideTiles[_random.Next(countrysideTiles.Count)];
+                }
+            }
+            else if (tileId.StartsWith("core_", StringComparison.OrdinalIgnoreCase))
+            {
+                var coreTiles = allTiles.Where(t => t.BackType == "Core" && !t.IsStartingTile).ToList();
+                if (coreTiles.Any())
+                {
+                    tileDef = coreTiles[_random.Next(coreTiles.Count)];
+                }
+            }
+            else if (tileId.StartsWith("city_", StringComparison.OrdinalIgnoreCase))
+            {
+                var cityTiles = allTiles.Where(t => t.BackType == "City" && !t.IsStartingTile).ToList();
+                if (cityTiles.Any())
+                {
+                    tileDef = cityTiles[_random.Next(cityTiles.Count)];
+                }
+            }
+        }
         
         if (tileDef != null && tileDef.Hexes.Any())
         {
@@ -364,16 +802,30 @@ public class GameEngine : IGameEngine
             return GameActionResult.Fail("Card not found");
 
         // Check if powered effect requires mana
-        if (powered && !string.IsNullOrEmpty(card.ManaType))
+        if (powered && card.EffectsPowered?.Any() == true)
         {
-            // Verify mana is available
-            if (manaUsed == null)
-                return GameActionResult.Fail($"Powered effect requires {card.ManaType} mana");
+            // Use temporary mana from player (taken from Source)
+            if (!player.TemporaryMana.HasValue)
+            {
+                var manaRequirement = !string.IsNullOrEmpty(card.ManaType) ? card.ManaType : "mana";
+                return GameActionResult.Fail($"Powered effect requires {manaRequirement}. Take a mana die from the Source first.");
+            }
             
-            // Check if the mana color matches
-            var requiredColor = ParseManaColor(card.ManaType);
-            if (manaUsed != requiredColor && manaUsed != ManaColor.Gold)
-                return GameActionResult.Fail($"Wrong mana color - need {card.ManaType}");
+            var temporaryMana = player.TemporaryMana.Value;
+            
+            // If card has specific mana color requirement, check it
+            if (!string.IsNullOrEmpty(card.ManaType))
+            {
+                var requiredColor = ParseManaColor(card.ManaType);
+                
+                // Check if the mana color matches (Gold can be used for any color)
+                if (temporaryMana != requiredColor && temporaryMana != ManaColor.Gold)
+                    return GameActionResult.Fail($"Wrong mana color - need {card.ManaType}, but you have {temporaryMana}");
+            }
+            // If no specific color requirement, any mana can be used (basic actions)
+            
+            // Temporary mana is consumed when used (but die stays in pool until end of round)
+            player.TemporaryMana = null;
         }
 
         // Remove card from hand, add to discard
@@ -401,6 +853,18 @@ public class GameEngine : IGameEngine
                 case "move":
                     player.MovementRemaining += value;
                     effectDescriptions.Add($"+{value} Move");
+                    break;
+                    
+                case "flight":
+                case "fly":
+                    player.FlightRemaining += value;
+                    effectDescriptions.Add($"+{value} Flight");
+                    break;
+                    
+                case "safe_move":
+                case "safe":
+                    player.SafeMovementRemaining += value;
+                    effectDescriptions.Add($"+{value} Safe Move");
                     break;
                     
                 case "attack":
@@ -583,6 +1047,8 @@ public class GameEngine : IGameEngine
     private void ResetPlayerTurnState(PlayerState player)
     {
         player.MovementRemaining = 0;
+        player.FlightRemaining = 0;
+        player.SafeMovementRemaining = 0;
         player.AttackPool = 0;
         player.BlockPool = 0;
         player.InfluencePool = 0;
@@ -621,14 +1087,25 @@ public class GameEngine : IGameEngine
 
     public GameActionResult UseMana(int dieIndex)
     {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
         if (dieIndex < 0 || dieIndex >= _state.ManaPool.Count)
             return GameActionResult.Fail("Invalid mana die index");
 
-        var color = _state.ManaPool[dieIndex];
-        _state.ManaPool.RemoveAt(dieIndex);
+        // Check if player already has temporary mana (can only take one)
+        if (player.TemporaryMana.HasValue)
+            return GameActionResult.Fail("You can only take one mana die per round. You already have temporary mana.");
 
-        AddLogEntry("UseMana", $"Used {color} mana from pool");
-        return GameActionResult.Ok($"Used {color} mana");
+        var color = _state.ManaPool[dieIndex];
+        
+        // Give player temporary mana (don't remove from pool yet - it stays until end of round)
+        player.TemporaryMana = color;
+        player.UsedManaDieIndex = dieIndex;
+
+        AddLogEntry("UseMana", $"Took {color} mana from Source (temporary until end of round)");
+        return GameActionResult.Ok($"Took {color} mana from Source");
     }
 
     public GameActionResult UseCrystal(ManaColor color)
@@ -728,7 +1205,17 @@ public class GameEngine : IGameEngine
             _state.Phase = GamePhase.Movement;
             _state.CurrentPlayerIndex = 0; // First player in turn order
             
-            // Apply tactic effects (draw cards, etc.)
+            // Draw cards up to hand limit for all players (if not already at limit)
+            // This ensures players have cards at the start of the round
+            foreach (var player in _state.Players)
+            {
+                if (player.Hand.Count < player.HandLimit && player.DeedDeck.Count > 0)
+                {
+                    DrawCardsToHandLimit(player);
+                }
+            }
+            
+            // Apply tactic effects (draw cards, etc.) - this may add extra cards
             ApplyTacticEffects();
             
             AddLogEntry("RoundStart", $"Round {_state.Round} begins - Turn order determined");
@@ -830,15 +1317,89 @@ public class GameEngine : IGameEngine
         // Shuffle discard into deed deck for all players
         foreach (var player in _state.Players)
         {
+            // Return used mana die to pool and reroll it
+            if (player.UsedManaDieIndex.HasValue && player.UsedManaDieIndex.Value >= 0 && player.UsedManaDieIndex.Value < _state.ManaPool.Count)
+            {
+                // Reroll the die that was used
+                var oldColor = _state.ManaPool[player.UsedManaDieIndex.Value];
+                var newColor = RollManaDie();
+                _state.ManaPool[player.UsedManaDieIndex.Value] = newColor;
+                AddLogEntry("EndRound", $"Rerolled {oldColor} mana die to {newColor}");
+            }
+            
+            // Clear temporary mana (it's consumed or expires at end of round)
+            player.TemporaryMana = null;
+            player.UsedManaDieIndex = null;
+            
+            // Put hand cards (except wounds) into discard first
+            var handCards = player.Hand.Where(c => !c.StartsWith("wound")).ToList();
+            foreach (var card in handCards)
+            {
+                player.Hand.Remove(card);
+                player.DiscardPile.Add(card);
+            }
+            
+            // Shuffle discard back into deck
             player.DeedDeck.AddRange(player.DiscardPile);
             player.DiscardPile.Clear();
             ShuffleList(player.DeedDeck);
+            
+            // Draw new hand for all players
+            DrawCardsToHandLimit(player);
+            
+            // Ready all units
+            foreach (var unit in player.Units)
+            {
+                unit.IsReady = true;
+                unit.UsedThisCombat = false;
+            }
         }
 
-        // Reroll mana pool
+        // Reroll mana pool (for any unused dice)
         RollManaPool();
+        
+        // Reset to tactics selection for new round
+        _state.Phase = GamePhase.TacticsSelection;
+        _state.SelectedTactics.Clear();
+        
+        // Set available tactics based on day/night
+        var tactics = _state.IsDay 
+            ? _definitions.GetDayTacticsAsync().Result 
+            : _definitions.GetNightTacticsAsync().Result;
+        _state.AvailableTactics = tactics.Select(t => t.Id).ToList();
+        
+        // Refill unit offers
+        RefillUnitOffers();
+        
+        // Refill spell/advanced action offers
+        RefillCardOffers();
 
-        AddLogEntry("RoundEnd", $"Round {_state.Round} begins - {(_state.IsDay ? "Day" : "Night")}");
+        AddLogEntry("RoundEnd", $"Round {_state.Round} begins - {(_state.IsDay ? "Day" : "Night")}. Select tactics!");
+    }
+    
+    private void RefillUnitOffers()
+    {
+        // Ensure there are enough units in the offer
+        // Regular units: 3 in offer
+        // Elite units: 2 in offer (or based on player count)
+        
+        // This is a simplified version - in full game, would use actual offer mechanics
+    }
+    
+    private void RefillCardOffers()
+    {
+        // Ensure spell and advanced action offers are full
+        // Simplified version - full game would have specific offer mechanics
+    }
+
+    private ManaColor RollManaDie()
+    {
+        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White };
+        // Gold has 1/6 chance, each color has equal remaining chance
+        if (_random.Next(6) == 0)
+            return ManaColor.Gold;
+        else
+            return colors[_random.Next(colors.Length)];
     }
 
     private void RollManaPool()
@@ -849,11 +1410,7 @@ public class GameEngine : IGameEngine
         _state.ManaPool.Clear();
         for (int i = 0; i < diceCount; i++)
         {
-            // Gold has 1/6 chance, each color has equal remaining chance
-            if (_random.Next(6) == 0)
-                _state.ManaPool.Add(ManaColor.Gold);
-            else
-                _state.ManaPool.Add(colors[_random.Next(colors.Length)]);
+            _state.ManaPool.Add(RollManaDie());
         }
     }
 
@@ -977,6 +1534,19 @@ public class GameEngine : IGameEngine
                 
                 if (combatEnemy.IsSwift)
                     hasSwiftEnemies = true;
+                
+                // Handle Summon ability - add summoned enemies
+                if (combatEnemy.CanSummon)
+                {
+                    var summonedEnemies = ProcessSummonAbility(combatEnemy, combat);
+                    foreach (var summoned in summonedEnemies)
+                    {
+                        combat.Enemies.Add(summoned);
+                        combat.SummonedEnemies.Add(summoned.EnemyId);
+                        if (summoned.IsSwift)
+                            hasSwiftEnemies = true;
+                    }
+                }
             }
         }
 
@@ -986,9 +1556,56 @@ public class GameEngine : IGameEngine
         _state.Combat = combat;
         _state.Phase = GamePhase.Combat;
 
+        var summonMsg = combat.SummonedEnemies.Any() ? $" (+{combat.SummonedEnemies.Count} summoned)" : "";
         var phaseMsg = hasSwiftEnemies ? "Swift enemies attack first!" : "Ranged attack phase";
-        AddLogEntry("Combat", $"Combat initiated with {combat.Enemies.Count} enemies. {phaseMsg}");
-        return GameActionResult.Ok($"Combat started with {combat.Enemies.Count} enemies. {phaseMsg}");
+        AddLogEntry("Combat", $"Combat initiated with {combat.Enemies.Count} enemies{summonMsg}. {phaseMsg}");
+        return GameActionResult.Ok($"Combat started with {combat.Enemies.Count} enemies{summonMsg}. {phaseMsg}");
+    }
+
+    private List<CombatEnemy> ProcessSummonAbility(CombatEnemy summoner, CombatState combat)
+    {
+        var summonedEnemies = new List<CombatEnemy>();
+        
+        // Parse summon ability - format: "Summon_EnemyType" (e.g., "Summon_Brown")
+        var summonAbilities = summoner.Abilities.Where(a => a.StartsWith("Summon_", StringComparison.OrdinalIgnoreCase));
+        
+        foreach (var summonAbility in summonAbilities)
+        {
+            var enemyType = summonAbility.Substring(7); // Remove "Summon_" prefix
+            
+            // Try to draw from enemy deck
+            if (_state.Decks.EnemyDecks.TryGetValue(enemyType, out var deck) && deck.Any())
+            {
+                var enemyId = deck[0];
+                deck.RemoveAt(0);
+                
+                var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
+                if (enemyDef != null)
+                {
+                    var summonedEnemy = new CombatEnemy
+                    {
+                        EnemyId = enemyId,
+                        Name = $"{enemyDef.Name} (Summoned)",
+                        Armor = enemyDef.Armor?.Value ?? 3,
+                        Attack = enemyDef.Attack?.Value ?? 3,
+                        AttackType = enemyDef.Attack?.Attributes?.FirstOrDefault() ?? "Physical",
+                        Resistances = enemyDef.Armor?.Resistances ?? new List<string>(),
+                        Abilities = enemyDef.Abilities ?? new List<string>(),
+                        Fame = 0 // Summoned enemies don't give fame
+                    };
+                    
+                    summonedEnemies.Add(summonedEnemy);
+                    AddLogEntry("Combat", $"{summoner.Name} summoned a {enemyDef.Name}!");
+                }
+            }
+            else
+            {
+                // No enemies of that type available - summon fails
+                AddLogEntry("Combat", $"{summoner.Name}'s summon ability failed - no {enemyType} enemies available");
+            }
+        }
+        
+        return summonedEnemies;
     }
 
     public GameActionResult RangedAttack(int enemyIndex, int attackValue)
@@ -1205,13 +1822,21 @@ public class GameEngine : IGameEngine
         enemy.IsDefeated = true;
         player.Fame += enemy.Fame;
         
-        // Check for Summon ability - summoned enemies also give fame when parent is killed
-        if (enemy.CanSummon)
+        // Check for Summon ability - summoned enemies flee when summoner is killed
+        if (enemy.CanSummon && _state.Combat != null)
         {
-            AddLogEntry("Combat", $"Summoner {enemy.Name} defeated - summoned creatures dispersed");
+            // Mark all summoned enemies as defeated (they flee when summoner dies)
+            var summonedIds = _state.Combat.SummonedEnemies.ToList();
+            foreach (var summonedEnemy in _state.Combat.Enemies.Where(e => summonedIds.Contains(e.EnemyId) && !e.IsDefeated))
+            {
+                summonedEnemy.IsDefeated = true;
+                AddLogEntry("Combat", $"{summonedEnemy.Name} fled when their summoner was defeated!");
+            }
+            AddLogEntry("Combat", $"Summoner {enemy.Name} defeated - summoned creatures dispersed!");
         }
         
-        AddLogEntry("Combat", $"Defeated {enemy.Name} with {attackType}! +{enemy.Fame} fame");
+        var fameMsg = enemy.Fame > 0 ? $"! +{enemy.Fame} fame" : " (no fame - summoned)";
+        AddLogEntry("Combat", $"Defeated {enemy.Name} with {attackType}{fameMsg}");
     }
 
     private string GetRequiredBlockForAttack(string attackType)
@@ -1365,6 +1990,23 @@ public class GameEngine : IGameEngine
                     // Check for Poison - poison wounds go to discard, not hand
                     var poisonEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && e.IsPoison).ToList();
                     
+                    // Check for Vampiric enemies - they heal when dealing damage
+                    var vampiricEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && !e.IsBlocked && e.IsVampiric).ToList();
+                    if (vampiricEnemies.Any())
+                    {
+                        // Vampiric enemies heal damage equal to the wounds they cause
+                        foreach (var vampEnemy in vampiricEnemies)
+                        {
+                            var healAmount = Math.Min(vampEnemy.Attack, vampEnemy.CurrentDamage);
+                            if (healAmount > 0)
+                            {
+                                vampEnemy.CurrentDamage -= healAmount;
+                                vampEnemy.HealedDamage += healAmount;
+                                AddLogEntry("Combat", $"Vampiric! {vampEnemy.Name} healed {healAmount} damage!");
+                            }
+                        }
+                    }
+                    
                     for (int i = 0; i < damageToAssign; i++)
                     {
                         if (poisonEnemies.Any())
@@ -1416,25 +2058,49 @@ public class GameEngine : IGameEngine
 
         // Take damage from all enemies when fleeing (Brutal enemies do double)
         var totalDamage = 0;
+        var messages = new List<string>();
         foreach (var enemy in _state.Combat.Enemies.Where(e => !e.IsDefeated))
         {
-            totalDamage += enemy.Attack;
+            var enemyDamage = enemy.Attack;
             if (enemy.IsBrutal)
             {
-                totalDamage += enemy.Attack; // Double for Brutal
+                enemyDamage *= 2; // Double for Brutal
+                messages.Add($"Brutal! {enemy.Name}'s damage doubled");
+            }
+            totalDamage += enemyDamage;
+            
+            // Vampiric enemies heal when dealing damage
+            if (enemy.IsVampiric)
+            {
+                var healAmount = Math.Min(enemyDamage, enemy.CurrentDamage);
+                if (healAmount > 0)
+                {
+                    enemy.CurrentDamage -= healAmount;
+                    enemy.HealedDamage += healAmount;
+                    messages.Add($"Vampiric! {enemy.Name} healed {healAmount} damage");
+                }
             }
         }
 
+        var poisonEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && e.IsPoison).ToList();
         for (int i = 0; i < totalDamage; i++)
         {
-            player.Hand.Add("wound");
+            if (poisonEnemies.Any())
+            {
+                player.DiscardPile.Add("wound_poison");
+            }
+            else
+            {
+                player.Hand.Add("wound");
+            }
         }
 
         _state.Combat = null;
         _state.Phase = GamePhase.Movement;
 
-        AddLogEntry("Combat", $"Fled combat! Took {totalDamage} wounds.");
-        return GameActionResult.Ok($"Fled combat - took {totalDamage} wounds");
+        var messageText = messages.Any() ? $" ({string.Join(", ", messages)})" : "";
+        AddLogEntry("Combat", $"Fled combat! Took {totalDamage} wounds.{messageText}");
+        return GameActionResult.Ok($"Fled combat - took {totalDamage} wounds{messageText}");
     }
 
     private GameActionResult ResolveCombat()
@@ -1669,6 +2335,70 @@ public class GameEngine : IGameEngine
                 };
             }
         }
+        // Ancient Ruins interactions (if conquered/cleared)
+        else if (siteType.Contains("ruins") || siteType.Contains("ancientruins"))
+        {
+            if (hexState.IsConquered && _state.Decks.RuinsTokens.Any())
+            {
+                yield return new SiteInteractionOption
+                {
+                    Type = "DrawRuins",
+                    Description = "Draw a Ruins Token (may be loot or enemies!)",
+                    IsAvailable = _state.ActiveRuinsToken == null
+                };
+            }
+            else if (!hexState.IsConquered)
+            {
+                yield return new SiteInteractionOption
+                {
+                    Type = "DrawRuins",
+                    Description = "Draw a Ruins Token (may be loot or enemies!)",
+                    IsAvailable = _state.ActiveRuinsToken == null && _state.Decks.RuinsTokens.Any()
+                };
+            }
+        }
+        // City interactions (if conquered)
+        else if (siteType.Contains("city"))
+        {
+            if (hexState.IsConquered)
+            {
+                yield return new SiteInteractionOption
+                {
+                    Type = "Recruit",
+                    Description = "Recruit any unit (city has all unit types)",
+                    InfluenceCost = GetRecruitCost(),
+                    IsAvailable = player.InfluencePool >= GetRecruitCost()
+                };
+                yield return new SiteInteractionOption
+                {
+                    Type = "Heal",
+                    Description = "Heal 1 wound (3 Influence)",
+                    InfluenceCost = 3,
+                    IsAvailable = player.InfluencePool >= 3 && player.Hand.Contains("wound")
+                };
+                yield return new SiteInteractionOption
+                {
+                    Type = "Training",
+                    Description = "Gain Advanced Action (6 Influence)",
+                    InfluenceCost = 6,
+                    IsAvailable = player.InfluencePool >= 6
+                };
+                yield return new SiteInteractionOption
+                {
+                    Type = "LearnSpell",
+                    Description = "Learn a spell (7 Influence)",
+                    InfluenceCost = 7,
+                    IsAvailable = player.InfluencePool >= 7
+                };
+                yield return new SiteInteractionOption
+                {
+                    Type = "BuyFame",
+                    Description = "Buy 2 Fame (10 Influence)",
+                    InfluenceCost = 10,
+                    IsAvailable = player.InfluencePool >= 10
+                };
+            }
+        }
     }
 
     private int GetRecruitCost()
@@ -1724,6 +2454,12 @@ public class GameEngine : IGameEngine
                 return Harvest(hexState.SiteType);
             case "training":
                 return Training();
+            case "drawruins":
+                return DrawRuinsToken();
+            case "buyfame":
+                return BuyFame();
+            case "learnspell":
+                return LearnSpell();
             default:
                 return GameActionResult.Fail($"Unknown interaction type: {interactionType}");
         }
@@ -1890,6 +2626,447 @@ public class GameEngine : IGameEngine
 
         AddLogEntry("Training", "Trained at monastery - gained Advanced Action");
         return GameActionResult.Ok("Trained! Choose an Advanced Action.");
+    }
+
+    private GameActionResult BuyFame()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (player.InfluencePool < 10)
+            return GameActionResult.Fail("Not enough influence (need 10)");
+
+        player.InfluencePool -= 10;
+        player.Fame += 2;
+
+        CheckForLevelUp();
+
+        AddLogEntry("BuyFame", "Bought 2 Fame at city for 10 Influence");
+        return GameActionResult.Ok("Gained 2 Fame!");
+    }
+
+    private GameActionResult LearnSpell()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (player.InfluencePool < 7)
+            return GameActionResult.Fail("Not enough influence (need 7)");
+
+        if (!_state.Decks.Spells.Any())
+            return GameActionResult.Fail("No spells available");
+
+        // Draw top spell from deck
+        var spellId = _state.Decks.Spells[0];
+        _state.Decks.Spells.RemoveAt(0);
+        player.Spells.Add(spellId);
+        player.InfluencePool -= 7;
+
+        var spellDef = _definitions.GetSpellsAsync().Result.FirstOrDefault(s => s.Id == spellId);
+        var spellName = spellDef?.Name ?? spellId;
+
+        AddLogEntry("LearnSpell", $"Learned spell: {spellName}");
+        return GameActionResult.Ok($"Learned {spellName}!");
+    }
+
+    // ==================== RUINS TOKEN SYSTEM ====================
+
+    private GameActionResult DrawRuinsToken()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.ActiveRuinsToken != null)
+            return GameActionResult.Fail("Already resolving a ruins token");
+
+        if (!_state.Decks.RuinsTokens.Any())
+            return GameActionResult.Fail("No ruins tokens remaining");
+
+        // Draw top token
+        var tokenId = _state.Decks.RuinsTokens[0];
+        _state.Decks.RuinsTokens.RemoveAt(0);
+
+        // Get token definition
+        var tokenDef = _definitions.GetRuinsTokensAsync().Result.FirstOrDefault(t => t.Id == tokenId);
+        if (tokenDef == null)
+            return GameActionResult.Fail("Invalid ruins token");
+
+        // Create active token state
+        _state.ActiveRuinsToken = new ActiveRuinsToken
+        {
+            TokenId = tokenId,
+            Name = tokenDef.Name,
+            Type = tokenDef.Type,
+            Description = tokenDef.Description,
+            IsResolved = false,
+            PendingChoices = new List<RuinsChoice>()
+        };
+
+        AddLogEntry("Ruins", $"Drew ruins token: {tokenDef.Name}");
+
+        // Handle different token types
+        if (tokenDef.IsCombatToken && tokenDef.Enemies != null)
+        {
+            // Combat token - initiate combat with enemies
+            return InitiateRuinsCombat(tokenDef);
+        }
+        else if (tokenDef.Effects != null && tokenDef.Effects.Any())
+        {
+            // Loot token - apply effects or queue choices
+            return ApplyRuinsTokenEffects(tokenDef);
+        }
+
+        return GameActionResult.Ok($"Drew ruins token: {tokenDef.Name}");
+    }
+
+    private GameActionResult InitiateRuinsCombat(Definitions.RuinsDefinition tokenDef)
+    {
+        if (tokenDef.Enemies == null || !tokenDef.Enemies.Any())
+            return GameActionResult.Fail("No enemies on this ruins token");
+
+        // Create combat state with enemies from the token
+        var combatEnemies = new List<CombatEnemy>();
+
+        foreach (var enemyConfig in tokenDef.Enemies)
+        {
+            // Draw enemies of the specified type
+            var enemyType = enemyConfig.Type;
+            if (!_state.Decks.EnemyDecks.TryGetValue(enemyType, out var enemyDeck) || !enemyDeck.Any())
+            {
+                // Try to find enemies of this type
+                var availableEnemies = _definitions.GetEnemiesByTypeAsync(enemyType).Result.ToList();
+                if (!availableEnemies.Any())
+                {
+                    AddLogEntry("Ruins", $"No {enemyType} enemies available");
+                    continue;
+                }
+
+                // Use a random enemy of this type
+                var enemyDef = availableEnemies[_random.Next(availableEnemies.Count)];
+                for (int i = 0; i < enemyConfig.Count; i++)
+                {
+                    combatEnemies.Add(CreateCombatEnemy(enemyDef));
+                }
+            }
+            else
+            {
+                // Draw from the deck
+                for (int i = 0; i < enemyConfig.Count && enemyDeck.Any(); i++)
+                {
+                    var enemyId = enemyDeck[0];
+                    enemyDeck.RemoveAt(0);
+                    var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
+                    if (enemyDef != null)
+                    {
+                        combatEnemies.Add(CreateCombatEnemy(enemyDef));
+                    }
+                }
+            }
+        }
+
+        if (!combatEnemies.Any())
+        {
+            // No enemies to fight - resolve token as empty
+            _state.ActiveRuinsToken!.IsResolved = true;
+            _state.ActiveRuinsToken = null;
+            AddLogEntry("Ruins", "Ruins token had no enemies - resolved");
+            return GameActionResult.Ok("No enemies found in the ruins!");
+        }
+
+        var player = GetCurrentPlayer();
+
+        _state.Combat = new CombatState
+        {
+            Position = player!.Position,
+            Enemies = combatEnemies,
+            Phase = combatEnemies.Any(e => e.IsSwift) ? CombatPhase.SwiftAttack : CombatPhase.RangedAttack,
+            SiteType = "Ruins",
+            IsNightRules = false
+        };
+
+        _state.Phase = GamePhase.Combat;
+
+        AddLogEntry("Combat", $"Ruins combat! Fighting {combatEnemies.Count} enemies from {tokenDef.Name}");
+        return GameActionResult.Ok($"Ruins combat! Fight {combatEnemies.Count} enemies!");
+    }
+
+    private CombatEnemy CreateCombatEnemy(Definitions.EnemyDefinition enemyDef)
+    {
+        return new CombatEnemy
+        {
+            EnemyId = enemyDef.Id,
+            Name = enemyDef.Name,
+            Armor = enemyDef.Armor.Value,
+            Attack = enemyDef.Attack.Value,
+            AttackType = enemyDef.Attack.Attributes.FirstOrDefault() ?? "Physical",
+            Resistances = enemyDef.Armor.Resistances,
+            Abilities = enemyDef.Abilities,
+            Fame = enemyDef.Fame,
+            CurrentDamage = 0,
+            IsDefeated = false,
+            IsBlocked = false
+        };
+    }
+
+    private GameActionResult ApplyRuinsTokenEffects(Definitions.RuinsDefinition tokenDef)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        var messages = new List<string>();
+        var hasChoices = false;
+
+        foreach (var effect in tokenDef.Effects!)
+        {
+            switch (effect.Type.ToLower())
+            {
+                case "gaincrystal":
+                    // Add choice for crystal colors
+                    var crystalAmount = effect.Value ?? 1;
+                    _state.ActiveRuinsToken!.PendingChoices!.Add(new RuinsChoice
+                    {
+                        ChoiceType = "CrystalColor",
+                        Description = $"Choose {crystalAmount} crystal color(s)",
+                        Amount = crystalAmount,
+                        Options = new List<string> { "Red", "Blue", "Green", "White" },
+                        IsResolved = false
+                    });
+                    hasChoices = true;
+                    break;
+
+                case "gainmana":
+                    // Add choice for mana color
+                    var manaAmount = effect.Value ?? 1;
+                    _state.ActiveRuinsToken!.PendingChoices!.Add(new RuinsChoice
+                    {
+                        ChoiceType = "ManaColor",
+                        Description = $"Choose {manaAmount} mana token color(s)",
+                        Amount = manaAmount,
+                        Options = new List<string> { "Red", "Blue", "Green", "White", "Black", "Gold" },
+                        IsResolved = false
+                    });
+                    hasChoices = true;
+                    break;
+
+                case "gaincard":
+                    if (effect.Target == "SpellOffer")
+                    {
+                        // Add spell from offer
+                        if (_state.Decks.Spells.Any())
+                        {
+                            var spellId = _state.Decks.Spells[0];
+                            _state.Decks.Spells.RemoveAt(0);
+                            player.Spells.Add(spellId);
+                            var spellDef = _definitions.GetSpellsAsync().Result.FirstOrDefault(s => s.Id == spellId);
+                            messages.Add($"Gained spell: {spellDef?.Name ?? spellId}");
+                        }
+                    }
+                    else if (effect.Target == "ArtifactDeck")
+                    {
+                        // Draw artifact
+                        if (_state.Decks.Artifacts.Any())
+                        {
+                            var artifactId = _state.Decks.Artifacts[0];
+                            _state.Decks.Artifacts.RemoveAt(0);
+                            player.Artifacts.Add(artifactId);
+                            var artifactDef = _definitions.GetArtifactsAsync().Result.FirstOrDefault(a => a.Id == artifactId);
+                            messages.Add($"Gained artifact: {artifactDef?.Name ?? artifactId}");
+                        }
+                    }
+                    break;
+
+                case "recruit":
+                    // Free recruit - add choice for unit
+                    _state.ActiveRuinsToken!.PendingChoices!.Add(new RuinsChoice
+                    {
+                        ChoiceType = "UnitFromOffer",
+                        Description = "Choose a unit to recruit for free",
+                        Amount = 1,
+                        Options = _state.Decks.RegularUnits.Take(3).Concat(_state.Decks.EliteUnits.Take(2)).ToList(),
+                        IsResolved = false
+                    });
+                    hasChoices = true;
+                    break;
+            }
+        }
+
+        if (!hasChoices)
+        {
+            // All effects applied immediately - resolve token
+            _state.ActiveRuinsToken!.IsResolved = true;
+            _state.ActiveRuinsToken = null;
+        }
+
+        var resultMessage = string.Join("; ", messages);
+        if (hasChoices)
+        {
+            resultMessage = $"{tokenDef.Name}: Make your choices!";
+        }
+
+        return GameActionResult.Ok(string.IsNullOrEmpty(resultMessage) ? tokenDef.Description : resultMessage);
+    }
+
+    /// <summary>
+    /// Resolves a pending choice for the active ruins token.
+    /// </summary>
+    public GameActionResult ResolveRuinsChoice(int choiceIndex, string selection)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.ActiveRuinsToken == null)
+            return GameActionResult.Fail("No active ruins token");
+
+        if (_state.ActiveRuinsToken.PendingChoices == null ||
+            choiceIndex < 0 ||
+            choiceIndex >= _state.ActiveRuinsToken.PendingChoices.Count)
+            return GameActionResult.Fail("Invalid choice index");
+
+        var choice = _state.ActiveRuinsToken.PendingChoices[choiceIndex];
+        if (choice.IsResolved)
+            return GameActionResult.Fail("Choice already resolved");
+
+        switch (choice.ChoiceType)
+        {
+            case "CrystalColor":
+                return ApplyCrystalChoice(player, choice, selection);
+
+            case "ManaColor":
+                return ApplyManaChoice(player, choice, selection);
+
+            case "UnitFromOffer":
+                return ApplyUnitChoice(player, choice, selection);
+
+            default:
+                return GameActionResult.Fail($"Unknown choice type: {choice.ChoiceType}");
+        }
+    }
+
+    private GameActionResult ApplyCrystalChoice(PlayerState player, RuinsChoice choice, string color)
+    {
+        switch (color.ToLower())
+        {
+            case "red":
+                player.Crystals.Red++;
+                break;
+            case "blue":
+                player.Crystals.Blue++;
+                break;
+            case "green":
+                player.Crystals.Green++;
+                break;
+            case "white":
+                player.Crystals.White++;
+                break;
+            default:
+                return GameActionResult.Fail("Invalid crystal color");
+        }
+
+        choice.Amount--;
+        if (choice.Amount <= 0)
+        {
+            choice.IsResolved = true;
+            CheckAllRuinsChoicesResolved();
+        }
+
+        AddLogEntry("Ruins", $"Gained 1 {color} Crystal");
+        return GameActionResult.Ok($"Gained 1 {color} Crystal!");
+    }
+
+    private GameActionResult ApplyManaChoice(PlayerState player, RuinsChoice choice, string color)
+    {
+        switch (color.ToLower())
+        {
+            case "red":
+                player.ManaTokens.Red++;
+                break;
+            case "blue":
+                player.ManaTokens.Blue++;
+                break;
+            case "green":
+                player.ManaTokens.Green++;
+                break;
+            case "white":
+                player.ManaTokens.White++;
+                break;
+            case "black":
+                player.ManaTokens.Black++;
+                break;
+            case "gold":
+                player.ManaTokens.Gold++;
+                break;
+            default:
+                return GameActionResult.Fail("Invalid mana color");
+        }
+
+        choice.Amount--;
+        if (choice.Amount <= 0)
+        {
+            choice.IsResolved = true;
+            CheckAllRuinsChoicesResolved();
+        }
+
+        AddLogEntry("Ruins", $"Gained 1 {color} Mana Token");
+        return GameActionResult.Ok($"Gained 1 {color} Mana Token!");
+    }
+
+    private GameActionResult ApplyUnitChoice(PlayerState player, RuinsChoice choice, string unitId)
+    {
+        if (player.Units.Count >= player.CommandTokens)
+            return GameActionResult.Fail($"Unit limit reached ({player.CommandTokens})");
+
+        var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unitId);
+        if (unitDef == null)
+            return GameActionResult.Fail("Invalid unit");
+
+        // Remove from offer
+        if (_state.Decks.RegularUnits.Contains(unitId))
+            _state.Decks.RegularUnits.Remove(unitId);
+        else if (_state.Decks.EliteUnits.Contains(unitId))
+            _state.Decks.EliteUnits.Remove(unitId);
+
+        // Add to player
+        player.Units.Add(new UnitState
+        {
+            UnitId = unitId,
+            Name = unitDef.Name,
+            Armor = unitDef.Armor,
+            IsReady = true,
+            IsWounded = false,
+            UsedThisCombat = false
+        });
+
+        choice.IsResolved = true;
+        CheckAllRuinsChoicesResolved();
+
+        AddLogEntry("Ruins", $"Recruited {unitDef.Name} for free!");
+        return GameActionResult.Ok($"Recruited {unitDef.Name}!");
+    }
+
+    private void CheckAllRuinsChoicesResolved()
+    {
+        if (_state.ActiveRuinsToken == null) return;
+
+        var allResolved = _state.ActiveRuinsToken.PendingChoices?.All(c => c.IsResolved) ?? true;
+        if (allResolved)
+        {
+            _state.ActiveRuinsToken.IsResolved = true;
+            _state.ActiveRuinsToken = null;
+            AddLogEntry("Ruins", "Ruins token fully resolved");
+        }
+    }
+
+    /// <summary>
+    /// Gets the currently active ruins token being resolved, if any.
+    /// </summary>
+    public ActiveRuinsToken? GetActiveRuinsToken()
+    {
+        return _state.ActiveRuinsToken;
     }
 
     // ==================== LEVEL UP SYSTEM ====================
@@ -2407,6 +3584,7 @@ public class GameEngine : IGameEngine
                 UnitIndex = i,
                 UnitId = unit.UnitId,
                 UnitName = unit.Name,
+                Armor = unit.Armor,
                 IsWounded = unit.IsWounded,
                 IsReady = unit.IsReady,
                 UsedThisCombat = unit.UsedThisCombat,

@@ -16,6 +16,23 @@ The Scenario Book contains specific rules for:
 * **Combat**: Players agree on how to split enemies and block assignments.
 * **Scoring**: Points are shared or calculated based on contribution.
 
+## Site Interactions
+
+### Ancient Ruins
+* **Ruins Tokens**: When entering Ancient Ruins, you draw a Ruins Token from the Ruins Token deck.
+* **Token Types**:
+    * **Combat Tokens**: Require fighting enemies. Defeat all enemies to claim rewards.
+    * **Loot Tokens**: Grant immediate rewards (crystals, cards, spells, artifacts, units).
+* **Token Resolution**:
+    * Combat tokens: Initiate combat with the specified enemies.
+    * Loot tokens: Choose from available rewards (if multiple options).
+    * After resolving, the token is removed from the game.
+
+### Conquered Cities
+* **Buy Fame**: Spend Influence to gain Fame points.
+* **Learn Spell**: Spend Influence to learn a spell from the spell offer.
+* **Other Interactions**: Conquered cities may offer additional benefits based on scenario rules.
+
 ## Scoring
 * **Fame**: The primary metric for winning. Gained by defeating enemies, conquering sites, and exploring.
 * **Reputation**: Affects interaction with locals (Influence costs). High reputation makes recruiting easier; low reputation (from burning monasteries or pillaging) makes it harder.

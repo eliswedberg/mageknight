@@ -11,3 +11,16 @@ C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnli
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\refint\MageKnightOnline.Core.dll
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.pdb
 C:\Users\ElisWedberg\source\repos\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\ref\MageKnightOnline.Core.dll
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.dll
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\refint\MageKnightOnline.Core.dll
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.pdb
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\bin\Debug\net10.0\MageKnightOnline.Core.deps.json
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\bin\Debug\net10.0\MageKnightOnline.Core.dll
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\bin\Debug\net10.0\MageKnightOnline.Core.pdb
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.csproj.AssemblyReference.cache
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.AssemblyInfoInputs.cache
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.AssemblyInfo.cs
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.csproj.CoreCompileInputs.cache
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.sourcelink.json
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Core\obj\Debug\net10.0\ref\MageKnightOnline.Core.dll

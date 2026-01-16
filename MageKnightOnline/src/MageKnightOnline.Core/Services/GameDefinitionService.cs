@@ -20,6 +20,7 @@ public class GameDefinitionService : IGameDefinitionService
     private List<EnemyDefinition>? _enemies;
     private List<TacticsDefinition>? _tactics;
     private List<MapTileDefinition>? _mapTiles;
+    private List<RuinsDefinition>? _ruins;
 
     public GameDefinitionService(string basePath)
     {
@@ -164,5 +165,24 @@ public class GameDefinitionService : IGameDefinitionService
     {
         _mapTiles ??= await LoadJsonAsync<MapTileDefinition>("map_tiles.json");
         return _mapTiles.AsReadOnly();
+    }
+
+    // Ruins Tokens
+    public async Task<IReadOnlyList<RuinsDefinition>> GetRuinsTokensAsync()
+    {
+        _ruins ??= await LoadJsonAsync<RuinsDefinition>("ruins.json");
+        return _ruins.AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<RuinsDefinition>> GetRuinsLootTokensAsync()
+    {
+        var ruins = await GetRuinsTokensAsync();
+        return ruins.Where(r => r.IsLootToken).ToList().AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<RuinsDefinition>> GetRuinsCombatTokensAsync()
+    {
+        var ruins = await GetRuinsTokensAsync();
+        return ruins.Where(r => r.IsCombatToken).ToList().AsReadOnly();
     }
 }

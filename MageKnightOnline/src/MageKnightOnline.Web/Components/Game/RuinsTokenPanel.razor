@@ -1,0 +1,410 @@
+@namespace MageKnightOnline.Web.Components.Game
+@using MageKnightOnline.Core.GameEngine
+@using MageKnightOnline.Core.GameState
+
+<div class="ruins-panel @(IsVisible ? "visible" : "")">
+    <div class="ruins-panel-header">
+        <h3>🏚️ @TokenName</h3>
+        @if (CanClose)
+        {
+            <button class="close-btn" @onclick="OnClose">×</button>
+        }
+    </div>
+
+    <div class="ruins-panel-content">
+        <div class="token-description">
+            <span class="token-type @GetTokenTypeClass()">@TokenType</span>
+            <p>@Description</p>
+        </div>
+
+        @if (PendingChoices?.Any() == true)
+        {
+            <div class="choices-section">
+                <h4>Make Your Choices</h4>
+                @foreach (var (choice, index) in PendingChoices.Select((c, i) => (c, i)))
+                {
+                    @if (!choice.IsResolved)
+                    {
+                        <div class="choice-item">
+                            <span class="choice-description">@choice.Description (@choice.Amount remaining)</span>
+                            <div class="choice-options">
+                                @if (choice.Options != null)
+                                {
+                                    @foreach (var option in choice.Options)
+                                    {
+                                        <button class="choice-btn @GetChoiceButtonClass(option)"
+                                                @onclick="() => OnChoiceSelected.InvokeAsync((index, option))">
+                                            @GetOptionIcon(choice.ChoiceType, option) @option
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+        else if (IsCombatToken)
+        {
+            <div class="combat-warning">
+                <span class="warning-icon">⚔️</span>
+                <p>Prepare for combat! Enemies await...</p>
+            </div>
+        }
+        else
+        {
+            <div class="token-resolved">
+                <span class="success-icon">✓</span>
+                <p>Token effects applied!</p>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <div class="token-message @(IsError ? "error" : "success")">
+                @Message
+            </div>
+        }
+    </div>
+
+    <div class="ruins-panel-footer">
+        @if (ShowConfirmButton)
+        {
+            <button class="btn btn-primary" @onclick="OnConfirm">
+                @(IsCombatToken ? "Begin Combat" : "Done")
+            </button>
+        }
+    </div>
+</div>
+
+<style>
+    .ruins-panel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: linear-gradient(135deg, #2a1f1a 0%, #1e1512 100%);
+        border: 2px solid #8b5a2b;
+        border-radius: 12px;
+        min-width: 380px;
+        max-width: 480px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 90, 43, 0.3);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .ruins-panel.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    .ruins-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #4a3a2a;
+        background: rgba(139, 90, 43, 0.15);
+    }
+
+    .ruins-panel-header h3 {
+        margin: 0;
+        color: #c9a55a;
+        font-size: 1.25rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .close-btn:hover {
+        color: #c9a55a;
+    }
+
+    .ruins-panel-content {
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .token-description {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .token-type {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+
+    .token-type.loot {
+        background: rgba(74, 222, 128, 0.2);
+        color: #4ade80;
+        border: 1px solid #4ade80;
+    }
+
+    .token-type.combat {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+
+    .token-description p {
+        color: #b0a090;
+        font-size: 1rem;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .choices-section {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .choices-section h4 {
+        margin: 0 0 12px 0;
+        color: #c9a55a;
+        font-size: 1rem;
+    }
+
+    .choice-item {
+        margin-bottom: 16px;
+    }
+
+    .choice-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .choice-description {
+        display: block;
+        color: #a0a0a0;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .choice-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .choice-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #4a3a2a;
+        background: rgba(255, 255, 255, 0.05);
+        color: #e8e8e8;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .choice-btn:hover {
+        border-color: #c9a55a;
+        background: rgba(201, 165, 90, 0.1);
+    }
+
+    .choice-btn.red {
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    .choice-btn.red:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    .choice-btn.blue {
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+
+    .choice-btn.blue:hover {
+        background: rgba(59, 130, 246, 0.2);
+    }
+
+    .choice-btn.green {
+        border-color: #22c55e;
+        color: #22c55e;
+    }
+
+    .choice-btn.green:hover {
+        background: rgba(34, 197, 94, 0.2);
+    }
+
+    .choice-btn.white {
+        border-color: #e2e8f0;
+        color: #e2e8f0;
+    }
+
+    .choice-btn.white:hover {
+        background: rgba(226, 232, 240, 0.2);
+    }
+
+    .choice-btn.black {
+        border-color: #6b21a8;
+        color: #a855f7;
+    }
+
+    .choice-btn.black:hover {
+        background: rgba(168, 85, 247, 0.2);
+    }
+
+    .choice-btn.gold {
+        border-color: #c9a55a;
+        color: #c9a55a;
+    }
+
+    .choice-btn.gold:hover {
+        background: rgba(201, 165, 90, 0.2);
+    }
+
+    .combat-warning {
+        text-align: center;
+        padding: 20px;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .combat-warning .warning-icon {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .combat-warning p {
+        margin: 0;
+        color: #ef4444;
+        font-weight: 500;
+    }
+
+    .token-resolved {
+        text-align: center;
+        padding: 20px;
+        background: rgba(74, 222, 128, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    .token-resolved .success-icon {
+        font-size: 2rem;
+        color: #4ade80;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .token-resolved p {
+        margin: 0;
+        color: #4ade80;
+    }
+
+    .token-message {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+    }
+
+    .token-message.success {
+        background: rgba(74, 222, 128, 0.2);
+        color: #4ade80;
+        border: 1px solid #4ade80;
+    }
+
+    .token-message.error {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+
+    .ruins-panel-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #4a3a2a;
+        background: rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+
+    .btn {
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(180deg, #c9a55a 0%, #a08040 100%);
+        border: 1px solid #d4b060;
+        color: #1e1512;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(180deg, #d4b060 0%, #b08850 100%);
+        transform: translateY(-1px);
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string TokenName { get; set; } = "Ruins Token";
+    [Parameter] public string TokenType { get; set; } = "Unknown";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public List<RuinsChoice>? PendingChoices { get; set; }
+    [Parameter] public bool IsCombatToken { get; set; }
+    [Parameter] public bool CanClose { get; set; } = true;
+    [Parameter] public bool ShowConfirmButton { get; set; } = false;
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public EventCallback<(int ChoiceIndex, string Selection)> OnChoiceSelected { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string GetTokenTypeClass()
+    {
+        return IsCombatToken ? "combat" : "loot";
+    }
+
+    private string GetChoiceButtonClass(string option)
+    {
+        return option.ToLower();
+    }
+
+    private string GetOptionIcon(string choiceType, string option)
+    {
+        return (choiceType, option.ToLower()) switch
+        {
+            ("CrystalColor", "red") => "🔴",
+            ("CrystalColor", "blue") => "🔵",
+            ("CrystalColor", "green") => "🟢",
+            ("CrystalColor", "white") => "⚪",
+            ("ManaColor", "red") => "🔴",
+            ("ManaColor", "blue") => "🔵",
+            ("ManaColor", "green") => "🟢",
+            ("ManaColor", "white") => "⚪",
+            ("ManaColor", "black") => "🟣",
+            ("ManaColor", "gold") => "🟡",
+            _ => "•"
+        };
+    }
+}
+

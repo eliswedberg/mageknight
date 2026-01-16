@@ -269,19 +269,8 @@ public class GameService : IGameService
     {
         return await ExecuteGameAction(gameId, userId, engine =>
         {
-            ManaColor? manaUsed = null;
-            
-            // If powered and mana is specified, use the mana first
-            if (powered && manaIndex.HasValue)
-            {
-                if (manaIndex.Value >= 0 && manaIndex.Value < engine.State.ManaPool.Count)
-                {
-                    manaUsed = engine.State.ManaPool[manaIndex.Value];
-                    engine.UseMana(manaIndex.Value);
-                }
-            }
-            
-            return engine.PlayCard(cardId, powered, manaUsed);
+            // For powered cards, use temporary mana from player (not from pool directly)
+            return engine.PlayCard(cardId, powered, null);
         });
     }
 
@@ -361,6 +350,33 @@ public class GameService : IGameService
         // Get valid moves based on current movement points
         var validMoves = engine.GetValidMoves(currentPlayer.MovementRemaining);
         return validMoves.Select(p => (p.Q, p.R)).ToList().AsReadOnly();
+    }
+
+    public async Task<bool> CanExploreTileAsync(Guid gameId, Guid userId)
+    {
+        var game = await GetGameAsync(gameId);
+        if (game == null || game.Status != GameStatus.InProgress)
+            return false;
+
+        var engine = new GameEngine.GameEngine(_definitionService);
+        engine.LoadState(game.GameState);
+
+        var player = engine.GetPlayer(userId);
+        if (player == null)
+            return false;
+
+        // Check if player is at an edge hex (has unrevealed neighbors)
+        var explorableEdges = engine.GetExplorableEdges();
+        return explorableEdges.Any(e => e.Q == player.Position.Q && e.R == player.Position.R);
+    }
+
+    public async Task<GameResult> ExploreTileAsync(Guid gameId, Guid userId, int q, int r)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            var edgeHex = new HexPosition { Q = q, R = r };
+            return engine.ExploreTile(edgeHex);
+        });
     }
 
     // Combat operations

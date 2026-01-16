@@ -30,4 +30,8 @@ public interface IGameDefinitionService
     Task<IReadOnlyList<TacticsDefinition>> GetNightTacticsAsync();
     
     Task<IReadOnlyList<MapTileDefinition>> GetMapTilesAsync();
+    
+    Task<IReadOnlyList<RuinsDefinition>> GetRuinsTokensAsync();
+    Task<IReadOnlyList<RuinsDefinition>> GetRuinsLootTokensAsync();
+    Task<IReadOnlyList<RuinsDefinition>> GetRuinsCombatTokensAsync();
 }

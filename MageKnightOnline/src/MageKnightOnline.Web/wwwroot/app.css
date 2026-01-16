@@ -508,3 +508,349 @@ a:hover {
     font-size: 0.85rem;
     margin-top: var(--spacing-xs);
 }
+
+/* ==================== */
+/* Animation System     */
+/* ==================== */
+
+/* Card Animations */
+@keyframes cardPlay {
+    0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2) translateY(-20px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0) translateY(-100px);
+        opacity: 0;
+    }
+}
+
+@keyframes cardDraw {
+    0% {
+        transform: translateX(100px) rotate(20deg);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0) rotate(0);
+        opacity: 1;
+    }
+}
+
+@keyframes cardDiscard {
+    0% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.5) rotate(-20deg) translateY(50px);
+        opacity: 0;
+    }
+}
+
+@keyframes cardGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(212, 168, 83, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(212, 168, 83, 0.8);
+    }
+}
+
+.anim-card-play {
+    animation: cardPlay 0.5s ease-out forwards;
+}
+
+.anim-card-draw {
+    animation: cardDraw 0.4s ease-out;
+}
+
+.anim-card-discard {
+    animation: cardDiscard 0.3s ease-in forwards;
+}
+
+.anim-card-glow {
+    animation: cardGlow 1.5s ease-in-out infinite;
+}
+
+/* Combat Animations */
+@keyframes attackSlash {
+    0% {
+        transform: translateX(-100%) rotate(-45deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%) rotate(-45deg);
+        opacity: 0;
+    }
+}
+
+@keyframes blockShield {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes damageShake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes enemyDefeat {
+    0% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1) rotate(-5deg);
+    }
+    100% {
+        transform: scale(0) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+@keyframes healPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(34, 197, 94, 0);
+    }
+}
+
+.anim-attack {
+    animation: attackSlash 0.4s ease-out;
+}
+
+.anim-block {
+    animation: blockShield 0.3s ease-out;
+}
+
+.anim-damage {
+    animation: damageShake 0.5s ease-in-out;
+}
+
+.anim-enemy-defeat {
+    animation: enemyDefeat 0.6s ease-out forwards;
+}
+
+.anim-heal {
+    animation: healPulse 0.8s ease-out;
+}
+
+/* Movement Animations */
+@keyframes moveToken {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.8) translateY(-10px);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes hexHighlight {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.anim-move {
+    animation: moveToken 0.4s ease-in-out;
+}
+
+.anim-hex-highlight {
+    animation: hexHighlight 1s ease-in-out infinite;
+}
+
+/* Mana Animations */
+@keyframes manaSparkle {
+    0%, 100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.1);
+        filter: brightness(1.3);
+    }
+}
+
+@keyframes manaUse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
+.anim-mana-sparkle {
+    animation: manaSparkle 1.5s ease-in-out infinite;
+}
+
+.anim-mana-use {
+    animation: manaUse 0.4s ease-out forwards;
+}
+
+/* Fame/Level Up Animations */
+@keyframes levelUp {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 20px rgba(212, 168, 83, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(212, 168, 83, 0);
+    }
+}
+
+@keyframes fameGain {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+}
+
+.anim-level-up {
+    animation: levelUp 1s ease-out;
+}
+
+.anim-fame-gain {
+    animation: fameGain 1s ease-out forwards;
+}
+
+/* UI Feedback Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.anim-fade-in { animation: fadeIn 0.3s ease-out; }
+.anim-fade-out { animation: fadeOut 0.3s ease-in forwards; }
+.anim-slide-in-right { animation: slideInRight 0.3s ease-out; }
+.anim-slide-in-left { animation: slideInLeft 0.3s ease-out; }
+.anim-slide-in-up { animation: slideInUp 0.3s ease-out; }
+.anim-bounce { animation: bounce 0.5s ease-in-out; }
+.anim-pulse { animation: pulse 0.3s ease-in-out; }
+
+/* Staggered Animations (for lists) */
+.anim-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.anim-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.anim-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.anim-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.anim-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.anim-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.anim-stagger > *:nth-child(7) { animation-delay: 300ms; }
+.anim-stagger > *:nth-child(8) { animation-delay: 350ms; }
+
+/* Notification Toast */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    animation: slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+    z-index: 1000;
+}
+
+.toast-notification.success {
+    border-color: var(--color-success);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, var(--color-bg-card) 100%);
+}
+
+.toast-notification.error {
+    border-color: var(--color-error);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, var(--color-bg-card) 100%);
+}
+
+.toast-notification.info {
+    border-color: var(--color-info);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, var(--color-bg-card) 100%);
+}
+
+/* Floating Effect Text */
+.floating-effect {
+    position: absolute;
+    pointer-events: none;
+    font-family: 'Cinzel', serif;
+    font-weight: bold;
+    font-size: 1.2rem;
+    animation: fameGain 1.5s ease-out forwards;
+    z-index: 1000;
+}
+
+.floating-effect.damage { color: var(--color-error); }
+.floating-effect.heal { color: var(--color-success); }
+.floating-effect.fame { color: var(--color-gold); }
+.floating-effect.move { color: #22c55e; }
+.floating-effect.mana { color: var(--color-info); }

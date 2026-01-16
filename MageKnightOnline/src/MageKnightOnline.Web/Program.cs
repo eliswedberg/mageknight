@@ -45,6 +45,10 @@ builder.Services.AddScoped<IGameService>(sp =>
     return new GameService(dbContext, definitionService);
 });
 
+// Health checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<MageKnightDbContext>("database");
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -73,5 +77,8 @@ app.MapRazorComponents<App>()
 
 // Map SignalR hub
 app.MapHub<GameHub>("/gamehub");
+
+// Map health check endpoint
+app.MapHealthChecks("/health");
 
 app.Run();
