@@ -534,6 +534,12 @@ public class HexState
 
     [JsonPropertyName("owner_user_id")]
     public Guid? OwnerUserId { get; set; }
+
+    [JsonPropertyName("is_burned")]
+    public bool IsBurned { get; set; } = false;
+
+    [JsonPropertyName("is_corrupted")]
+    public bool IsCorrupted { get; set; } = false;
 }
 
 /// <summary>
@@ -600,6 +606,19 @@ public class DeckState
 
     [JsonPropertyName("city_tiles")]
     public List<string> CityTiles { get; set; } = new();
+
+    /// <summary>
+    /// City levels for this scenario. First city uses first level, etc.
+    /// City level determines number of defenders.
+    /// </summary>
+    [JsonPropertyName("city_levels")]
+    public List<int> CityLevels { get; set; } = new();
+
+    /// <summary>
+    /// Index of the next city to be revealed (to assign correct level).
+    /// </summary>
+    [JsonPropertyName("next_city_index")]
+    public int NextCityIndex { get; set; } = 0;
 
     // Enemy decks by type
     [JsonPropertyName("enemy_decks")]

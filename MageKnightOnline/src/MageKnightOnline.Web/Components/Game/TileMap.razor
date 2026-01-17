@@ -95,6 +95,15 @@
 
                 @if (hex.IsRevealed)
                 {
+                    <!-- Site icon (shown when no players present) -->
+                    @if (!string.IsNullOrEmpty(hex.SiteType) && !hex.PlayerTokens.Any())
+                    {
+                        var siteIcon = GetSiteIcon(hex.SiteType);
+                        var siteColor = GetSiteColor(hex.SiteType);
+                        <circle cx="0" cy="0" r="16" fill="@siteColor" stroke="white" stroke-width="2" opacity="0.9"/>
+                        @((MarkupString)$"<text x=\"0\" y=\"5\" text-anchor=\"middle\" fill=\"white\" font-size=\"16\">{siteIcon}</text>")
+                    }
+
                     <!-- Player tokens -->
                     @foreach (var (token, index) in hex.PlayerTokens.Select((t, i) => (t, i)))
                     {
@@ -118,9 +127,9 @@
                     <!-- Enemy indicators -->
                     @if (hex.EnemyCount > 0)
                     {
-                        <circle cx="@F(HexOverlaySize * 0.5)" cy="@F(-HexOverlaySize * 0.4)" r="12" 
+                        <circle cx="@F(HexOverlaySize * 0.5)" cy="@F(-HexOverlaySize * 0.4)" r="14" 
                                 fill="#dc2626" stroke="#fef2f2" stroke-width="2" />
-                        @((MarkupString)$"<text x=\"{F(HexOverlaySize * 0.5)}\" y=\"{F(-HexOverlaySize * 0.4 + 4)}\" text-anchor=\"middle\" fill=\"white\" font-size=\"10\" font-weight=\"bold\">{hex.EnemyCount}</text>")
+                        @((MarkupString)$"<text x=\"{F(HexOverlaySize * 0.5)}\" y=\"{F(-HexOverlaySize * 0.4 + 5)}\" text-anchor=\"middle\" fill=\"white\" font-size=\"12\" font-weight=\"bold\">{hex.EnemyCount}</text>")
                     }
                 }
 
@@ -300,6 +309,64 @@
         {
             await OnHexHovered.InvokeAsync(hex);
         }
+    }
+
+    private string GetSiteIcon(string? siteType)
+    {
+        if (string.IsNullOrEmpty(siteType)) return "";
+        
+        return siteType.ToLower() switch
+        {
+            "village" => "🏘️",
+            "monastery" => "⛪",
+            "magetower" or "mage_tower" => "🗼",
+            "keep" => "🏰",
+            "city" => "🏙️",
+            "magicalglade" or "magical_glade" => "✨",
+            "ruins" or "ancientruins" or "ancient_ruins" => "🏛️",
+            "dungeon" => "🕳️",
+            "tomb" => "⚰️",
+            "monsterden" or "monster_den" => "🦴",
+            "spawninggrounds" or "spawning_grounds" => "👹",
+            "orcmarauders" or "orc_marauders" => "⚔️",
+            "draconum" => "🐉",
+            "portal" => "🌀",
+            _ when siteType.ToLower().Contains("mine") => "⛏️",
+            _ => "❓"
+        };
+    }
+
+    private string GetSiteColor(string? siteType)
+    {
+        if (string.IsNullOrEmpty(siteType)) return "#666";
+        
+        return siteType.ToLower() switch
+        {
+            // Friendly sites - green/blue
+            "village" => "#22c55e",
+            "monastery" => "#3b82f6",
+            "magicalglade" or "magical_glade" => "#a855f7",
+            "portal" => "#06b6d4",
+            _ when siteType.ToLower().Contains("mine") => "#eab308",
+            
+            // Fortified sites - orange/brown
+            "magetower" or "mage_tower" => "#8b5cf6",
+            "keep" => "#f97316",
+            "city" => "#ef4444",
+            
+            // Adventure sites - red/brown
+            "ruins" or "ancientruins" or "ancient_ruins" => "#78716c",
+            "dungeon" => "#7c3aed",
+            "tomb" => "#1f2937",
+            "monsterden" or "monster_den" => "#b45309",
+            "spawninggrounds" or "spawning_grounds" => "#dc2626",
+            
+            // Rampaging enemies - red
+            "orcmarauders" or "orc_marauders" => "#16a34a",
+            "draconum" => "#dc2626",
+            
+            _ => "#666"
+        };
     }
 }
 

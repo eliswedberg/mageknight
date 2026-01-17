@@ -11,6 +11,7 @@ This summary is divided into the following sections:
 4. **[Combat](04_Combat.md)**: Combat phases (including Swift phase), damage, wounds, and enemy abilities.
 5. **[Scenarios](05_Scenarios.md)**: Scenario setup, Site Interactions, and winning conditions.
 6. **[Tile Placement Logic](06_Tile_Placement_Logic.md)**: Hexagonal coordinates, tile structure, placement algorithm, and implementation details.
+7. **[Site Tokens and Enemies](07_Site_Tokens_and_Enemies.md)**: Enemy generation, site types, visual indicators, and ruins token system.
 
 ## Related Definition Files
 

@@ -207,7 +207,8 @@ public class GameStateInitializer
             CoreTiles = await CreateTileDeck("Core", scenario.TilesDeck.Core),
             CityTiles = await CreateTileDeck("City", scenario.TilesDeck.Cities),
             EnemyDecks = enemyDecks,
-            RuinsTokens = ruinsTokenDeck
+            RuinsTokens = ruinsTokenDeck,
+            CityLevels = scenario.CityLevels.ToList()
         };
     }
 

@@ -2,7 +2,7 @@
 @inject IJSRuntime JSRuntime
 
 @* Fullscreen Card Modal *@
-@if (_fullscreenCardIndex.HasValue && _fullscreenCardIndex.Value < Cards.Count)
+@if (_fullscreenCardIndex.HasValue && _fullscreenCardIndex.Value < Cards.Count && !_showSidewaysChoice)
 {
     var card = Cards[_fullscreenCardIndex.Value];
     var canPlayThisCardPowered = CanPlayPoweredForCard?.Invoke(card) ?? CanPlayPowered;
@@ -71,10 +71,10 @@
                     }
                     
                     <button class="modal-btn modal-btn-sideways"
-                            @onclick="() => UseSidewaysFromModal(_fullscreenCardIndex.Value)"
+                            @onclick="() => ShowSidewaysChoice(_fullscreenCardIndex.Value)"
                             disabled="@(!card.CanPlay)"
-                            title="Use sideways for +1 @card.Type">
-                        ↔ Use as +1
+                            title="Use sideways for +1 of your choice">
+                        ↔ Use as +1...
                     </button>
                     
                     <button class="modal-btn modal-btn-cancel" @onclick="CloseFullscreenCard">
@@ -82,6 +82,52 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+}
+
+@* Sideways Bonus Type Selection Modal *@
+@if (_showSidewaysChoice && _sidewaysCardIndex.HasValue && _sidewaysCardIndex.Value < Cards.Count)
+{
+    var card = Cards[_sidewaysCardIndex.Value];
+    
+    <div class="card-modal-overlay" @onclick="CloseSidewaysChoice">
+        <div class="sideways-choice-modal" @onclick:stopPropagation="true">
+            <button class="modal-close-btn" @onclick="CloseSidewaysChoice">✕</button>
+            
+            <h2 class="sideways-title">Choose +1 Bonus Type</h2>
+            <p class="sideways-subtitle">Using <strong>@card.Name</strong> sideways</p>
+            
+            <div class="sideways-options">
+                <button class="sideways-option move" @onclick="SelectMoveBonus">
+                    <span class="sideways-icon">🏃</span>
+                    <span class="sideways-label">+1 Move</span>
+                </button>
+                
+                <button class="sideways-option attack" @onclick="SelectAttackBonus">
+                    <span class="sideways-icon">⚔️</span>
+                    <span class="sideways-label">+1 Attack</span>
+                </button>
+                
+                <button class="sideways-option block" @onclick="SelectBlockBonus">
+                    <span class="sideways-icon">🛡️</span>
+                    <span class="sideways-label">+1 Block</span>
+                </button>
+                
+                <button class="sideways-option influence" @onclick="SelectInfluenceBonus">
+                    <span class="sideways-icon">💬</span>
+                    <span class="sideways-label">+1 Influence</span>
+                </button>
+                
+                <button class="sideways-option heal" @onclick="SelectHealBonus">
+                    <span class="sideways-icon">💚</span>
+                    <span class="sideways-label">+1 Heal</span>
+                </button>
+            </div>
+            
+            <button class="modal-btn modal-btn-cancel" @onclick="CloseSidewaysChoice">
+                Cancel
+            </button>
         </div>
     </div>
 }
@@ -200,15 +246,29 @@
 
 <style>
     .card-hand {
-        background: var(--color-bg-card);
+        background: linear-gradient(180deg, var(--color-bg-card) 0%, rgba(26, 26, 36, 0.95) 100%);
         border: 1px solid var(--color-border);
+        border-top: 2px solid var(--color-gold);
         border-radius: var(--radius-lg);
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm);
         transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .card-hand::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background: var(--color-gold);
+        border-radius: 0 0 3px 3px;
     }
 
     .card-hand.expanded {
-        padding-bottom: var(--spacing-xl);
+        padding-bottom: var(--spacing-lg);
     }
 
     .hand-header {
@@ -216,39 +276,52 @@
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
-        margin-bottom: var(--spacing-md);
+        margin-bottom: var(--spacing-sm);
+        padding: var(--spacing-xs) 0;
     }
 
     .hand-header h4 {
         margin: 0;
-        font-size: 1rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .hand-header h4::before {
+        content: '🃏';
     }
 
     .expand-icon {
         color: var(--color-gold);
         font-size: 0.8rem;
+        transition: transform 0.3s ease;
+    }
+
+    .card-hand.expanded .expand-icon {
+        transform: rotate(180deg);
     }
 
     .hand-cards {
         display: flex;
         justify-content: center;
         position: relative;
-        height: 180px;
+        height: 140px;
         perspective: 1000px;
-        padding: 20px 0 60px 0; /* Extra padding top for tooltip, bottom for actions */
-        overflow: visible; /* Allow tooltips to show outside */
-        min-height: 250px; /* Ensure enough space for hover effects */
+        padding: 10px 0 40px 0;
+        overflow: visible;
+        min-height: 180px;
     }
 
     .card-hand.expanded .hand-cards {
-        height: 240px;
-        min-height: 320px;
+        height: 180px;
+        min-height: 240px;
     }
 
     .hand-card {
         position: absolute;
-        width: 100px;
-        height: 140px;
+        width: 80px;
+        height: 112px;
         background: var(--color-bg-dark);
         border: 2px solid var(--color-border);
         border-radius: var(--radius-md);
@@ -256,11 +329,12 @@
         transition: all 0.2s ease;
         transform-origin: bottom center;
         transform: translateX(calc(var(--card-offset) * 1px)) rotate(calc((var(--card-index) - 2) * 2deg));
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
     .card-hand.expanded .hand-card {
-        width: 130px;
-        height: 182px;
+        width: 100px;
+        height: 140px;
     }
 
     .hand-card:hover {
@@ -864,6 +938,132 @@
             align-self: center;
         }
     }
+
+    /* Sideways Choice Modal */
+    .sideways-choice-modal {
+        background: linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        min-width: 360px;
+        max-width: 450px;
+        position: relative;
+        border: 2px solid var(--color-border);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        animation: modalFadeIn 0.25s ease-out;
+    }
+
+    .sideways-title {
+        text-align: center;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.6rem;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .sideways-subtitle {
+        text-align: center;
+        color: var(--color-text-muted);
+        margin: 0 0 1.5rem 0;
+        font-size: 0.95rem;
+    }
+
+    .sideways-options {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .sideways-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 0.5rem;
+        border-radius: 1rem;
+        border: 2px solid var(--color-border);
+        background: var(--color-bg-primary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .sideways-option:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .sideways-option.move {
+        border-color: #22c55e;
+    }
+    .sideways-option.move:hover {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3);
+    }
+
+    .sideways-option.attack {
+        border-color: #ef4444;
+    }
+    .sideways-option.attack:hover {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+    }
+
+    .sideways-option.block {
+        border-color: #3b82f6;
+    }
+    .sideways-option.block:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+
+    .sideways-option.influence {
+        border-color: #f59e0b;
+    }
+    .sideways-option.influence:hover {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+    }
+
+    .sideways-option.heal {
+        border-color: #10b981;
+    }
+    .sideways-option.heal:hover {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    }
+
+    .sideways-icon {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .sideways-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 500px) {
+        .sideways-choice-modal {
+            min-width: 90vw;
+            padding: 1.5rem;
+        }
+
+        .sideways-options {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .sideways-option {
+            padding: 0.75rem 0.25rem;
+        }
+
+        .sideways-icon {
+            font-size: 1.4rem;
+        }
+    }
 </style>
 
 @code {
@@ -874,13 +1074,15 @@
     [Parameter] public EventCallback<int> OnCardSelected { get; set; }
     [Parameter] public EventCallback<int> OnCardPlayed { get; set; }
     [Parameter] public EventCallback<int> OnCardPlayedPowered { get; set; }
-    [Parameter] public EventCallback<int> OnCardUsedSideways { get; set; }
+    [Parameter] public EventCallback<(int Index, string BonusType)> OnCardUsedSideways { get; set; }
     [Parameter] public EventCallback<CardDragData> OnCardDragStarted { get; set; }
     [Parameter] public EventCallback OnCardDragEnded { get; set; }
 
     private bool IsExpanded { get; set; } = true;
     private int? _draggedCardIndex = null;
     private int? _fullscreenCardIndex = null;
+    private bool _showSidewaysChoice = false;
+    private int? _sidewaysCardIndex = null;
 
     private void ToggleExpand()
     {
@@ -930,14 +1132,33 @@
         }
     }
 
-    private async Task UseSidewaysFromModal(int index)
+    private void ShowSidewaysChoice(int index)
     {
-        CloseFullscreenCard();
-        if (OnCardUsedSideways.HasDelegate)
-        {
-            await OnCardUsedSideways.InvokeAsync(index);
-        }
+        _sidewaysCardIndex = index;
+        _showSidewaysChoice = true;
+        _fullscreenCardIndex = null;
     }
+
+    private void CloseSidewaysChoice()
+    {
+        _showSidewaysChoice = false;
+        _sidewaysCardIndex = null;
+    }
+
+    private async Task SelectSidewaysBonus(string bonusType)
+    {
+        if (_sidewaysCardIndex.HasValue && OnCardUsedSideways.HasDelegate)
+        {
+            await OnCardUsedSideways.InvokeAsync((_sidewaysCardIndex.Value, bonusType));
+        }
+        CloseSidewaysChoice();
+    }
+
+    private Task SelectMoveBonus() => SelectSidewaysBonus("move");
+    private Task SelectAttackBonus() => SelectSidewaysBonus("attack");
+    private Task SelectBlockBonus() => SelectSidewaysBonus("block");
+    private Task SelectInfluenceBonus() => SelectSidewaysBonus("influence");
+    private Task SelectHealBonus() => SelectSidewaysBonus("heal");
 
     private async Task PlayCard(int index)
     {
@@ -955,12 +1176,10 @@
         }
     }
 
-    private async Task UseAsSidewaysCard(int index)
+    private void UseAsSidewaysCard(int index)
     {
-        if (OnCardUsedSideways.HasDelegate)
-        {
-            await OnCardUsedSideways.InvokeAsync(index);
-        }
+        // Show the sideways choice modal instead of directly using
+        ShowSidewaysChoice(index);
     }
 
     private async Task OnDragStart(int index, CardData card)

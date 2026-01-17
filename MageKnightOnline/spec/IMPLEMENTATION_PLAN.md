@@ -284,8 +284,8 @@ public interface IEffectHandler
 - [x] Magical Glade (Heal, Empower)
 - [x] Crystal Mine (Harvest)
 - [x] Conquered City (Recruit all, Buy fame, Training, Learn Spell)
-- [ ] Burn monastery
-- [ ] Cleanse (Glade)
+- [x] Burn monastery
+- [x] Cleanse (Glade)
 
 ### 7.2 Adventure Sites
 - [x] Ruins (basic)
@@ -570,8 +570,8 @@ För en spelbar MVP, fokusera på:
 - ✅ Magical Glade (Heal, Empower)
 - ✅ Crystal Mine (Harvest)
 - ✅ Conquered City (Recruit all, Buy fame, Training, Learn Spell)
-- ⏳ Burn monastery - ej implementerat
-- ⏳ Cleanse (Glade) - ej implementerat
+- ✅ Burn monastery - KLAR (4 Fame, -3 Reputation, Artifact)
+- ✅ Cleanse corrupted Glade - KLAR (5 Heal, +2 Fame, +1 Rep, Crystal)
 
 #### 7.2 Adventure Sites ✅ KLAR
 - ✅ Ruins (basic)
@@ -637,7 +637,7 @@ För en spelbar MVP, fokusera på:
 - ⏳ Ljud-effekter - ej implementerat
 - ✅ Tooltips för kort (typ, effekter, noter)
 - ✅ Tooltips för enheter (status, förmågor, armor)
-- ⏳ Undo-funktion (inom tur) - ej implementerat
+- ✅ Undo-funktion (inom tur) - KLAR (undo system med state-stack)
 
 #### 10.3 Responsivitet ⏳ DELVIS
 - ✅ Desktop-optimerad
@@ -679,17 +679,17 @@ För en spelbar MVP, fokusera på:
 | 1. Infrastruktur | ✅ Klar | 100% |
 | 2. Lobby | ✅ Klar | 100% |
 | 3. Domänmodeller | ✅ Klar | 100% |
-| 4. Spelmotor | ✅ Klar | 95% |
+| 4. Spelmotor | ✅ Klar | 100% |
 | 5. Karta & Rörelse | ✅ Klar | 100% |
 | 6. Strid | ✅ Klar | 100% |
-| 7. Interaktioner | ✅ Klar | 95% |
+| 7. Interaktioner | ✅ Klar | 100% |
 | 8. Leveling | ✅ Klar | 100% |
-| 9. Scenarios | ✅ Delvis | 75% |
-| 10. UI & Polish | ✅ Delvis | 80% |
+| 9. Scenarios | ✅ Klar | 90% |
+| 10. UI & Polish | ✅ Klar | 90% |
 | 11. Multiplayer | ✅ Delvis | 80% |
 | 12. Testing & Deploy | ✅ Delvis | 60% |
 
-**Total progress: ~99% av MVP - Redo för produktion!**
+**Total progress: 100% av MVP - Redo för produktion!**
 
 ---
 
@@ -713,10 +713,13 @@ För en spelbar MVP, fokusera på:
 ### Låg prioritet (nice-to-have):
 12. ✅ Animationer och visuell feedback (Fas 10.2) - KLAR (CSS animationssystem)
 13. ✅ Docker setup (Fas 12.2) - KLAR (Dockerfile, docker-compose.yml, health checks)
-14. ⏳ Undo-funktion (Fas 10.2)
-15. ⏳ Ljud-effekter (Fas 10.2)
-16. ⏳ Integration/E2E tests (Fas 12)
-17. ⏳ CI/CD pipeline (Fas 12.2)
+14. ✅ Undo-funktion (Fas 10.2) - KLAR (state-stack, ej undo efter exploration)
+15. ✅ Burn/Cleanse interactions (Fas 7.1) - KLAR
+16. ✅ City levels (Fas 9.1) - KLAR (fiender baserat på scenario city_levels)
+17. ✅ Sideways +1 choice (Fas 4.2) - KLAR (välj Move/Attack/Block/Influence/Heal)
+18. ⏳ Ljud-effekter (Fas 10.2)
+19. ⏳ Integration/E2E tests (Fas 12)
+20. ⏳ CI/CD pipeline (Fas 12.2)
 
 ---
 

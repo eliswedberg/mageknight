@@ -274,11 +274,11 @@ public class GameService : IGameService
         });
     }
 
-    public async Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId)
+    public async Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId, string bonusType = "move")
     {
         return await ExecuteGameAction(gameId, userId, engine =>
         {
-            return engine.UseCardSideways(cardId);
+            return engine.UseCardSideways(cardId, bonusType);
         });
     }
 
@@ -307,6 +307,26 @@ public class GameService : IGameService
         {
             return engine.UndoUseMana();
         });
+    }
+
+    public async Task<GameResult> UndoLastActionAsync(Guid gameId, Guid userId)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            return engine.UndoLastAction();
+        });
+    }
+
+    public async Task<bool> CanUndoActionAsync(Guid gameId, Guid userId)
+    {
+        var game = await _dbContext.Set<Game>().FindAsync(gameId);
+        if (game == null || string.IsNullOrEmpty(game.GameState))
+            return false;
+
+        var engine = new GameEngine.GameEngine(_definitionService);
+        engine.LoadState(game.GameState);
+        
+        return engine.CanUndoAction();
     }
 
     public async Task<GameResult> EndTurnAsync(Guid gameId, Guid userId)

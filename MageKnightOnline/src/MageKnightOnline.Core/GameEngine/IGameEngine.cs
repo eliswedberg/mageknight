@@ -73,9 +73,11 @@ public interface IGameEngine
     GameActionResult PlayCard(string cardId, bool powered = false, ManaColor? manaUsed = null);
 
     /// <summary>
-    /// Uses a card sideways for +1 of its type.
+    /// Uses a card sideways for +1 of chosen type.
     /// </summary>
-    GameActionResult UseCardSideways(string cardId);
+    /// <param name="cardId">The card to use sideways</param>
+    /// <param name="bonusType">The type of bonus: move, attack, block, influence, heal</param>
+    GameActionResult UseCardSideways(string cardId, string bonusType = "move");
 
     /// <summary>
     /// Ends the current player's turn.
@@ -97,6 +99,17 @@ public interface IGameEngine
     /// Can only be done if no irreversible actions have been taken.
     /// </summary>
     GameActionResult UndoUseMana();
+
+    /// <summary>
+    /// Checks if undo is currently available for the last action.
+    /// </summary>
+    bool CanUndoAction();
+
+    /// <summary>
+    /// Undoes the last action, restoring the previous game state.
+    /// Cannot undo after irreversible actions (e.g., exploring new tiles).
+    /// </summary>
+    GameActionResult UndoLastAction();
 
     /// <summary>
     /// Uses a crystal from the player's inventory.

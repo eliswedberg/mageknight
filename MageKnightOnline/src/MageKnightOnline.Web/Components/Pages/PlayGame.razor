@@ -66,22 +66,26 @@ else
                 <h1>@_game.Name</h1>
                 <span class="scenario-name">@_scenario?.Name</span>
             </div>
-            <div class="game-controls">
-                <span class="round-indicator">Round @_gameState.Round / @(_scenario?.Rounds ?? 3)</span>
-                <span class="time-indicator">@(_gameState.IsDay ? "☀️ Day" : "🌙 Night")</span>
-                <span class="connected-players" title="@string.Join(", ", _connectedPlayers)">
-                    👥 @_connectedPlayers.Count online
+            <div class="status-badges">
+                <span class="status-badge round">📅 Round @_gameState.Round/@(_scenario?.Rounds ?? 3)</span>
+                <span class="status-badge @(_gameState.IsDay ? "day" : "night")">
+                    @(_gameState.IsDay ? "☀️ Day" : "🌙 Night")
                 </span>
+                <span class="connected-players" title="@string.Join(", ", _connectedPlayers)">
+                    👥 @_connectedPlayers.Count
+                </span>
+            </div>
+            <div class="game-controls">
                 <button class="btn btn-secondary btn-sm" @onclick="ToggleChat">
-                    💬 Chat @(_chatMessages.Count > 0 ? $"({_chatMessages.Count})" : "")
+                    💬 @(_chatMessages.Count > 0 ? $"({_chatMessages.Count})" : "")
                 </button>
                 <button class="btn btn-secondary btn-sm" @onclick="ToggleLog">
-                    📜 Log
+                    📜
                 </button>
                 @if (_game.CreatedByUserId == AuthService.CurrentUser?.Id)
                 {
-                    <button class="btn btn-danger btn-sm" @onclick="EndGame" title="End this game (only game owner)">
-                        🛑 End Game
+                    <button class="btn btn-danger btn-sm" @onclick="EndGame" title="End this game">
+                        🛑
                     </button>
                 }
             </div>
@@ -231,25 +235,35 @@ else
 
             <!-- Right sidebar - Actions and Hand -->
             <aside class="action-sidebar">
-                <div class="card">
-                    <h3>Actions</h3>
-                    <div class="action-buttons">
-                        @if (IsMyTurn)
-                        {
+                <div class="card actions-card">
+                    <h3>⚡ Actions</h3>
+                    @if (IsMyTurn)
+                    {
+                        <div class="action-buttons">
                             @if (IsAtSite && !HasEnemiesAtCurrentPosition)
                             {
                                 <button class="btn btn-gold" @onclick="OpenSitePanel">
-                                    @GetCurrentSiteIcon() Interact with Site
+                                    @GetCurrentSiteIcon() Site
                                 </button>
                             }
-                            <button class="btn btn-primary" @onclick="EndTurn">End Turn</button>
-                            <button class="btn btn-secondary" @onclick="Rest" disabled="@(!CanRest)">Rest</button>
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center">Waiting for @GetCurrentPlayerName()...</p>
-                        }
-                    </div>
+                            <button class="btn btn-warning" @onclick="UndoLastAction" disabled="@(!_canUndo)" title="Undo last action">
+                                ↩️ Undo
+                            </button>
+                            <button class="btn btn-primary" @onclick="EndTurn">
+                                ✓ End Turn
+                            </button>
+                            <button class="btn btn-secondary" @onclick="Rest" disabled="@(!CanRest)" title="Rest to heal and reshuffle">
+                                💤 Rest
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="waiting-indicator">
+                            <div class="waiting-spinner"></div>
+                            <span>Waiting for @GetCurrentPlayerName()...</span>
+                        </div>
+                    }
                 </div>
 
                 <div class="card units-card">
@@ -393,18 +407,38 @@ else
     .game-layout {
         flex: 1;
         display: grid;
-        grid-template-columns: 280px 1fr 320px;
-        gap: var(--spacing-md);
-        padding: var(--spacing-md);
+        grid-template-columns: 260px 1fr 300px;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
         overflow: hidden;
+        min-height: 0; /* Important for flex children */
     }
 
     .player-sidebar,
     .action-sidebar {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-md);
+        gap: var(--spacing-sm);
         overflow-y: auto;
+        min-height: 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-border) transparent;
+    }
+
+    .player-sidebar::-webkit-scrollbar,
+    .action-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .player-sidebar::-webkit-scrollbar-track,
+    .action-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .player-sidebar::-webkit-scrollbar-thumb,
+    .action-sidebar::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: 3px;
     }
 
     .action-sidebar {
@@ -418,13 +452,61 @@ else
 
     .player-sidebar .card,
     .action-sidebar .card {
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm);
+        flex-shrink: 0;
     }
 
     .player-sidebar h3,
     .action-sidebar h3 {
-        font-size: 1rem;
-        margin-bottom: var(--spacing-md);
+        font-size: 0.9rem;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    /* Responsive breakpoints */
+    @@media (max-width: 1400px) {
+        .game-layout {
+            grid-template-columns: 240px 1fr 280px;
+        }
+    }
+
+    @@media (max-width: 1200px) {
+        .game-layout {
+            grid-template-columns: 220px 1fr 260px;
+        }
+        
+        .player-token {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .pool-value {
+            font-size: 1.2rem;
+        }
+    }
+
+    @@media (max-width: 1024px) {
+        .game-layout {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr auto;
+        }
+        
+        .player-sidebar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-sm);
+            overflow: visible;
+        }
+        
+        .action-sidebar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-sm);
+            overflow: visible;
+        }
+        
+        .game-board {
+            min-height: 400px;
+        }
     }
 
     .player-card {
@@ -482,6 +564,13 @@ else
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        min-height: 0;
+        position: relative;
+    }
+
+    .game-board > :first-child {
+        width: 100%;
+        height: 100%;
     }
 
     .action-buttons {
@@ -757,6 +846,139 @@ else
         background: linear-gradient(135deg, #e8c56a 0%, #d4a853 100%);
         transform: translateY(-1px);
     }
+
+    /* Improved button styling */
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border: 1px solid #fbbf24;
+        color: #1a1a1a;
+        font-weight: 600;
+    }
+
+    .btn-warning:hover:not(:disabled) {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        transform: translateY(-1px);
+    }
+
+    .btn-warning:disabled {
+        opacity: 0.4;
+        background: #6b7280;
+        border-color: #4b5563;
+        color: #9ca3af;
+    }
+
+    /* Compact header for more space */
+    .game-controls {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .game-controls .btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.75rem;
+    }
+
+    /* Better pools grid */
+    .pools-card {
+        background: linear-gradient(135deg, var(--color-bg-card) 0%, rgba(212, 168, 83, 0.05) 100%);
+    }
+
+    /* Improved action buttons layout */
+    .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xs);
+    }
+
+    .action-buttons .btn:first-child {
+        grid-column: span 2;
+    }
+
+    .action-buttons .btn {
+        font-size: 0.8rem;
+        padding: var(--spacing-sm);
+    }
+
+    /* Status indicators in header */
+    .status-badges {
+        display: flex;
+        gap: var(--spacing-sm);
+        align-items: center;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-badge.day {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+    }
+
+    .status-badge.night {
+        background: linear-gradient(135deg, #1e3a5f 0%, #0c1929 100%);
+        color: #93c5fd;
+        border: 1px solid #1d4ed8;
+    }
+
+    .status-badge.round {
+        background: var(--color-bg-light);
+        color: var(--color-gold);
+        border: 1px solid var(--color-border);
+    }
+
+    /* Waiting indicator */
+    .waiting-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md);
+        color: var(--color-text-muted);
+        text-align: center;
+    }
+
+    .waiting-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--color-border);
+        border-top-color: var(--color-gold);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Actions card highlight when it's your turn */
+    .actions-card {
+        border: 2px solid var(--color-gold);
+        background: linear-gradient(135deg, var(--color-bg-card) 0%, rgba(212, 168, 83, 0.08) 100%);
+    }
+
+    /* Units card styling */
+    .units-card {
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .units-card h3 {
+        position: sticky;
+        top: 0;
+        background: var(--color-bg-card);
+        padding-bottom: var(--spacing-xs);
+        margin-bottom: var(--spacing-xs);
+        z-index: 1;
+    }
 </style>
 
 @code {
@@ -785,6 +1007,7 @@ else
     // UI state
     private bool _showLog = false;
     private bool _showCoordinates = true;
+    private bool _canUndo = false;
     private List<HexGrid.HexData> _hexes = new();
     private HexGrid.HexData? _selectedHex;
     private List<HexGrid.HexData>? _highlightedHexes;
@@ -1097,6 +1320,9 @@ else
                 await UpdateValidMoves();
                 await UpdateValidTileMoves();
             }
+
+            // Update undo availability
+            await UpdateUndoAvailability();
         }
         
         _isLoading = false;
@@ -1614,12 +1840,12 @@ else
         }
     }
 
-    private async Task UseSidewaysCard(int index)
+    private async Task UseSidewaysCard((int Index, string BonusType) data)
     {
-        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        if (_myPlayerState == null || data.Index >= _myPlayerState.Hand.Count) return;
         
-        var cardId = _myPlayerState.Hand[index];
-        var result = await GameService.UseCardSidewaysAsync(GameId, AuthService.CurrentUser!.Id, cardId);
+        var cardId = _myPlayerState.Hand[data.Index];
+        var result = await GameService.UseCardSidewaysAsync(GameId, AuthService.CurrentUser!.Id, cardId, data.BonusType);
         
         if (result.Success)
         {
@@ -1746,6 +1972,29 @@ else
             _selectedCardIndex = null;
             await LoadGame();
             await NotifyGameStateChanged("Turn ended");
+        }
+    }
+
+    private async Task UndoLastAction()
+    {
+        var result = await GameService.UndoLastActionAsync(GameId, AuthService.CurrentUser!.Id);
+        if (result.Success)
+        {
+            _selectedCardIndex = null;
+            await LoadGame();
+            await NotifyGameStateChanged("Action undone");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Cannot undo");
+        }
+    }
+
+    private async Task UpdateUndoAvailability()
+    {
+        if (AuthService.CurrentUser != null)
+        {
+            _canUndo = await GameService.CanUndoActionAsync(GameId, AuthService.CurrentUser.Id);
         }
     }
 

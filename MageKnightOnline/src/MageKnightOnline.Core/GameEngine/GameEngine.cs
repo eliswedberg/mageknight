@@ -13,6 +13,11 @@ public class GameEngine : IGameEngine
     private readonly IGameDefinitionService _definitions;
     private GameStateModel _state = new();
     private readonly Random _random = new();
+    
+    // Undo system - stack of previous states
+    private readonly Stack<string> _undoStack = new();
+    private const int MaxUndoHistory = 10;
+    private bool _canUndo = true; // Set to false after irreversible actions
 
     // Terrain costs (day, night)
     private static readonly Dictionary<string, (int Day, int Night)> TerrainCosts = new()
@@ -148,6 +153,9 @@ public class GameEngine : IGameEngine
         var cost = GetTerrainCost(terrain);
         if (cost >= 99)
             return GameActionResult.Fail($"Cannot enter {terrain} - impassable terrain");
+
+        // Save state for undo before moving
+        SaveStateForUndo();
 
         if (player.MovementRemaining < cost)
             return GameActionResult.Fail($"Not enough movement points (need {cost}, have {player.MovementRemaining})");
@@ -384,6 +392,9 @@ public class GameEngine : IGameEngine
         if (_state.Map.RevealedHexes.Contains(targetKey))
             return GameActionResult.Fail("This hex is already revealed");
 
+        // Mark as irreversible action - cannot undo after exploring
+        MarkIrreversibleAction();
+
         // Check if player is adjacent to the target hex
         var playerPos = player.Position;
         bool isAdjacent = false;
@@ -595,26 +606,30 @@ public class GameEngine : IGameEngine
     {
         var hexes = new List<(HexPosition, HexState)>();
         
-        // Tile hex positions according to map_tiles.json.desc:
-        // 0: Center
-        // 1: Top (Kl 12) = Northwest (0, -1)
-        // 2: Top-Right (Kl 2) = Northeast (1, -1)
-        // 3: Bottom-Right (Kl 4) = Southeast (1, 1)
-        // 4: Bottom (Kl 6) = Southwest (0, 1)
-        // 5: Bottom-Left (Kl 8) = Southwest (-1, 1)
-        // 6: Top-Left (Kl 10) = Northwest (-1, 0)
+        // Tile hex positions according to map_tiles.json.desc
+        // Rotated one step counter-clockwise to match actual tile images:
+        // Position 0: Center
+        // Position 1: Top (Kl 12) → West/NW
+        // Position 2: Top-Right (Kl 2) → North
+        // Position 3: Bottom-Right (Kl 4) → NE
+        // Position 4: Bottom (Kl 6) → East
+        // Position 5: Bottom-Left (Kl 8) → South
+        // Position 6: Top-Left (Kl 10) → SW
+        //
+        // Layout visualization (after rotation):
+        //        (2)   (3)
+        //     (1)  (0)  (4)
+        //        (6)   (5)
         
-        // Direction mapping for rotation:
-        // 0 = no rotation, 1 = 60° clockwise, etc.
         var positionToDirection = new[]
         {
-            new HexPosition { Q = 0, R = 0 },   // 0: Center
-            new HexPosition { Q = 0, R = -1 },  // 1: Top (Northwest)
-            new HexPosition { Q = 1, R = -1 },   // 2: Top-Right (Northeast)
-            new HexPosition { Q = 1, R = 1 },    // 3: Bottom-Right (Southeast)
-            new HexPosition { Q = 0, R = 1 },   // 4: Bottom (Southwest)
-            new HexPosition { Q = -1, R = 1 },  // 5: Bottom-Left
-            new HexPosition { Q = -1, R = 0 }   // 6: Top-Left (West)
+            new HexPosition { Q = 0, R = 0 },    // 0: Center
+            new HexPosition { Q = -1, R = 0 },   // 1: Top → West/NW
+            new HexPosition { Q = 0, R = -1 },   // 2: Top-Right → North
+            new HexPosition { Q = 1, R = -1 },   // 3: Bottom-Right → NE
+            new HexPosition { Q = 1, R = 0 },    // 4: Bottom → East
+            new HexPosition { Q = 0, R = 1 },    // 5: Bottom-Left → South
+            new HexPosition { Q = -1, R = 1 }    // 6: Top-Left → SW
         };
 
         foreach (var hexDef in tileDef.Hexes)
@@ -757,36 +772,227 @@ public class GameEngine : IGameEngine
     private HexPosition GetHexPositionFromTileIndex(HexPosition center, int index)
     {
         // Convert tile hex index (0-6) to actual hex position
-        // Index 0 = center, 1-6 = surrounding hexes (clockwise from East)
+        // According to map_tiles.json.desc (rotated one step counter-clockwise to match images):
+        // 0: Center
+        // 1: Top (Kl 12) → maps to NW direction
+        // 2: Top-Right (Kl 2) → maps to N direction
+        // 3: Bottom-Right (Kl 4) → maps to NE direction
+        // 4: Bottom (Kl 6) → maps to E direction
+        // 5: Bottom-Left (Kl 8) → maps to S direction
+        // 6: Top-Left (Kl 10) → maps to SW direction
+        //
+        // Layout visualization (after rotation):
+        //        (2)   (3)
+        //     (1)  (0)  (4)
+        //        (6)   (5)
+        
         return index switch
         {
-            0 => center, // Center
-            1 => center + new HexPosition { Q = 1, R = 0 },   // East
-            2 => center + new HexPosition { Q = 0, R = -1 },  // Northeast
-            3 => center + new HexPosition { Q = -1, R = -1 }, // Northwest  
-            4 => center + new HexPosition { Q = -1, R = 0 },  // West
-            5 => center + new HexPosition { Q = 0, R = 1 },   // Southwest
-            6 => center + new HexPosition { Q = 1, R = 1 },   // Southeast
+            0 => center,                                        // Center
+            1 => center + new HexPosition { Q = -1, R = 0 },    // Top → West/NW
+            2 => center + new HexPosition { Q = 0, R = -1 },    // Top-Right → North
+            3 => center + new HexPosition { Q = 1, R = -1 },    // Bottom-Right → NE
+            4 => center + new HexPosition { Q = 1, R = 0 },     // Bottom → East
+            5 => center + new HexPosition { Q = 0, R = 1 },     // Bottom-Left → South
+            6 => center + new HexPosition { Q = -1, R = 1 },    // Top-Left → SW
             _ => center
         };
     }
 
-    private List<string> GenerateEnemiesForSite(string? siteType)
+    private List<string> GenerateEnemiesForSite(string? siteType, bool isCity = false)
     {
         if (string.IsNullOrEmpty(siteType)) return new List<string>();
 
-        // Generate enemies based on site type
-        return siteType switch
+        var enemies = new List<string>();
+        
+        // Special handling for cities - use city level
+        if (siteType == "City" || isCity)
         {
-            "Village" => new List<string>(), // Villages are friendly
-            "Monastery" => new List<string>(), // Monasteries are friendly
-            "Keep" => new List<string> { "enemy_keep_guardian" },
-            "MageTower" => new List<string> { "enemy_mage" },
-            "AncientRuins" => new List<string> { "enemy_orc_marauder" },
-            "Dungeon" => new List<string> { "enemy_orc_marauder", "enemy_orc_marauder" },
-            _ => new List<string>()
+            return GenerateCityDefenders();
+        }
+        
+        // Determine enemy type and count based on site type
+        var (enemyType, count) = siteType switch
+        {
+            // Friendly sites - no enemies
+            "Village" => (null, 0),
+            "Monastery" => (null, 0),
+            "Portal" => (null, 0),
+            "MagicalGlade" => (null, 0),
+            "Mine_Red" => (null, 0),
+            "Mine_Blue" => (null, 0),
+            "Mine_Green" => (null, 0),
+            "Mine_White" => (null, 0),
+            
+            // Fortified sites with defenders
+            "Keep" => ("Grey", 1),
+            "MageTower" => ("Violet", 1),
+            
+            // Adventure sites
+            "Dungeon" => ("Brown", 1),
+            "Tomb" => ("Red", 1),
+            "MonsterDen" => ("Brown", 1),
+            "SpawningGrounds" => ("Brown", 2),
+            "Ruins" => (null, 0), // Ruins use tokens, handled separately
+            "AncientRuins" => (null, 0), // Same as Ruins
+            
+            // Rampaging enemies (on map, blocking movement)
+            "OrcMarauders" => ("Green", 1),
+            "Draconum" => ("Red", 1),
+            
+            _ => (null, 0)
         };
+
+        if (enemyType == null || count == 0)
+            return enemies;
+
+        // Get random enemies of the specified type
+        var availableEnemies = _definitions.GetEnemiesByTypeAsync(enemyType).Result?.ToList();
+        if (availableEnemies == null || !availableEnemies.Any())
+            return enemies;
+
+        for (int i = 0; i < count; i++)
+        {
+            var randomEnemy = availableEnemies[_random.Next(availableEnemies.Count)];
+            enemies.Add(randomEnemy.Id);
+        }
+
+        return enemies;
     }
+
+    /// <summary>
+    /// Generates defenders for a city based on its level from the scenario.
+    /// City level determines the number of defenders.
+    /// </summary>
+    private List<string> GenerateCityDefenders()
+    {
+        var enemies = new List<string>();
+        
+        // Get the next city level from the deck state
+        var cityLevel = 3; // Default level if not specified
+        if (_state.Decks.CityLevels.Any() && _state.Decks.NextCityIndex < _state.Decks.CityLevels.Count)
+        {
+            cityLevel = _state.Decks.CityLevels[_state.Decks.NextCityIndex];
+            _state.Decks.NextCityIndex++;
+        }
+        
+        AddLogEntry("CityRevealed", $"City revealed with level {cityLevel}!");
+        
+        // City defenders based on level:
+        // Level 2-3: 2 White enemies
+        // Level 4-5: 3 White enemies (1 in front, 2 behind)
+        // Level 6-7: 4 enemies (2 White in front, 2 Grey behind)
+        // Level 8+: 5 enemies (2 White + 1 Grey in front, 2 Grey behind)
+        
+        var whiteEnemies = _definitions.GetEnemiesByTypeAsync("White").Result?.ToList() ?? new List<EnemyDefinition>();
+        var greyEnemies = _definitions.GetEnemiesByTypeAsync("Grey").Result?.ToList() ?? new List<EnemyDefinition>();
+        
+        int whiteCount = cityLevel switch
+        {
+            <= 3 => 2,
+            <= 5 => 2,
+            <= 7 => 2,
+            _ => 3
+        };
+        
+        int greyCount = cityLevel switch
+        {
+            <= 3 => 0,
+            <= 5 => 1,
+            <= 7 => 2,
+            _ => 2
+        };
+        
+        // Add white enemies
+        for (int i = 0; i < whiteCount && whiteEnemies.Any(); i++)
+        {
+            var enemy = whiteEnemies[_random.Next(whiteEnemies.Count)];
+            enemies.Add(enemy.Id);
+        }
+        
+        // Add grey enemies
+        for (int i = 0; i < greyCount && greyEnemies.Any(); i++)
+        {
+            var enemy = greyEnemies[_random.Next(greyEnemies.Count)];
+            enemies.Add(enemy.Id);
+        }
+        
+        return enemies;
+    }
+
+    #region Undo System
+
+    /// <summary>
+    /// Saves the current state to the undo stack before an action.
+    /// </summary>
+    private void SaveStateForUndo()
+    {
+        if (!_canUndo) return;
+        
+        var stateJson = JsonSerializer.Serialize(_state);
+        _undoStack.Push(stateJson);
+        
+        // Limit stack size
+        while (_undoStack.Count > MaxUndoHistory)
+        {
+            // Remove oldest entries (convert to list, trim, convert back)
+            var list = _undoStack.ToList();
+            list.RemoveAt(list.Count - 1);
+            _undoStack.Clear();
+            for (int i = list.Count - 1; i >= 0; i--)
+                _undoStack.Push(list[i]);
+        }
+    }
+
+    /// <summary>
+    /// Marks that an irreversible action has been taken (e.g., revealing tiles).
+    /// </summary>
+    private void MarkIrreversibleAction()
+    {
+        _canUndo = false;
+        _undoStack.Clear();
+    }
+
+    /// <summary>
+    /// Resets undo availability at the start of a new turn.
+    /// </summary>
+    private void ResetUndoForNewTurn()
+    {
+        _canUndo = true;
+        _undoStack.Clear();
+    }
+
+    /// <summary>
+    /// Checks if undo is currently available.
+    /// </summary>
+    public bool CanUndoAction()
+    {
+        return _canUndo && _undoStack.Count > 0;
+    }
+
+    /// <summary>
+    /// Undoes the last action, restoring the previous state.
+    /// </summary>
+    public GameActionResult UndoLastAction()
+    {
+        if (!_canUndo)
+            return GameActionResult.Fail("Cannot undo - irreversible action has been taken (e.g., explored new tile)");
+        
+        if (_undoStack.Count == 0)
+            return GameActionResult.Fail("Nothing to undo");
+        
+        var previousStateJson = _undoStack.Pop();
+        var previousState = JsonSerializer.Deserialize<GameStateModel>(previousStateJson);
+        
+        if (previousState == null)
+            return GameActionResult.Fail("Failed to restore previous state");
+        
+        _state = previousState;
+        AddLogEntry("Undo", "Undid last action");
+        return GameActionResult.Ok("Action undone");
+    }
+
+    #endregion
 
     public GameActionResult PlayCard(string cardId, bool powered = false, ManaColor? manaUsed = null)
     {
@@ -796,6 +1002,9 @@ public class GameEngine : IGameEngine
 
         if (!player.Hand.Contains(cardId))
             return GameActionResult.Fail("Card not in hand");
+
+        // Save state for undo before playing card
+        SaveStateForUndo();
 
         // Get card definition
         var card = _definitions.GetBasicActionsAsync().Result.FirstOrDefault(c => c.Id == cardId)
@@ -946,7 +1155,7 @@ public class GameEngine : IGameEngine
         };
     }
 
-    public GameActionResult UseCardSideways(string cardId)
+    public GameActionResult UseCardSideways(string cardId, string bonusType = "move")
     {
         var player = GetCurrentPlayer();
         if (player == null)
@@ -966,41 +1175,25 @@ public class GameEngine : IGameEngine
         player.Hand.Remove(cardId);
         player.DiscardPile.Add(cardId);
 
-        // Sideways gives +1 of the card's primary type
-        var cardType = card.Type?.ToLower() ?? "";
-        var effectType = "";
-        
-        switch (cardType)
+        // Apply +1 based on player's choice
+        var effectType = bonusType.ToLower() switch
         {
-            case "move":
-                player.MovementRemaining += 1;
-                effectType = "Move";
-                break;
-            case "attack":
-                player.AttackPool += 1;
-                effectType = "Attack";
-                break;
-            case "block":
-                player.BlockPool += 1;
-                effectType = "Block";
-                break;
-            case "influence":
-                player.InfluencePool += 1;
-                effectType = "Influence";
-                break;
-            case "heal":
-                player.HealPool += 1;
-                effectType = "Heal";
-                break;
-            default:
-                // For special cards, default to +1 Move
-                player.MovementRemaining += 1;
-                effectType = "Move";
-                break;
-        }
+            "move" => ApplySidewaysBonus(player, "Move", () => player.MovementRemaining += 1),
+            "attack" => ApplySidewaysBonus(player, "Attack", () => player.AttackPool += 1),
+            "block" => ApplySidewaysBonus(player, "Block", () => player.BlockPool += 1),
+            "influence" => ApplySidewaysBonus(player, "Influence", () => player.InfluencePool += 1),
+            "heal" => ApplySidewaysBonus(player, "Heal", () => player.HealPool += 1),
+            _ => ApplySidewaysBonus(player, "Move", () => player.MovementRemaining += 1)
+        };
 
         AddLogEntry("Sideways", $"Used {card.Name} sideways for +1 {effectType}");
         return GameActionResult.Ok($"Used {card.Name} sideways for +1 {effectType}");
+    }
+
+    private string ApplySidewaysBonus(PlayerState player, string effectType, Action applyBonus)
+    {
+        applyBonus();
+        return effectType;
     }
 
     public GameActionResult EndTurn()
@@ -2269,6 +2462,12 @@ public class GameEngine : IGameEngine
                 InfluenceCost = 6,
                 IsAvailable = player.InfluencePool >= 6
             };
+            yield return new SiteInteractionOption
+            {
+                Type = "Burn",
+                Description = "🔥 Burn the Monastery: Gain 4 Fame, -3 Reputation, draw 1 Artifact",
+                IsAvailable = !hexState.IsBurned
+            };
         }
         // Mage Tower interactions
         else if (siteType.Contains("magetower") || siteType.Contains("mage_tower"))
@@ -2291,19 +2490,31 @@ public class GameEngine : IGameEngine
         // Magical Glade interactions
         else if (siteType.Contains("glade") || siteType.Contains("magicalglade"))
         {
-            yield return new SiteInteractionOption
+            if (hexState.IsCorrupted)
             {
-                Type = "Heal",
-                Description = "Heal 1 wound (Free)",
-                InfluenceCost = 0,
-                IsAvailable = player.Hand.Contains("wound")
-            };
-            yield return new SiteInteractionOption
+                yield return new SiteInteractionOption
+                {
+                    Type = "Cleanse",
+                    Description = "✨ Cleanse the corrupted Glade: Requires 5 total Heal points",
+                    IsAvailable = player.HealPool >= 5
+                };
+            }
+            else
             {
-                Type = "Empower",
-                Description = _state.IsDay ? "Gain 1 Gold Crystal" : "Gain 1 Black Mana Token",
-                IsAvailable = true
-            };
+                yield return new SiteInteractionOption
+                {
+                    Type = "Heal",
+                    Description = "Heal 1 wound (Free)",
+                    InfluenceCost = 0,
+                    IsAvailable = player.Hand.Contains("wound")
+                };
+                yield return new SiteInteractionOption
+                {
+                    Type = "Empower",
+                    Description = _state.IsDay ? "Gain 1 Gold Crystal" : "Gain 1 Black Mana Token",
+                    IsAvailable = true
+                };
+            }
         }
         // Crystal Mine interactions
         else if (siteType.Contains("mine"))
@@ -2455,6 +2666,10 @@ public class GameEngine : IGameEngine
                 return BuyFame();
             case "learnspell":
                 return LearnSpell();
+            case "burn":
+                return BurnMonastery();
+            case "cleanse":
+                return CleanseGlade();
             default:
                 return GameActionResult.Fail($"Unknown interaction type: {interactionType}");
         }
@@ -2573,6 +2788,83 @@ public class GameEngine : IGameEngine
             AddLogEntry("Empower", "Gained 1 Black Mana Token from Magical Glade");
             return GameActionResult.Ok("Gained 1 Black Mana Token!");
         }
+    }
+
+    private GameActionResult BurnMonastery()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        var hexState = GetHexStateAt(player.Position);
+        if (hexState == null || !hexState.SiteType?.ToLower().Contains("monastery") == true)
+            return GameActionResult.Fail("Not at a monastery");
+
+        if (hexState.IsBurned)
+            return GameActionResult.Fail("This monastery has already been burned");
+
+        // Mark as burned
+        hexState.IsBurned = true;
+
+        // Gain 4 Fame
+        player.Fame += 4;
+
+        // Lose 3 Reputation
+        player.Reputation -= 3;
+
+        // Draw an Artifact
+        var artifacts = _definitions.GetArtifactsAsync().Result;
+        if (artifacts.Any())
+        {
+            var artifact = artifacts[_random.Next(artifacts.Count)];
+            player.Artifacts.Add(artifact.Id);
+            AddLogEntry("Burn", $"🔥 Burned the Monastery! Gained 4 Fame, -3 Reputation, gained artifact: {artifact.Name}");
+            return GameActionResult.Ok($"🔥 Burned the Monastery! Gained 4 Fame, lost 3 Reputation, and found {artifact.Name}!");
+        }
+
+        AddLogEntry("Burn", "🔥 Burned the Monastery! Gained 4 Fame, -3 Reputation");
+        return GameActionResult.Ok("🔥 Burned the Monastery! Gained 4 Fame, lost 3 Reputation.");
+    }
+
+    private GameActionResult CleanseGlade()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        var hexState = GetHexStateAt(player.Position);
+        if (hexState == null || !hexState.SiteType?.ToLower().Contains("glade") == true)
+            return GameActionResult.Fail("Not at a magical glade");
+
+        if (!hexState.IsCorrupted)
+            return GameActionResult.Fail("This glade is not corrupted");
+
+        if (player.HealPool < 5)
+            return GameActionResult.Fail("Need 5 Heal points to cleanse the glade");
+
+        // Spend heal points
+        player.HealPool -= 5;
+
+        // Cleanse the glade
+        hexState.IsCorrupted = false;
+
+        // Reward: Gain 2 Fame, 1 Reputation, and restore the glade's power
+        player.Fame += 2;
+        player.Reputation++;
+
+        // Bonus reward: A crystal of your choice
+        var colors = new[] { "green", "red", "blue", "white" };
+        var color = colors[_random.Next(colors.Length)];
+        switch (color)
+        {
+            case "green": player.Crystals.Green++; break;
+            case "red": player.Crystals.Red++; break;
+            case "blue": player.Crystals.Blue++; break;
+            case "white": player.Crystals.White++; break;
+        }
+
+        AddLogEntry("Cleanse", $"✨ Cleansed the corrupted Glade! Gained 2 Fame, +1 Reputation, and a {color} crystal!");
+        return GameActionResult.Ok($"✨ Cleansed the Glade! Gained 2 Fame, +1 Reputation, and a {color} crystal!");
     }
 
     private GameActionResult Harvest(string siteType)
@@ -3786,9 +4078,61 @@ public class GameEngine : IGameEngine
                     return true;
                 }
             }
+
+            // Check "Conquer Dungeon/Tomb/MonsterDen/SpawningGrounds" goal (Druid Nights)
+            if (scenario.Goal?.Contains("Dungeon/Tomb/MonsterDen/SpawningGrounds") == true)
+            {
+                var adventureSitesConquered = CountAllAdventureSitesConquered();
+                if (adventureSitesConquered >= 4) // Requires at least 4 adventure sites
+                {
+                    var victory = CalculateFinalScores();
+                    victory.VictoryType = VictoryType.ScenarioGoal;
+                    victory.EndReason = "All required adventure sites conquered!";
+                    _state.Victory = victory;
+                    return true;
+                }
+            }
+
+            // Check "Hold adventure sites and cities" goal (Conquer and Hold)
+            if (scenario.Goal?.Contains("Hold adventure sites") == true)
+            {
+                // This scenario uses end-of-game scoring, not early victory
+                // Victory is determined when rounds end
+            }
+
+            // Check "Conquer mines and the city" goal (Mines Liberation)
+            if (scenario.Goal?.Contains("Conquer mines") == true)
+            {
+                var minesConquered = CountMinesConquered();
+                var cityConquered = _state.CitiesConquered >= 1;
+                if (minesConquered >= 3 && cityConquered)
+                {
+                    var victory = CalculateFinalScores();
+                    victory.VictoryType = VictoryType.ScenarioGoal;
+                    victory.EndReason = "All mines and the city conquered!";
+                    _state.Victory = victory;
+                    return true;
+                }
+            }
         }
 
         return false;
+    }
+
+    private int CountAllAdventureSitesConquered()
+    {
+        var adventureSiteTypes = new[] { "Dungeon", "Tomb", "MonsterDen", "SpawningGrounds" };
+        return _state.Map.HexData.Values
+            .Where(h => h.IsConquered && 
+                       adventureSiteTypes.Any(t => h.SiteType?.Contains(t) == true))
+            .Count();
+    }
+
+    private int CountMinesConquered()
+    {
+        return _state.Map.HexData.Values
+            .Where(h => h.IsConquered && h.SiteType?.Contains("Mine") == true)
+            .Count();
     }
 
     public VictoryState CalculateFinalScores()

@@ -21,9 +21,11 @@ public interface IGameService
     // In-game operations
     Task<GameResult> MovePlayerAsync(Guid gameId, Guid userId, int q, int r);
     Task<GameResult> PlayCardAsync(Guid gameId, Guid userId, string cardId, bool powered, int? manaIndex = null);
-    Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId);
+    Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId, string bonusType = "move");
     Task<GameResult> UseManaAsync(Guid gameId, Guid userId, int dieIndex);
     Task<GameResult> UndoUseManaAsync(Guid gameId, Guid userId);
+    Task<GameResult> UndoLastActionAsync(Guid gameId, Guid userId);
+    Task<bool> CanUndoActionAsync(Guid gameId, Guid userId);
     Task<GameResult> UseCrystalAsync(Guid gameId, Guid userId, string color);
     Task<GameResult> EndTurnAsync(Guid gameId, Guid userId);
     Task<GameResult> RestAsync(Guid gameId, Guid userId);
