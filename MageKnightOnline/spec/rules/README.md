@@ -10,6 +10,7 @@ This summary is divided into the following sections:
 3. **[Movement & Exploration](03_Movement_and_Exploration.md)**: Moving on the map, terrain, Safe Movement, Flight, and Exploration rules.
 4. **[Combat](04_Combat.md)**: Combat phases (including Swift phase), damage, wounds, and enemy abilities.
 5. **[Scenarios](05_Scenarios.md)**: Scenario setup, Site Interactions, and winning conditions.
+6. **[Tile Placement Logic](06_Tile_Placement_Logic.md)**: Hexagonal coordinates, tile structure, placement algorithm, and implementation details.
 
 ## Related Definition Files
 

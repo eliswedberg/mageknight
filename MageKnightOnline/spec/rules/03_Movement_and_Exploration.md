@@ -18,8 +18,8 @@
 ## Exploration
 * **Revealing Tiles**: 
     * You can explore a new map tile by spending **1 Movement point**.
-    * You must be standing on an **edge hex** (a hex with at least one unrevealed neighbor).
-    * The new tile is placed edge-to-edge with the hex you're standing on.
+    * Click on an **unrevealed hex** adjacent to your position to explore in that direction.
+    * The new tile is placed edge-to-edge, with the clicked hex becoming part of the new tile.
     * The tile is automatically rotated to ensure proper edge connection.
 * **Placement Rules**:
     * [cite_start]**Core Tiles** (Brown) must touch at least two other tiles[cite: 10257].
@@ -28,6 +28,11 @@
     * **Edge-to-Edge Connection**: New tiles must connect edge-to-edge with existing tiles, not overlap.
     * **Rotation**: Tiles are automatically rotated to ensure correct edge alignment.
     * **Tile Types**: The game selects appropriate tile types based on scenario rules (Countryside, Core, etc.).
+* **Visual Indicators**:
+    * Explorable hexes are shown with a **blue dashed border** and a 🗺️ icon.
+    * These indicators only appear when it's your turn and you have at least 1 movement point.
+
+> **For detailed implementation:** See [Tile Placement Logic](06_Tile_Placement_Logic.md) for hexagonal coordinate systems, placement algorithms, and technical details.
 
 ## Interacting with Sites
 * [cite_start]**Adventure Sites** (Ruins, Dungeons): Entering these spaces triggers an encounter/combat[cite: 10227].
