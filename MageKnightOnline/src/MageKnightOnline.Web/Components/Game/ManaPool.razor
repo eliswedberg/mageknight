@@ -3,10 +3,10 @@
 <div class="mana-pool-container">
     <div class="pool-header">
         <h4>Mana Pool</h4>
-        @if (CanReroll)
+        @if (CanUndo)
         {
-            <button class="btn btn-sm btn-secondary" @onclick="OnReroll">
-                🎲 Reroll
+            <button class="btn btn-sm btn-warning" @onclick="OnUndo" title="Ångra mana-val">
+                ↩ Undo
             </button>
         }
     </div>
@@ -228,10 +228,10 @@
     [Parameter] public Dictionary<ManaColor, int> Crystals { get; set; } = new();
     [Parameter] public int? SelectedDieIndex { get; set; }
     [Parameter] public ManaColor? SelectedCrystalColor { get; set; }
-    [Parameter] public bool CanReroll { get; set; } = false;
+    [Parameter] public bool CanUndo { get; set; } = false;
     [Parameter] public EventCallback<int> OnDieSelected { get; set; }
     [Parameter] public EventCallback<ManaColor> OnCrystalSelected { get; set; }
-    [Parameter] public EventCallback OnRerollClicked { get; set; }
+    [Parameter] public EventCallback OnUndoClicked { get; set; }
 
     private async Task SelectDie(int index)
     {
@@ -253,11 +253,11 @@
         }
     }
 
-    private async Task OnReroll()
+    private async Task OnUndo()
     {
-        if (OnRerollClicked.HasDelegate)
+        if (OnUndoClicked.HasDelegate)
         {
-            await OnRerollClicked.InvokeAsync();
+            await OnUndoClicked.InvokeAsync();
         }
     }
 }

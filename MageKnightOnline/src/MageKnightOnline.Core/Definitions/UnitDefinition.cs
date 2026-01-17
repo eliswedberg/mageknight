@@ -27,23 +27,82 @@ public class UnitDefinition
     public int Armor { get; set; }
 
     [JsonPropertyName("abilities")]
-    public List<string> Abilities { get; set; } = new();
+    public List<string> Abilities { get; set; } = new(); // String format: "Attack 3 (Ranged, Fire)"
+
+    [JsonPropertyName("resistances")]
+    public List<string>? Resistances { get; set; }
+
+    [JsonPropertyName("special_abilities")]
+    public List<string>? SpecialAbilities { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
 
     [JsonPropertyName("image")]
     public string? Image { get; set; }
 
-    // Parsed ability values (computed from Abilities list)
-    public UnitAbilities ParsedAbilities => _parsedAbilities ??= ParseAbilities();
-    private UnitAbilities? _parsedAbilities;
+    // Computed properties
+    public bool IsRegular => Rank.Equals("Regular", StringComparison.OrdinalIgnoreCase);
+    public bool IsElite => Rank.Equals("Elite", StringComparison.OrdinalIgnoreCase);
+    
+    // Check resistances from both dedicated field and ability strings
+    public bool HasPhysicalResistance => 
+        (Resistances?.Contains("Physical", StringComparer.OrdinalIgnoreCase) ?? false) ||
+        Abilities.Any(a => a.Contains("Physical Resistance", StringComparison.OrdinalIgnoreCase));
+    public bool HasFireResistance => 
+        (Resistances?.Contains("Fire", StringComparer.OrdinalIgnoreCase) ?? false) ||
+        Abilities.Any(a => a.Contains("Fire Resistance", StringComparison.OrdinalIgnoreCase) || 
+                          a.Contains("Fire/Ice Resistance", StringComparison.OrdinalIgnoreCase));
+    public bool HasIceResistance => 
+        (Resistances?.Contains("Ice", StringComparer.OrdinalIgnoreCase) ?? false) ||
+        Abilities.Any(a => a.Contains("Ice Resistance", StringComparison.OrdinalIgnoreCase) ||
+                          a.Contains("Fire/Ice Resistance", StringComparison.OrdinalIgnoreCase));
+    public bool IsUnstoppable => 
+        (SpecialAbilities?.Contains("Unstoppable", StringComparer.OrdinalIgnoreCase) ?? false) ||
+        Abilities.Any(a => a.Contains("Unstoppable", StringComparison.OrdinalIgnoreCase));
+}
 
-    private UnitAbilities ParseAbilities()
+/// <summary>
+/// Helper class for parsed unit abilities - provides easy access to unit stats.
+/// Used by GameEngine for combat calculations.
+/// </summary>
+public class UnitAbilities
+{
+    public int Attack { get; set; } = 0;
+    public int Block { get; set; } = 0;
+    public int Influence { get; set; } = 0;
+    public int Move { get; set; } = 0;
+    public int Heal { get; set; } = 0;
+    
+    public bool IsRanged { get; set; } = false;
+    public bool IsSiege { get; set; } = false;
+    public string? AttackElement { get; set; }
+    public string? BlockElement { get; set; }
+    
+    public bool HasPhysicalResistance { get; set; } = false;
+    public bool HasFireResistance { get; set; } = false;
+    public bool HasIceResistance { get; set; } = false;
+    
+    public bool IsUnstoppable { get; set; } = false;
+    public bool CanSummon { get; set; } = false;
+
+    /// <summary>
+    /// Create UnitAbilities from a UnitDefinition by parsing ability strings.
+    /// </summary>
+    public static UnitAbilities FromUnitDefinition(UnitDefinition unitDef)
     {
-        var result = new UnitAbilities();
-        
-        foreach (var ability in Abilities)
+        var result = new UnitAbilities
+        {
+            HasPhysicalResistance = unitDef.HasPhysicalResistance,
+            HasFireResistance = unitDef.HasFireResistance,
+            HasIceResistance = unitDef.HasIceResistance,
+            IsUnstoppable = unitDef.IsUnstoppable
+        };
+
+        foreach (var ability in unitDef.Abilities)
         {
             // Parse "Attack X" or "Attack X (attributes)"
-            var attackMatch = Regex.Match(ability, @"Attack\s+(\d+)(?:\s*\(([^)]+)\))?", RegexOptions.IgnoreCase);
+            var attackMatch = Regex.Match(ability, @"(?:Summon\s+)?Attack\s+(\d+)(?:\s*\(([^)]+)\))?", RegexOptions.IgnoreCase);
             if (attackMatch.Success)
             {
                 result.Attack = int.Parse(attackMatch.Groups[1].Value);
@@ -52,9 +111,15 @@ public class UnitDefinition
                     var attrs = attackMatch.Groups[2].Value.ToLower();
                     result.IsRanged = attrs.Contains("ranged");
                     result.IsSiege = attrs.Contains("siege");
-                    if (attrs.Contains("fire")) result.AttackElement = "Fire";
-                    else if (attrs.Contains("ice")) result.AttackElement = "Ice";
+                    if (attrs.Contains("fire") && attrs.Contains("ice"))
+                        result.AttackElement = "ColdFire";
+                    else if (attrs.Contains("fire"))
+                        result.AttackElement = "Fire";
+                    else if (attrs.Contains("ice"))
+                        result.AttackElement = "Ice";
                 }
+                if (ability.Contains("Summon", StringComparison.OrdinalIgnoreCase))
+                    result.CanSummon = true;
                 continue;
             }
 
@@ -66,11 +131,11 @@ public class UnitDefinition
                 if (blockMatch.Groups[2].Success)
                 {
                     var attrs = blockMatch.Groups[2].Value.ToLower();
-                    if (attrs.Contains("fire")) result.BlockElement = "Fire";
-                    else if (attrs.Contains("ice")) result.BlockElement = "Ice";
-                    if (attrs.Contains("physical resistance")) result.HasPhysicalResistance = true;
-                    if (attrs.Contains("fire resistance")) result.HasFireResistance = true;
-                    if (attrs.Contains("ice resistance")) result.HasIceResistance = true;
+                    // Check for element (not resistance)
+                    if (attrs.Contains("fire") && !attrs.Contains("resistance"))
+                        result.BlockElement = "Fire";
+                    else if (attrs.Contains("ice") && !attrs.Contains("resistance"))
+                        result.BlockElement = "Ice";
                 }
                 continue;
             }
@@ -98,38 +163,8 @@ public class UnitDefinition
                 result.Heal = int.Parse(healMatch.Groups[1].Value);
                 continue;
             }
-
-            // Special abilities
-            if (ability.Contains("Unstoppable", StringComparison.OrdinalIgnoreCase))
-                result.IsUnstoppable = true;
-            if (ability.Contains("Summon", StringComparison.OrdinalIgnoreCase))
-                result.CanSummon = true;
         }
 
         return result;
     }
-}
-
-/// <summary>
-/// Parsed unit abilities for easier access in game logic.
-/// </summary>
-public class UnitAbilities
-{
-    public int Attack { get; set; } = 0;
-    public int Block { get; set; } = 0;
-    public int Influence { get; set; } = 0;
-    public int Move { get; set; } = 0;
-    public int Heal { get; set; } = 0;
-    
-    public bool IsRanged { get; set; } = false;
-    public bool IsSiege { get; set; } = false;
-    public string? AttackElement { get; set; }
-    public string? BlockElement { get; set; }
-    
-    public bool HasPhysicalResistance { get; set; } = false;
-    public bool HasFireResistance { get; set; } = false;
-    public bool HasIceResistance { get; set; } = false;
-    
-    public bool IsUnstoppable { get; set; } = false;
-    public bool CanSummon { get; set; } = false;
 }

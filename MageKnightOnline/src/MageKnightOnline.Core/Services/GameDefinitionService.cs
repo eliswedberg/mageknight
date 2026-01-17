@@ -21,6 +21,10 @@ public class GameDefinitionService : IGameDefinitionService
     private List<TacticsDefinition>? _tactics;
     private List<MapTileDefinition>? _mapTiles;
     private List<RuinsDefinition>? _ruins;
+    private List<TerrainDefinition>? _terrainCosts;
+    private List<SiteDefinition>? _sites;
+    private CombatAbilitiesRoot? _combatAbilities;
+    private GameRulesDefinition? _gameRules;
 
     public GameDefinitionService(string basePath)
     {
@@ -43,6 +47,18 @@ public class GameDefinitionService : IGameDefinitionService
 
         var json = await File.ReadAllTextAsync(filePath);
         return JsonSerializer.Deserialize<List<T>>(json, _jsonOptions) ?? new List<T>();
+    }
+
+    private async Task<T?> LoadJsonObjectAsync<T>(string fileName) where T : class
+    {
+        var filePath = Path.Combine(_basePath, fileName);
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Definition file not found: {filePath}");
+        }
+
+        var json = await File.ReadAllTextAsync(filePath);
+        return JsonSerializer.Deserialize<T>(json, _jsonOptions);
     }
 
     // Heroes
@@ -141,6 +157,12 @@ public class GameDefinitionService : IGameDefinitionService
         return enemies.Where(e => e.Type.Equals(type, StringComparison.OrdinalIgnoreCase)).ToList().AsReadOnly();
     }
 
+    public async Task<EnemyDefinition?> GetEnemyAsync(string enemyId)
+    {
+        var enemies = await GetEnemiesAsync();
+        return enemies.FirstOrDefault(e => e.Id == enemyId);
+    }
+
     // Tactics
     public async Task<IReadOnlyList<TacticsDefinition>> GetTacticsAsync()
     {
@@ -184,5 +206,71 @@ public class GameDefinitionService : IGameDefinitionService
     {
         var ruins = await GetRuinsTokensAsync();
         return ruins.Where(r => r.IsCombatToken).ToList().AsReadOnly();
+    }
+
+    // Terrain Costs (NEW)
+    public async Task<IReadOnlyList<TerrainDefinition>> GetTerrainCostsAsync()
+    {
+        _terrainCosts ??= await LoadJsonAsync<TerrainDefinition>("terrain_costs.json");
+        return _terrainCosts.AsReadOnly();
+    }
+
+    public async Task<TerrainDefinition?> GetTerrainAsync(string terrainType)
+    {
+        var terrains = await GetTerrainCostsAsync();
+        return terrains.FirstOrDefault(t => t.Terrain.Equals(terrainType, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<int> GetTerrainCostAsync(string terrainType, bool isDay)
+    {
+        var terrain = await GetTerrainAsync(terrainType);
+        if (terrain == null)
+            return 2; // Default to Plains cost
+
+        return terrain.GetCost(isDay);
+    }
+
+    // Sites (NEW)
+    public async Task<IReadOnlyList<SiteDefinition>> GetSitesAsync()
+    {
+        _sites ??= await LoadJsonAsync<SiteDefinition>("sites.json");
+        return _sites.AsReadOnly();
+    }
+
+    public async Task<SiteDefinition?> GetSiteAsync(string siteId)
+    {
+        var sites = await GetSitesAsync();
+        return sites.FirstOrDefault(s => s.Id == siteId);
+    }
+
+    public async Task<IReadOnlyList<SiteDefinition>> GetSitesByTypeAsync(string siteType)
+    {
+        var sites = await GetSitesAsync();
+        return sites.Where(s => s.Type.Equals(siteType, StringComparison.OrdinalIgnoreCase)).ToList().AsReadOnly();
+    }
+
+    // Combat Abilities (NEW)
+    public async Task<CombatAbilitiesRoot> GetCombatAbilitiesAsync()
+    {
+        _combatAbilities ??= await LoadJsonObjectAsync<CombatAbilitiesRoot>("combat_abilities.json");
+        return _combatAbilities ?? new CombatAbilitiesRoot();
+    }
+
+    public async Task<CombatAbilityDefinition?> GetCombatAbilityAsync(string abilityId)
+    {
+        var abilities = await GetCombatAbilitiesAsync();
+        
+        // Search in both offensive and defensive abilities
+        var offensive = abilities.EnemyOffensiveAbilities.FirstOrDefault(a => a.Id.Equals(abilityId, StringComparison.OrdinalIgnoreCase));
+        if (offensive != null) return offensive;
+
+        return abilities.EnemyDefensiveAbilities.FirstOrDefault(a => a.Id.Equals(abilityId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Game Rules (NEW)
+    public async Task<GameRulesDefinition> GetGameRulesAsync()
+    {
+        _gameRules ??= await LoadJsonObjectAsync<GameRulesDefinition>("game_rules.json");
+        return _gameRules ?? new GameRulesDefinition();
     }
 }

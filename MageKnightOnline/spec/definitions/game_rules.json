@@ -1,0 +1,358 @@
+{
+  "game_flow": {
+    "description": "The game is played over multiple Rounds. Each Round alternates between Day and Night.",
+    "phases": [
+      {
+        "name": "Round Start",
+        "steps": [
+          "Flip the Day/Night board",
+          "Swap Day/Night Tactics cards",
+          "Reroll all mana dice in the Source",
+          "Ensure at least half show basic colors (Red, Blue, White, Green)"
+        ]
+      },
+      {
+        "name": "Tactics Selection",
+        "steps": [
+          "Starting with lowest Fame (later in Round Order if tied)",
+          "Each player selects one Tactics card",
+          "Tactics card determines turn order and special ability"
+        ]
+      },
+      {
+        "name": "Player Turns",
+        "steps": [
+          "Players take turns in Tactics card order",
+          "Continue until End of Round is announced"
+        ]
+      },
+      {
+        "name": "End of Round",
+        "conditions": [
+          "A player with empty Deed deck may announce End of Round instead of taking a turn",
+          "If hand is also empty, they MUST announce End of Round",
+          "After announcement, each other player gets one final turn"
+        ],
+        "cleanup": [
+          "All players shuffle their discard pile into their Deed deck",
+          "All Units are readied (flipped face-up)",
+          "Remove all mana tokens (crystals remain)",
+          "Start new round"
+        ]
+      }
+    ]
+  },
+  "player_turn": {
+    "types": {
+      "regular_turn": {
+        "description": "A normal turn with movement and actions.",
+        "phases": [
+          {
+            "name": "Movement Phase (Optional)",
+            "description": "Move your Hero on the map by spending Move points.",
+            "rules": [
+              "Generate Move points by playing cards",
+              "Each terrain type has a Movement cost",
+              "You may reveal new map tiles when on edge spaces",
+              "Movement may trigger combat with Rampaging Enemies"
+            ]
+          },
+          {
+            "name": "Action Phase (Optional/Mandatory)",
+            "description": "Perform one action based on your location.",
+            "action_types": [
+              "Combat with enemies (assault, provoke, challenge, adventure site)",
+              "Interaction with locals (recruit, heal, buy cards)",
+              "Player vs Player combat (if on same space as opponent)"
+            ],
+            "notes": [
+              "Some situations force an action (e.g., entering adventure sites)",
+              "You may only perform one type of action per turn"
+            ]
+          }
+        ]
+      },
+      "rest_turn": {
+        "description": "A turn focused on recovery instead of action.",
+        "options": [
+          {
+            "name": "Standard Rest",
+            "description": "Discard one non-Wound card and any number of Wound cards from hand."
+          },
+          {
+            "name": "Slow Recovery",
+            "condition": "Only if you have ONLY Wound cards in hand",
+            "description": "Discard one Wound card from hand."
+          }
+        ]
+      }
+    },
+    "any_turn_actions": {
+      "description": "These can be done during any type of turn.",
+      "actions": [
+        "Play Special Effects (unless in combat)",
+        "Use Healing effects (unless in combat)",
+        "Use up to one mana die from the Source"
+      ]
+    },
+    "end_of_turn": {
+      "steps": [
+        "Return and reroll any mana dice used from the Source",
+        "Perform Forced Withdrawal if not on a safe space",
+        "Discard all played cards",
+        "Return all mana tokens (keep crystals)",
+        "Claim combat rewards and process Level ups",
+        "Discard any number of cards from hand (at least one if no cards were played)",
+        "Draw cards up to your Hand limit"
+      ]
+    }
+  },
+  "combat": {
+    "description": "Combat follows a strict phase order. Each phase must be fully resolved before moving to the next.",
+    "phases": [
+      {
+        "order": 1,
+        "name": "Ranged and Siege Attack Phase",
+        "description": "Attack enemies before they can strike.",
+        "rules": [
+          "Play Ranged and/or Siege Attack cards",
+          "Siege Attacks required to hit Fortified enemies",
+          "Total Attack must equal or exceed enemy Armor to defeat",
+          "You may target multiple enemies with one attack if damage is sufficient",
+          "Gain Fame for each defeated enemy (but do not Level up yet)",
+          "Defeated enemy tokens are discarded"
+        ]
+      },
+      {
+        "order": 2,
+        "name": "Block Phase",
+        "description": "Surviving enemies attack; you may block.",
+        "rules": [
+          "Each surviving enemy attacks",
+          "Play Block cards to reduce or negate damage",
+          "Block value must equal or exceed Attack value to fully block",
+          "Each attack must be blocked separately",
+          "Elemental attacks require matching element blocks (or Cold Fire)",
+          "Inefficient blocks are halved"
+        ]
+      },
+      {
+        "order": 3,
+        "name": "Assign Damage Phase",
+        "description": "Assign unblocked damage to Units or Hero.",
+        "rules": [
+          "For each enemy not defeated or fully blocked, assign its Attack value as damage",
+          "Process each enemy's damage in any order",
+          "May assign damage to Unwounded Units first (Unit takes 1 Wound, reduces damage by Unit's Armor)",
+          "Remaining damage goes to Hero (each Wound card taken reduces damage by Hero's Armor)",
+          "Special abilities (Poison, Paralyze, Assassination) apply during this phase"
+        ]
+      },
+      {
+        "order": 4,
+        "name": "Attack Phase",
+        "description": "Make melee attacks against surviving enemies.",
+        "rules": [
+          "Play any Attack cards (Melee, Ranged, Siege all work)",
+          "Cards played sideways count as Attack 1",
+          "Total Attack must equal or exceed enemy Armor to defeat",
+          "Gain Fame for each defeated enemy",
+          "Enemy resistances may halve certain attack types"
+        ]
+      }
+    ],
+    "fleeing": {
+      "description": "Instead of continuing combat, you may flee.",
+      "rules": [
+        "You can only flee during the Block or Attack phases",
+        "All remaining enemies are considered to hit you",
+        "Assign all their damage (cannot be blocked)",
+        "Vampiric enemies heal equal to their Attack value",
+        "Combat ends, no rewards are gained"
+      ]
+    },
+    "rewards": {
+      "description": "After combat, if all enemies are defeated:",
+      "rules": [
+        "Gain Fame from all defeated enemies",
+        "Process any Level ups",
+        "Gain site-specific rewards (Artifacts, Spells, Crystals, etc.)",
+        "Remove enemy tokens from the board"
+      ]
+    }
+  },
+  "movement": {
+    "terrain_rules": {
+      "description": "Different terrains have different movement costs.",
+      "day_night_variation": "Some terrains cost more at Night (Forest) or less (Desert).",
+      "modifiers": [
+        "Safe Movement: Can move through spaces with enemies without triggering combat",
+        "Flight: Ignore terrain costs entirely",
+        "Underground Travel: Move directly to Dungeons/Tombs/Mines"
+      ]
+    },
+    "exploration": {
+      "description": "Revealing new map tiles.",
+      "rules": [
+        "Must be on an edge hex (adjacent to unrevealed space)",
+        "Costs 2 Move points",
+        "Draw and place the top tile from the Tile deck",
+        "Countryside (green) tiles go on top, Core (brown) tiles below",
+        "Some enemies (Rampaging) are placed on revealed tiles"
+      ]
+    },
+    "provoking_enemies": {
+      "description": "Moving near Rampaging Enemies can trigger combat.",
+      "rules": [
+        "Moving between two spaces adjacent to a Rampaging Enemy provokes it",
+        "You must fight the enemy immediately",
+        "Challenging: You may voluntarily attack an adjacent Rampaging Enemy"
+      ]
+    }
+  },
+  "mana": {
+    "source": {
+      "description": "Shared pool of mana dice available to all players.",
+      "rules": [
+        "Contains (number of players + 2) dice",
+        "At least half must show basic colors (Red, Blue, White, Green)",
+        "Each player may use ONE die from Source per turn",
+        "Used die gives temporary mana of that color",
+        "Die is rerolled at end of turn"
+      ]
+    },
+    "crystals": {
+      "description": "Personal mana storage that persists between turns.",
+      "rules": [
+        "Stored in Hero's Inventory",
+        "Can be used freely (multiple crystals per turn)",
+        "Persist between turns and rounds",
+        "Can only hold crystals, not mana tokens"
+      ]
+    },
+    "colors": {
+      "basic": ["Red", "Blue", "White", "Green"],
+      "special": {
+        "Gold": "Available during Day only. Can substitute for any basic color.",
+        "Black": "Available during Night only. Can substitute for any basic color."
+      }
+    },
+    "powered_effects": {
+      "description": "Many cards have stronger 'Powered' effects that require mana.",
+      "rules": [
+        "Basic Actions: Can be powered by any mana color",
+        "Advanced Actions/Spells: May require specific mana color",
+        "Spell Strong Effect: Requires mana matching the spell's color",
+        "Gold mana can substitute for any required color"
+      ]
+    }
+  },
+  "leveling": {
+    "description": "Gaining Fame allows Heroes to level up.",
+    "process": [
+      "When Fame threshold is reached, level up occurs at end of turn",
+      "Flip Level token to show new level",
+      "Even levels: Choose Skill token + gain Advanced Action from offer",
+      "Odd levels: Gain Command token (can recruit more Units)",
+      "Armor and Hand limit may increase at certain levels"
+    ],
+    "fame_thresholds": [0, 3, 8, 15, 24, 35, 48, 64, 82, 104]
+  },
+  "reputation": {
+    "description": "Affects interactions with locals.",
+    "effects": [
+      "High reputation: Reduced Influence costs for recruiting",
+      "Low reputation: Increased Influence costs, some options unavailable",
+      "Reputation -5 (X): Cannot interact with locals peacefully"
+    ],
+    "changes": {
+      "positive": ["Heroic actions", "Using Heroic Tales card"],
+      "negative": ["Plundering villages", "Burning monasteries", "Using Intimidate"]
+    }
+  },
+  "units": {
+    "description": "Units are allies that fight alongside your Hero.",
+    "recruiting": {
+      "rules": [
+        "Pay Influence equal to Unit's cost",
+        "Reputation modifier affects cost",
+        "Must have available Command token",
+        "Unit goes to Unit area with Command token on it"
+      ],
+      "locations": {
+        "Village": "Regular Units only",
+        "Keep": "Regular Units only (if you control it)",
+        "Mage Tower": "Regular Units (spellcasters preferred)",
+        "City": "Any Unit type"
+      }
+    },
+    "using_units": {
+      "rules": [
+        "Each Unit can be activated once per Round",
+        "Activated Unit is flipped face-down (exhausted)",
+        "Exhausted Units cannot be activated again until Round end",
+        "Units refresh at the end of each Round"
+      ]
+    },
+    "wounding_units": {
+      "rules": [
+        "Units can absorb damage for the Hero",
+        "Damage equal to Unit's Armor wounds the Unit",
+        "Wounded Unit receives one Wound card on it",
+        "Unit with 2 Wounds is destroyed",
+        "Destroyed Units are removed from the game"
+      ]
+    }
+  },
+  "sites": {
+    "fortified_sites": {
+      "description": "Keeps, Mage Towers, and Cities have fortifications.",
+      "rules": [
+        "Enemies defending fortified sites cannot be attacked in Ranged phase",
+        "Only Siege attacks work against Fortified enemies",
+        "Conquering grants control of the site"
+      ]
+    },
+    "adventure_sites": {
+      "description": "Dungeons, Tombs, Ruins, Monster Dens, Spawning Grounds.",
+      "rules": [
+        "Entering triggers mandatory combat",
+        "Dungeons and Tombs follow Night combat rules",
+        "Victory grants site-specific rewards"
+      ]
+    },
+    "rampaging_enemies": {
+      "description": "Enemies that roam the map (Orcs, Draconum).",
+      "rules": [
+        "Placed face-up on the map when tile is revealed",
+        "Provoke attacks if you move between adjacent spaces",
+        "Can be challenged voluntarily"
+      ]
+    }
+  },
+  "cards": {
+    "playing_sideways": {
+      "description": "Any non-Wound card can be played sideways for a basic effect.",
+      "effects": {
+        "Move card": "Move 1",
+        "Influence card": "Influence 1",
+        "Attack card": "Attack 1",
+        "Block card": "Block 1",
+        "Heal card": "Heal 1"
+      },
+      "rules": [
+        "Card provides +1 of its primary type",
+        "Normally limited to one card sideways per turn",
+        "Some abilities allow more sideways cards"
+      ]
+    },
+    "wounds": {
+      "description": "Wound cards clog your hand and have no positive effect.",
+      "rules": [
+        "Cannot be played for any effect",
+        "Cannot be discarded normally (only via Rest or special effects)",
+        "Count against your Hand limit"
+      ]
+    }
+  }
+}

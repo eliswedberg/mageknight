@@ -7,7 +7,13 @@
     "level": 1,
     "recruit_cost": 3,
     "armor": 3,
-    "abilities": ["Influence 2", "Block 2", "Attack 1"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Influence", "value": 2 },
+      { "type": "Block", "value": 2 },
+      { "type": "Attack", "value": 1 }
+    ],
+    "notes": "Basic unit. Versatile but weak.",
     "image": "images/regular_peasants_x3.jpg"
   },
   {
@@ -18,7 +24,13 @@
     "level": 1,
     "recruit_cost": 3,
     "armor": 2,
-    "abilities": ["Heal 1", "Block 2", "Influence 2"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Heal", "value": 1 },
+      { "type": "Block", "value": 2 },
+      { "type": "Influence", "value": 2 }
+    ],
+    "notes": "Healer unit. Low armor.",
     "image": "images/regular_herbalists_x2.jpg"
   },
   {
@@ -29,7 +41,13 @@
     "level": 1,
     "recruit_cost": 4,
     "armor": 3,
-    "abilities": ["Move 2", "Attack 2", "Block 2 (Forest only)"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Move", "value": 2 },
+      { "type": "Attack", "value": 2 },
+      { "type": "Block", "value": 2, "condition": "Forest only" }
+    ],
+    "notes": "Forest specialists.",
     "image": "images/regular_foresters_x2.jpg"
   },
   {
@@ -40,7 +58,13 @@
     "level": 1,
     "recruit_cost": 4,
     "armor": 3,
-    "abilities": ["Move 2 (Exposed: Move 3)", "Attack 2", "Block 3"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Move", "value": 2, "alternative": { "value": 3, "condition": "Exposed terrain" } },
+      { "type": "Attack", "value": 2 },
+      { "type": "Block", "value": 3 }
+    ],
+    "notes": "Fast in open terrain.",
     "image": null
   },
   {
@@ -51,7 +75,13 @@
     "level": 1,
     "recruit_cost": 4,
     "armor": 3,
-    "abilities": ["Attack 3", "Block 2", "Influence 2 (Threaten)"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 3 },
+      { "type": "Block", "value": 2 },
+      { "type": "Influence", "value": 2, "special": "Threaten (loses reputation)" }
+    ],
+    "notes": "Aggressive unit.",
     "image": null
   },
   {
@@ -62,7 +92,12 @@
     "level": 2,
     "recruit_cost": 5,
     "armor": 4,
-    "abilities": ["Block 4", "Attack 2"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Block", "value": 4 },
+      { "type": "Attack", "value": 2 }
+    ],
+    "notes": "Solid defensive unit.",
     "image": "images/regular_utem_guardsmen_x2.jpg"
   },
   {
@@ -73,7 +108,12 @@
     "level": 2,
     "recruit_cost": 5,
     "armor": 3,
-    "abilities": ["Attack 3 (Ranged)", "Block 3"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 3, "attributes": ["Ranged"] },
+      { "type": "Block", "value": 3 }
+    ],
+    "notes": "Ranged attackers.",
     "image": "images/regular_utem_crossbowmen_x2.jpg"
   },
   {
@@ -84,7 +124,13 @@
     "level": 2,
     "recruit_cost": 5,
     "armor": 3,
-    "abilities": ["Block 3 (Ice)", "Attack 2 (Ice)", "Influence 2"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Block", "value": 3, "element": "Ice" },
+      { "type": "Attack", "value": 2, "element": "Ice" },
+      { "type": "Influence", "value": 2 }
+    ],
+    "notes": "Ice-element specialists.",
     "image": "images/regular_northern_monks.jpg"
   },
   {
@@ -95,7 +141,12 @@
     "level": 2,
     "recruit_cost": 6,
     "armor": 4,
-    "abilities": ["Attack 4", "Block 3"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 4 },
+      { "type": "Block", "value": 3 }
+    ],
+    "notes": "Strong melee fighters.",
     "image": "images/regular_utem_swordsmen_x2.jpg"
   },
   {
@@ -106,7 +157,13 @@
     "level": 2,
     "recruit_cost": 5,
     "armor": 2,
-    "abilities": ["Summon Attack 3", "Block 3 (Physical Resistance)", "Influence 3"],
+    "resistances": ["Physical"],
+    "abilities": [
+      { "type": "Attack", "value": 3, "special": "Summon" },
+      { "type": "Block", "value": 3 },
+      { "type": "Influence", "value": 3 }
+    ],
+    "notes": "Physical resistant with summon attack.",
     "image": "images/regular_illusionists_x2.jpg"
   },
   {
@@ -117,7 +174,12 @@
     "level": 2,
     "recruit_cost": 6,
     "armor": 4,
-    "abilities": ["Block 4 (Physical Resistance)", "Attack 2"],
+    "resistances": ["Physical"],
+    "abilities": [
+      { "type": "Block", "value": 4 },
+      { "type": "Attack", "value": 2 }
+    ],
+    "notes": "Physical resistant defender.",
     "image": "images/regular_guardian_golems_x2.jpg"
   },
   {
@@ -128,7 +190,13 @@
     "level": 2,
     "recruit_cost": 5,
     "armor": 3,
-    "abilities": ["Attack 3", "Block 3", "Heal 1"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 3 },
+      { "type": "Block", "value": 3 },
+      { "type": "Heal", "value": 1 }
+    ],
+    "notes": "Combat monks with healing.",
     "image": "images/regular_savage_monks.jpg"
   },
   {
@@ -139,9 +207,16 @@
     "level": 2,
     "recruit_cost": 6,
     "armor": 3,
-    "abilities": ["Attack 3 (Fire)", "Block 3 (Fire)", "Heal 2"],
+    "resistances": ["Fire"],
+    "abilities": [
+      { "type": "Attack", "value": 3, "element": "Fire" },
+      { "type": "Block", "value": 3, "element": "Fire" },
+      { "type": "Heal", "value": 2 }
+    ],
+    "notes": "Fire-element specialists with healing.",
     "image": "images/regular_red_cape_monks.jpg"
   },
+
   {
     "id": "unit_e01",
     "name": "Amotep Gunners",
@@ -150,7 +225,12 @@
     "level": 3,
     "recruit_cost": 8,
     "armor": 4,
-    "abilities": ["Attack 4 (Ranged, Fire)", "Block 4"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 4, "attributes": ["Ranged"], "element": "Fire" },
+      { "type": "Block", "value": 4 }
+    ],
+    "notes": "Ranged fire attackers.",
     "image": "images/elite_amotep_gunners_x2.jpg"
   },
   {
@@ -161,7 +241,12 @@
     "level": 3,
     "recruit_cost": 8,
     "armor": 2,
-    "abilities": ["Attack 4 (Siege, Ranged)", "Block 2"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 4, "attributes": ["Siege", "Ranged"] },
+      { "type": "Block", "value": 2 }
+    ],
+    "notes": "Siege weapon. Essential for fortified sites.",
     "image": "images/elite_catapults_x3.jpg"
   },
   {
@@ -172,7 +257,13 @@
     "level": 3,
     "recruit_cost": 9,
     "armor": 3,
-    "abilities": ["Attack 4 (Fire, Ranged)", "Block 4 (Fire)", "Influence 3"],
+    "resistances": ["Fire"],
+    "abilities": [
+      { "type": "Attack", "value": 4, "attributes": ["Ranged"], "element": "Fire" },
+      { "type": "Block", "value": 4, "element": "Fire" },
+      { "type": "Influence", "value": 3 }
+    ],
+    "notes": "Powerful fire mage.",
     "image": "images/elite_fire_mages_x2.jpg"
   },
   {
@@ -183,7 +274,13 @@
     "level": 3,
     "recruit_cost": 8,
     "armor": 4,
-    "abilities": ["Block 4 (Fire Resistance)", "Attack 3 (Fire)", "Unstoppable"],
+    "resistances": ["Fire"],
+    "abilities": [
+      { "type": "Block", "value": 4 },
+      { "type": "Attack", "value": 3, "element": "Fire" }
+    ],
+    "special_abilities": ["Unstoppable"],
+    "notes": "Fire resistant with unstoppable ability.",
     "image": "images/elite_fire_golems_x2.jpg"
   },
   {
@@ -194,7 +291,13 @@
     "level": 3,
     "recruit_cost": 8,
     "armor": 4,
-    "abilities": ["Block 4 (Ice Resistance)", "Attack 3 (Ice)", "Unstoppable"],
+    "resistances": ["Ice"],
+    "abilities": [
+      { "type": "Block", "value": 4 },
+      { "type": "Attack", "value": 3, "element": "Ice" }
+    ],
+    "special_abilities": ["Unstoppable"],
+    "notes": "Ice resistant with unstoppable ability.",
     "image": "images/elite_ice_golems_x2.jpg"
   },
   {
@@ -205,7 +308,13 @@
     "level": 3,
     "recruit_cost": 9,
     "armor": 3,
-    "abilities": ["Attack 4 (Ice, Siege)", "Block 4 (Ice)", "Influence 3"],
+    "resistances": ["Ice"],
+    "abilities": [
+      { "type": "Attack", "value": 4, "attributes": ["Siege"], "element": "Ice" },
+      { "type": "Block", "value": 4, "element": "Ice" },
+      { "type": "Influence", "value": 3 }
+    ],
+    "notes": "Powerful ice mage with siege capability.",
     "image": "images/elite_ice_mages_x2.jpg"
   },
   {
@@ -216,7 +325,12 @@
     "level": 3,
     "recruit_cost": 8,
     "armor": 4,
-    "abilities": ["Attack 4 (Ice, Ranged)", "Block 4"],
+    "resistances": [],
+    "abilities": [
+      { "type": "Attack", "value": 4, "attributes": ["Ranged"], "element": "Ice" },
+      { "type": "Block", "value": 4 }
+    ],
+    "notes": "Ranged ice attackers.",
     "image": "images/elite_amotep_freezers_x2.jpg"
   },
   {
@@ -227,7 +341,12 @@
     "level": 4,
     "recruit_cost": 10,
     "armor": 5,
-    "abilities": ["Block 6 (Fire/Ice Resistance)", "Attack 3"],
+    "resistances": ["Fire", "Ice"],
+    "abilities": [
+      { "type": "Block", "value": 6 },
+      { "type": "Attack", "value": 3 }
+    ],
+    "notes": "Elite defender with dual resistance.",
     "image": "images/elite_altem_guardians_x3.jpg"
   },
   {
@@ -238,7 +357,13 @@
     "level": 4,
     "recruit_cost": 11,
     "armor": 4,
-    "abilities": ["Attack 4 (Fire/Ice)", "Block 5 (Fire/Ice)", "Influence 4"],
+    "resistances": ["Fire", "Ice"],
+    "abilities": [
+      { "type": "Attack", "value": 4, "elements": ["Fire", "Ice"] },
+      { "type": "Block", "value": 5, "elements": ["Fire", "Ice"] },
+      { "type": "Influence", "value": 4 }
+    ],
+    "notes": "Most powerful unit. Dual elemental attacks.",
     "image": "images/elite_altem_mages_x2.jpg"
   }
 ]

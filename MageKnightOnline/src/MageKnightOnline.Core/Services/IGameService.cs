@@ -23,8 +23,8 @@ public interface IGameService
     Task<GameResult> PlayCardAsync(Guid gameId, Guid userId, string cardId, bool powered, int? manaIndex = null);
     Task<GameResult> UseCardSidewaysAsync(Guid gameId, Guid userId, string cardId);
     Task<GameResult> UseManaAsync(Guid gameId, Guid userId, int dieIndex);
+    Task<GameResult> UndoUseManaAsync(Guid gameId, Guid userId);
     Task<GameResult> UseCrystalAsync(Guid gameId, Guid userId, string color);
-    Task<GameResult> RerollManaAsync(Guid gameId, Guid userId);
     Task<GameResult> EndTurnAsync(Guid gameId, Guid userId);
     Task<GameResult> RestAsync(Guid gameId, Guid userId);
     Task<GameResult> SelectTacticAsync(Guid gameId, Guid userId, string tacticId);

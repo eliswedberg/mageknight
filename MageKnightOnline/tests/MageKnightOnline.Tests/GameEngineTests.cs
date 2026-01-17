@@ -278,18 +278,24 @@ public class GameEngineTests
     }
 
     [Fact]
-    public void RerollManaPool_ChangesPool()
+    public void UndoUseMana_ReturnsTemporaryMana()
     {
         // Arrange
         SetupBasicGameState();
-        _engine.State.ManaPool = new List<ManaColor> { ManaColor.Red };
+        _engine.State.ManaPool = new List<ManaColor> { ManaColor.Red, ManaColor.Blue };
+        var player = _engine.GetCurrentPlayer()!;
+        
+        // Take mana first
+        _engine.UseMana(0);
+        Assert.Equal(ManaColor.Red, player.TemporaryMana);
 
-        // Act
-        var result = _engine.RerollManaPool();
+        // Act - undo
+        var result = _engine.UndoUseMana();
 
         // Assert
         Assert.True(result.Success);
-        Assert.NotEmpty(_engine.State.ManaPool);
+        Assert.Null(player.TemporaryMana);
+        Assert.Null(player.UsedManaDieIndex);
     }
 
     #endregion
@@ -627,7 +633,7 @@ public class MockGameDefinitionService : IGameDefinitionService
                 Name = "Orc", 
                 Type = "Green",
                 Fame = 2,
-                Attack = new EnemyAttack { Value = 3, Attributes = new List<string> { "Physical" } },
+                Attack = new EnemyAttack { Value = 3, Element = "Physical" },
                 Armor = new EnemyArmor { Value = 3, Resistances = new List<string>() },
                 Abilities = new List<string>()
             },
@@ -637,7 +643,7 @@ public class MockGameDefinitionService : IGameDefinitionService
                 Name = "Wolf Rider", 
                 Type = "Green",
                 Fame = 2,
-                Attack = new EnemyAttack { Value = 3, Attributes = new List<string> { "Physical" } },
+                Attack = new EnemyAttack { Value = 3, Element = "Physical" },
                 Armor = new EnemyArmor { Value = 3, Resistances = new List<string>() },
                 Abilities = new List<string> { "Swift" }
             }
@@ -648,6 +654,11 @@ public class MockGameDefinitionService : IGameDefinitionService
     public Task<IReadOnlyList<EnemyDefinition>> GetEnemiesByTypeAsync(string type)
     {
         return GetEnemiesAsync();
+    }
+
+    public Task<EnemyDefinition?> GetEnemyAsync(string enemyId)
+    {
+        return Task.FromResult<EnemyDefinition?>(GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId));
     }
 
     public Task<IReadOnlyList<TacticsDefinition>> GetTacticsAsync()
@@ -688,6 +699,68 @@ public class MockGameDefinitionService : IGameDefinitionService
     public Task<IReadOnlyList<RuinsDefinition>> GetRuinsCombatTokensAsync()
     {
         return Task.FromResult<IReadOnlyList<RuinsDefinition>>(new List<RuinsDefinition>().AsReadOnly());
+    }
+
+    // NEW: Terrain
+    public Task<IReadOnlyList<TerrainDefinition>> GetTerrainCostsAsync()
+    {
+        var terrains = new List<TerrainDefinition>
+        {
+            new TerrainDefinition { Terrain = "Plains", CostDay = 2, CostNight = 2 },
+            new TerrainDefinition { Terrain = "Forest", CostDay = 3, CostNight = 5 },
+            new TerrainDefinition { Terrain = "Hill", CostDay = 3, CostNight = 3 },
+            new TerrainDefinition { Terrain = "Swamp", CostDay = 5, CostNight = 5 },
+            new TerrainDefinition { Terrain = "Desert", CostDay = 5, CostNight = 3 },
+            new TerrainDefinition { Terrain = "Wasteland", CostDay = 4, CostNight = 4 },
+            new TerrainDefinition { Terrain = "Lake", CostDay = 99, CostNight = 99, Special = "impassable" },
+            new TerrainDefinition { Terrain = "Mountain", CostDay = 99, CostNight = 99, Special = "impassable" }
+        };
+        return Task.FromResult<IReadOnlyList<TerrainDefinition>>(terrains.AsReadOnly());
+    }
+
+    public Task<TerrainDefinition?> GetTerrainAsync(string terrainType)
+    {
+        return Task.FromResult<TerrainDefinition?>(GetTerrainCostsAsync().Result.FirstOrDefault(t => 
+            t.Terrain.Equals(terrainType, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public Task<int> GetTerrainCostAsync(string terrainType, bool isDay)
+    {
+        var terrain = GetTerrainAsync(terrainType).Result;
+        return Task.FromResult(terrain?.GetCost(isDay) ?? 2);
+    }
+
+    // NEW: Sites
+    public Task<IReadOnlyList<SiteDefinition>> GetSitesAsync()
+    {
+        return Task.FromResult<IReadOnlyList<SiteDefinition>>(new List<SiteDefinition>().AsReadOnly());
+    }
+
+    public Task<SiteDefinition?> GetSiteAsync(string siteId)
+    {
+        return Task.FromResult<SiteDefinition?>(null);
+    }
+
+    public Task<IReadOnlyList<SiteDefinition>> GetSitesByTypeAsync(string siteType)
+    {
+        return Task.FromResult<IReadOnlyList<SiteDefinition>>(new List<SiteDefinition>().AsReadOnly());
+    }
+
+    // NEW: Combat Abilities
+    public Task<CombatAbilitiesRoot> GetCombatAbilitiesAsync()
+    {
+        return Task.FromResult(new CombatAbilitiesRoot());
+    }
+
+    public Task<CombatAbilityDefinition?> GetCombatAbilityAsync(string abilityId)
+    {
+        return Task.FromResult<CombatAbilityDefinition?>(null);
+    }
+
+    // NEW: Game Rules
+    public Task<GameRulesDefinition> GetGameRulesAsync()
+    {
+        return Task.FromResult(new GameRulesDefinition());
     }
 }
 

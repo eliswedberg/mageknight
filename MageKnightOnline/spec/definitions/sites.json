@@ -2,115 +2,412 @@
   {
     "id": "site_village",
     "name": "Village",
+    "type": "safe",
+    "fortified": false,
     "image": "images/description_village.jpg",
+    "description": "Small settlements where heroes can recruit basic units and rest.",
     "interactions": [
-      { "type": "Recruit", "target": "Unit_Regular", "condition": "Reputation >= 0" },
-      { "type": "Heal", "value": 1, "cost": { "influence": 3 } },
-      { "type": "Plunder", "effect": "Draw 2 cards, -1 Reputation" }
+      {
+        "id": "recruit",
+        "name": "Recruit Unit",
+        "type": "Recruit",
+        "target": "Regular",
+        "condition": "Reputation >= 0",
+        "description": "Recruit a Regular Unit from the Unit Offer. Cost is modified by Reputation."
+      },
+      {
+        "id": "heal",
+        "name": "Heal",
+        "type": "Heal",
+        "value": 1,
+        "cost": { "influence": 3 },
+        "description": "Pay 3 Influence to heal 1 Wound."
+      },
+      {
+        "id": "plunder",
+        "name": "Plunder",
+        "type": "Special",
+        "effect": "Draw 2 cards, lose 1 Reputation",
+        "description": "Raid the village for resources. Damages your reputation.",
+        "reputation_change": -1
+      }
+    ],
+    "rules": [
+      "Cannot recruit if Reputation is X (-5)",
+      "Plundering triggers immediate reputation loss"
     ]
   },
   {
     "id": "site_monastery",
     "name": "Monastery",
+    "type": "safe",
+    "fortified": false,
     "image": "images/description_monastery.jpg",
+    "description": "Sacred places where heroes can learn Advanced Actions and heal.",
     "interactions": [
-      { "type": "Recruit", "target": "Unit_Regular" },
-      { "type": "Heal", "value": 1, "cost": { "influence": 2 } },
-      { "type": "Training", "effect": "Pay 6 Influence -> Gain Advanced Action" },
-      { "type": "Burn", "effect": "Battle Purple Enemy -> Gain Artifact, -2 Reputation" }
+      {
+        "id": "recruit",
+        "name": "Recruit Unit",
+        "type": "Recruit",
+        "target": "Regular",
+        "description": "Recruit a Regular Unit from the Unit Offer."
+      },
+      {
+        "id": "heal",
+        "name": "Heal",
+        "type": "Heal",
+        "value": 1,
+        "cost": { "influence": 2 },
+        "description": "Pay 2 Influence to heal 1 Wound. Monasteries offer cheaper healing."
+      },
+      {
+        "id": "training",
+        "name": "Training",
+        "type": "GainCard",
+        "target": "AdvancedAction",
+        "cost": { "influence": 6 },
+        "description": "Pay 6 Influence to gain an Advanced Action card from the offer.",
+        "note": "The Advanced Action card is placed in the Unit Offer slot for this monastery."
+      },
+      {
+        "id": "burn",
+        "name": "Burn Monastery",
+        "type": "Combat",
+        "enemy_type": "Violet",
+        "enemy_count": 1,
+        "reward": "Artifact",
+        "reputation_change": -2,
+        "description": "Attack the monastery defenders. Gain an Artifact but lose 2 Reputation."
+      }
+    ],
+    "rules": [
+      "Each monastery has one Advanced Action card in the Unit Offer",
+      "Burning a monastery removes the Advanced Action from the offer"
     ]
   },
   {
     "id": "site_magictower",
     "name": "Mage Tower",
+    "type": "fortified",
+    "fortified": true,
     "image": "images/description_mage_tower.jpg",
+    "description": "Towers where heroes can learn Spells and recruit spellcaster units.",
     "interactions": [
-      { "type": "Recruit", "target": "Unit_Spellcaster" },
-      { "type": "LearnSpell", "effect": "Pay 7 Influence + 1 Mana -> Gain Spell" }
+      {
+        "id": "recruit",
+        "name": "Recruit Unit",
+        "type": "Recruit",
+        "target": "Spellcaster",
+        "description": "Recruit a Unit from the Unit Offer (spellcasters preferred)."
+      },
+      {
+        "id": "learn_spell",
+        "name": "Learn Spell",
+        "type": "GainCard",
+        "target": "Spell",
+        "cost": { "influence": 7, "mana": 1 },
+        "description": "Pay 7 Influence + 1 Mana of any color to learn a Spell from the Spell Offer."
+      }
+    ],
+    "assault": {
+      "defenders": { "type": "Violet", "count": 1 },
+      "reward": "Control of tower",
+      "description": "Attack the tower. Defeat Violet enemies to conquer."
+    },
+    "rules": [
+      "Fortified site - Siege attacks required in Ranged phase",
+      "When conquered, provides shelter and recruiting"
     ]
   },
   {
     "id": "site_keep",
     "name": "Keep",
+    "type": "fortified",
+    "fortified": true,
     "image": "images/description_keep.jpg",
+    "description": "Fortified strongholds. Must be conquered before using.",
     "interactions": [
-      { "type": "Recruit", "target": "Unit_Regular", "condition": "Location owned by player" }
+      {
+        "id": "recruit",
+        "name": "Recruit Unit",
+        "type": "Recruit",
+        "target": "Regular",
+        "condition": "Must control the Keep",
+        "description": "Recruit Regular Units from the Unit Offer when you control this Keep."
+      }
+    ],
+    "assault": {
+      "defenders": { "type": "Grey", "count": 1 },
+      "reward": "Control of keep, 1 Fame per defender level",
+      "description": "Attack the keep. Defeat Grey enemies to conquer."
+    },
+    "rules": [
+      "Fortified site - Siege attacks required in Ranged phase",
+      "Provides shelter when controlled",
+      "Other players entering your occupied Keep triggers PvP"
+    ]
+  },
+  {
+    "id": "site_city",
+    "name": "City",
+    "type": "fortified",
+    "fortified": true,
+    "image": "images/description_city.jpg",
+    "description": "Major urban centers. Cities are the main objectives in many scenarios.",
+    "assault": {
+      "defenders": { "type": "White", "count": "variable" },
+      "defender_count_by_level": {
+        "1": 2,
+        "2": 3,
+        "3": 4,
+        "4": 5,
+        "5": 6
+      },
+      "reward": "Control of city, Fame based on defenders",
+      "description": "Attack the city. Defeat White enemies based on city level."
+    },
+    "interactions_when_conquered": [
+      {
+        "id": "recruit",
+        "name": "Recruit Any Unit",
+        "type": "Recruit",
+        "target": "Any",
+        "description": "Recruit any type of Unit from the Unit Offer."
+      },
+      {
+        "id": "buy_fame",
+        "name": "Buy Fame",
+        "type": "GainFame",
+        "cost": { "influence": 2 },
+        "value": 1,
+        "condition": "Leader only",
+        "description": "The city leader can spend 2 Influence to gain 1 Fame."
+      },
+      {
+        "id": "learn_spell",
+        "name": "Learn Spell",
+        "type": "GainCard",
+        "target": "Spell",
+        "cost": { "influence": 7, "mana": 1 },
+        "description": "Learn a Spell from the Spell Offer."
+      }
+    ],
+    "rules": [
+      "Fortified site - no Ranged attacks against defenders",
+      "City level determines number of defenders",
+      "First player to conquer becomes Leader",
+      "Other players may co-occupy but Leader gets Fame benefits"
     ]
   },
   {
     "id": "site_glade",
     "name": "Magical Glade",
+    "type": "safe",
+    "fortified": false,
     "image": "images/description_magical_glade.jpg",
+    "description": "Mystical clearings with healing and mana properties.",
     "interactions": [
-      { "type": "Heal", "value": 1, "cost": { "influence": 0 }, "description": "Free heal 1" },
-      { "type": "Empower", "effect": "Gain 1 Gold Crystal (Day) or 1 Black Mana Token (Night)" },
-      { "type": "Cleanse", "effect": "Throw away Wounds. For each Wound -> Gain 1 Mana of any color." }
+      {
+        "id": "heal_free",
+        "name": "Free Heal",
+        "type": "Heal",
+        "value": 1,
+        "cost": { "influence": 0 },
+        "description": "Heal 1 Wound for free."
+      },
+      {
+        "id": "empower",
+        "name": "Empower",
+        "type": "GainMana",
+        "day_effect": "Gain 1 Gold Crystal",
+        "night_effect": "Gain 1 Black Mana Token",
+        "description": "Absorb magical energy. Different effects Day/Night."
+      },
+      {
+        "id": "cleanse",
+        "name": "Cleanse",
+        "type": "RemoveWound",
+        "description": "Discard Wound cards from your hand. For each, gain 1 Mana token of any color.",
+        "note": "Wounds go to Wound pile, not your discard"
+      }
+    ],
+    "rules": [
+      "Safe location - no combat",
+      "Empower effect depends on Day/Night"
     ]
   },
   {
     "id": "site_mine_crystals",
     "name": "Crystal Mine",
+    "type": "safe",
+    "fortified": false,
     "image": "images/description_mines.jpg",
+    "description": "Mines that produce crystals of a specific color.",
+    "crystal_colors": ["Red", "Blue", "White", "Green"],
     "interactions": [
-      { "type": "Harvest", "effect": "Gain 1 Crystal of mine color to Inventory." }
-    ]
-  },
-  {
-    "id": "site_city_conquered",
-    "name": "Conquered City",
-    "image": "images/description_city.jpg",
-    "interactions": [
-      { "type": "Recruit", "target": "Unit_All", "description": "Can recruit any unit type allowed in cities." },
-      { "type": "Interact", "effect": "Influence 2 buys 1 Fame (Leader only)." }
+      {
+        "id": "harvest",
+        "name": "Harvest Crystals",
+        "type": "GainCrystal",
+        "value": 1,
+        "description": "Gain 1 Crystal of the mine's color to your Inventory."
+      }
+    ],
+    "rules": [
+      "Crystal color is determined by mine variant",
+      "Can harvest once per visit"
     ]
   },
   {
     "id": "site_dungeon",
     "name": "Dungeon",
+    "type": "adventure",
+    "fortified": false,
     "image": "images/description_dungeon.jpg",
-    "rules": ["NightRules", "Battle Brown Enemy"],
-    "reward": "Artifact"
+    "description": "Underground lairs filled with monsters and treasure.",
+    "combat": {
+      "rules": ["NightRules"],
+      "enemies": { "type": "Brown", "count": 1 },
+      "description": "Fight using Night combat rules regardless of actual time."
+    },
+    "reward": {
+      "type": "Artifact",
+      "description": "Draw 2 Artifacts, keep 1, put other at bottom of deck."
+    },
+    "rules": [
+      "Entering is mandatory combat",
+      "Night rules: Black mana available, Gold mana unavailable",
+      "Must defeat all enemies to claim reward"
+    ]
   },
   {
     "id": "site_tomb",
     "name": "Tomb",
+    "type": "adventure",
+    "fortified": false,
     "image": "images/description_tomb.jpg",
-    "rules": ["NightRules", "Battle Red Enemy"],
-    "reward": "Artifact + Spell"
+    "description": "Ancient burial sites guarded by powerful creatures.",
+    "combat": {
+      "rules": ["NightRules"],
+      "enemies": { "type": "Red", "count": 1 },
+      "description": "Fight a Draconum using Night combat rules."
+    },
+    "reward": {
+      "types": ["Artifact", "Spell"],
+      "description": "Gain 1 Artifact AND 1 Spell from their respective offers."
+    },
+    "rules": [
+      "Entering is mandatory combat",
+      "Night rules apply",
+      "Red (Draconum) enemies are extremely powerful"
+    ]
   },
   {
     "id": "site_monsterden",
     "name": "Monster Den",
+    "type": "adventure",
+    "fortified": false,
     "image": "images/description_monster_den.jpg",
-    "rules": ["Battle Brown Enemy"],
-    "reward": "2 Crystals"
+    "description": "Lairs of dangerous creatures.",
+    "combat": {
+      "enemies": { "type": "Brown", "count": 1 },
+      "description": "Fight 1 Brown enemy."
+    },
+    "reward": {
+      "type": "Crystal",
+      "value": 2,
+      "description": "Gain 2 Crystals of any color."
+    },
+    "rules": [
+      "Entering is mandatory combat",
+      "Standard Day/Night rules apply"
+    ]
   },
   {
     "id": "site_spawning",
     "name": "Spawning Grounds",
+    "type": "adventure",
+    "fortified": false,
     "image": "images/description_spawning_grounds.jpg",
-    "rules": ["Battle 2x Brown Enemy"],
-    "reward": "Artifact"
+    "description": "Breeding grounds for monsters. More dangerous than dens.",
+    "combat": {
+      "enemies": { "type": "Brown", "count": 2 },
+      "description": "Fight 2 Brown enemies simultaneously."
+    },
+    "reward": {
+      "type": "Artifact",
+      "description": "Draw 2 Artifacts, keep 1, put other at bottom of deck."
+    },
+    "rules": [
+      "Entering is mandatory combat",
+      "Must fight both enemies at once"
+    ]
   },
   {
     "id": "site_ruins",
-    "name": "Ruins",
+    "name": "Ancient Ruins",
+    "type": "adventure",
+    "fortified": false,
     "image": "images/description_ancient_ruins.jpg",
-    "rules": ["Battle variable enemies", "Get Yellow Token"],
-    "reward": "Ruins Token"
+    "description": "Mysterious ruins with variable encounters.",
+    "combat": {
+      "enemies": "Variable",
+      "description": "Draw a Ruins token to determine encounter."
+    },
+    "reward": {
+      "type": "RuinsToken",
+      "description": "Reward depends on drawn token. May be loot or combat."
+    },
+    "rules": [
+      "Draw Yellow (Ruins) token when entering",
+      "Token determines if combat or immediate loot",
+      "Combat tokens specify enemies to fight",
+      "Loot tokens give immediate rewards"
+    ]
   },
   {
     "id": "site_draconum",
-    "name": "Draconum",
+    "name": "Draconum Lair",
+    "type": "rampaging",
+    "fortified": false,
     "image": "images/description_draconum.jpg",
-    "rules": ["Battle Red Enemy (Draconum)"],
-    "reward": "2 Artifacts"
+    "description": "Lairs of the mighty Draconum (dragons).",
+    "combat": {
+      "enemies": { "type": "Red", "count": 1 },
+      "description": "Challenge the Draconum to combat."
+    },
+    "reward": {
+      "type": "Artifact",
+      "value": 2,
+      "description": "Gain 2 Artifacts."
+    },
+    "rules": [
+      "Draconum are Rampaging enemies",
+      "Moving between adjacent spaces provokes attack",
+      "Can be challenged voluntarily",
+      "Extremely powerful - prepare well"
+    ]
   },
   {
     "id": "site_orc_marauders",
     "name": "Marauding Orcs",
+    "type": "rampaging",
+    "fortified": false,
     "image": "images/description_marauding_orcs.jpg",
-    "rules": ["Battle Green Enemy"],
-    "reward": "2 Fame"
+    "description": "Orc war parties roaming the land.",
+    "combat": {
+      "enemies": { "type": "Green", "count": 1 },
+      "description": "Fight the Orc enemy."
+    },
+    "reward": {
+      "type": "Fame",
+      "value": 2,
+      "description": "Gain 2 bonus Fame (in addition to enemy Fame)."
+    },
+    "rules": [
+      "Orcs are Rampaging enemies",
+      "Moving between adjacent spaces provokes attack",
+      "Can be challenged voluntarily"
+    ]
   }
 ]

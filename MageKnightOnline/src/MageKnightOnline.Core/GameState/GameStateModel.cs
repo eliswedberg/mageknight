@@ -247,7 +247,10 @@ public class CombatEnemy
     public int Attack { get; set; }
 
     [JsonPropertyName("attack_type")]
-    public string AttackType { get; set; } = "Physical"; // Physical, Fire, Ice, Cold
+    public string AttackType { get; set; } = "Physical"; // Physical, Fire, Ice, ColdFire
+
+    [JsonPropertyName("is_ranged_attack")]
+    public bool IsRangedAttack { get; set; } = false;
 
     [JsonPropertyName("resistances")]
     public List<string> Resistances { get; set; } = new(); // Physical, Fire, Ice
@@ -267,20 +270,46 @@ public class CombatEnemy
     [JsonPropertyName("fame")]
     public int Fame { get; set; } = 2;
 
-    // Computed properties
-    public bool IsSwift => Abilities.Contains("Swift");
-    public bool IsFortified => Abilities.Contains("Fortified");
-    public bool IsBrutal => Abilities.Contains("Brutal");
-    public bool IsPoison => Abilities.Contains("Poison");
-    public bool IsParalyze => Abilities.Contains("Paralyze");
-    public bool IsVampiric => Abilities.Contains("Vampiric");
-    public bool CanSummon => Abilities.Any(a => a.StartsWith("Summon"));
+    [JsonPropertyName("summon_type")]
+    public string? SummonType { get; set; } // For Summon ability
+
+    // Computed properties for abilities (case-insensitive)
+    public bool IsSwift => Abilities.Contains("swift", StringComparer.OrdinalIgnoreCase);
+    public bool IsFortified => Abilities.Contains("fortified", StringComparer.OrdinalIgnoreCase);
+    public bool IsBrutal => Abilities.Contains("brutal", StringComparer.OrdinalIgnoreCase);
+    public bool IsPoison => Abilities.Contains("poison", StringComparer.OrdinalIgnoreCase);
+    public bool IsParalyze => Abilities.Contains("paralyze", StringComparer.OrdinalIgnoreCase);
+    public bool IsVampiric => Abilities.Contains("vampiric", StringComparer.OrdinalIgnoreCase);
+    public bool IsArcaneImmune => Abilities.Contains("arcane_immunity", StringComparer.OrdinalIgnoreCase);
+    public bool IsAssassination => Abilities.Contains("assassination", StringComparer.OrdinalIgnoreCase);
+    public bool IsCumbersome => Abilities.Contains("cumbersome", StringComparer.OrdinalIgnoreCase);
+    public bool CanSummon => Abilities.Contains("summon", StringComparer.OrdinalIgnoreCase);
+
+    // Computed properties for resistances
+    public bool HasPhysicalResistance => Resistances.Contains("Physical", StringComparer.OrdinalIgnoreCase);
+    public bool HasFireResistance => Resistances.Contains("Fire", StringComparer.OrdinalIgnoreCase);
+    public bool HasIceResistance => Resistances.Contains("Ice", StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// For Vampiric enemies - damage that has been healed through their ability.
+    /// For Vampiric enemies - armor increase from wounds caused.
     /// </summary>
-    [JsonPropertyName("healed_damage")]
-    public int HealedDamage { get; set; } = 0;
+    [JsonPropertyName("vampiric_armor_bonus")]
+    public int VampiricArmorBonus { get; set; } = 0;
+
+    /// <summary>
+    /// Get the effective armor (base + vampiric bonus).
+    /// </summary>
+    public int EffectiveArmor => Armor + VampiricArmorBonus;
+
+    /// <summary>
+    /// Get the block requirement (doubled for Swift enemies).
+    /// </summary>
+    public int GetBlockRequirement() => IsSwift ? Attack * 2 : Attack;
+
+    /// <summary>
+    /// Get the damage dealt (doubled for Brutal if unblocked).
+    /// </summary>
+    public int GetDamageDealt(bool isFullyBlocked) => !isFullyBlocked && IsBrutal ? Attack * 2 : Attack;
 }
 
 public enum GamePhase

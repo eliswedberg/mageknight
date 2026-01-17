@@ -123,9 +123,9 @@ else
                 <ManaPool Dice="@GetManaDice()"
                           Crystals="@GetPlayerCrystals()"
                           SelectedDieIndex="@GetSelectedManaDieIndex()"
-                          CanReroll="@CanRerollMana"
+                          CanUndo="@CanUndoMana"
                           OnDieSelected="SelectMana"
-                          OnRerollClicked="RerollMana" />
+                          OnUndoClicked="UndoMana" />
                 
                 <!-- Current player pools -->
                 @if (IsMyTurn && _myPlayerState != null)
@@ -240,13 +240,6 @@ else
                             {
                                 <button class="btn btn-gold" @onclick="OpenSitePanel">
                                     @GetCurrentSiteIcon() Interact with Site
-                                </button>
-                            }
-                            @if (CanExplore)
-                            {
-                                <button class="btn btn-info" @onclick="ExploreCurrentTile" 
-                                        disabled="@(_myPlayerState?.MovementRemaining < 1)">
-                                    🗺️ Explore Tile (1 Move)
                                 </button>
                             }
                             <button class="btn btn-primary" @onclick="EndTurn">End Turn</button>
@@ -819,8 +812,9 @@ else
         && _gameState.Players[_gameState.CurrentPlayerIndex].UserId == AuthService.CurrentUser?.Id;
     
     private bool CanRest => IsMyTurn && _myPlayerState?.Hand.Count > 0;
-    private bool CanRerollMana => IsMyTurn;
-    private bool CanExplore { get; set; } = false;
+    // Can undo mana selection if player has temporary mana and hasn't done anything irreversible yet
+    private bool CanUndoMana => IsMyTurn && _myPlayerState?.TemporaryMana.HasValue == true && !_hasRevealedSomething;
+    private bool _hasRevealedSomething = false; // Track if player has done something that can't be undone
 
     private bool IsAtSite
     {
@@ -1082,16 +1076,6 @@ else
             // Get current user's player state
             _myPlayerState = _gameState.Players.FirstOrDefault(p => p.UserId == AuthService.CurrentUser?.Id);
 
-            // Check if player can explore
-            if (IsMyTurn && _myPlayerState != null && AuthService.CurrentUser != null)
-            {
-                CanExplore = await GameService.CanExploreTileAsync(GameId, AuthService.CurrentUser.Id);
-            }
-            else
-            {
-                CanExplore = false;
-            }
-
             // Load tactics for tactics selection phase
             if (_gameState.Phase == GamePhase.TacticsSelection)
             {
@@ -1271,6 +1255,11 @@ else
         var existingKeys = _tileHexes.Select(h => $"{h.Q},{h.R}").ToHashSet();
         var toAdd = new List<TileMap.HexData>();
 
+        // Get player position for exploration check
+        var playerQ = _myPlayerState?.Position.Q ?? 0;
+        var playerR = _myPlayerState?.Position.R ?? 0;
+        var canExplore = IsMyTurn && _myPlayerState != null && _myPlayerState.MovementRemaining >= 1;
+
         foreach (var hex in _tileHexes.Where(h => h.IsRevealed))
         {
             foreach (var (dq, dr) in directions)
@@ -1281,11 +1270,16 @@ else
 
                 if (!existingKeys.Contains(key))
                 {
+                    // Check if this unrevealed hex is adjacent to the player's position
+                    var isAdjacentToPlayer = directions.Any(d => 
+                        playerQ + d.Item1 == nq && playerR + d.Item2 == nr);
+                    
                     toAdd.Add(new TileMap.HexData
                     {
                         Q = nq,
                         R = nr,
-                        IsRevealed = false
+                        IsRevealed = false,
+                        IsExplorable = canExplore && isAdjacentToPlayer
                     });
                     existingKeys.Add(key);
                 }
@@ -1337,6 +1331,20 @@ else
                     {
                         await OpenSitePanel();
                     }
+                }
+            }
+        }
+        else if (!hex.IsRevealed && hex.IsExplorable)
+        {
+            // Clicked on an unexplored hex adjacent to player - explore!
+            if (_myPlayerState.MovementRemaining >= 1)
+            {
+                var result = await GameService.ExploreTileAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+                if (result.Success)
+                {
+                    await LoadGame();
+                    await UpdateValidTileMoves();
+                    await NotifyGameStateChanged("Explored new tile");
                 }
             }
         }
@@ -1497,32 +1505,6 @@ else
         {
             await NotifyGameStateChanged("Game ended by owner");
             Navigation.NavigateTo($"/game/{GameId}");
-        }
-    }
-
-    private async Task ExploreCurrentTile()
-    {
-        if (!IsMyTurn || _myPlayerState == null || AuthService.CurrentUser == null) return;
-        
-        if (_myPlayerState.MovementRemaining < 1)
-        {
-            // Show error message
-            return;
-        }
-
-        var result = await GameService.ExploreTileAsync(GameId, AuthService.CurrentUser.Id, 
-            _myPlayerState.Position.Q, _myPlayerState.Position.R);
-        
-        if (result.Success)
-        {
-            await LoadGame();
-            await UpdateValidMoves();
-            await NotifyGameStateChanged("Explored new tile");
-        }
-        else
-        {
-            // Show error message
-            await Task.CompletedTask;
         }
     }
 
@@ -1746,11 +1728,12 @@ else
         return _myPlayerState.UsedManaDieIndex;
     }
 
-    private async Task RerollMana()
+    private async Task UndoMana()
     {
-        var result = await GameService.RerollManaAsync(GameId, AuthService.CurrentUser!.Id);
+        var result = await GameService.UndoUseManaAsync(GameId, AuthService.CurrentUser!.Id);
         if (result.Success)
         {
+            _hasRevealedSomething = false; // Reset this on undo
             await LoadGame();
         }
     }
@@ -1849,7 +1832,7 @@ else
             var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unit.UnitId);
             if (unitDef == null) continue;
 
-            var abilities = unitDef.ParsedAbilities;
+            var abilities = MageKnightOnline.Core.Definitions.UnitAbilities.FromUnitDefinition(unitDef);
             var option = new UnitCombatOption
             {
                 UnitIndex = i,

@@ -1,0 +1,166 @@
+{
+  "enemy_offensive_abilities": [
+    {
+      "id": "swift",
+      "name": "Swift",
+      "description": "To block this enemy, you need twice as much Block as its Attack value.",
+      "effect": { "block_multiplier": 2 }
+    },
+    {
+      "id": "brutal",
+      "name": "Brutal",
+      "description": "If unblocked, it deals twice as much damage as its Attack value.",
+      "effect": { "damage_multiplier_if_unblocked": 2 }
+    },
+    {
+      "id": "poison",
+      "name": "Poison",
+      "description": "If a Unit gets Wounded because of an attack from an enemy with Poison, it is given two Wound cards instead of one. For each Wound a Hero takes into their hand from a Poisonous attack, they also put one Wound into their discard pile.",
+      "effect": { "extra_wounds_to_unit": 1, "wounds_to_discard_pile": true }
+    },
+    {
+      "id": "paralyze",
+      "name": "Paralyze",
+      "description": "If a Unit gets Wounded because of an attack from an enemy with Paralyze, it is immediately destroyed (removed from the game). If a Hero takes one or more Wounds into their hand from a Paralyzing attack, they must immediately discard any non-Wound cards from their hand.",
+      "effect": { "destroys_wounded_units": true, "hero_discards_non_wounds": true }
+    },
+    {
+      "id": "assassination",
+      "name": "Assassination",
+      "description": "Damage from this attack cannot be assigned to Units; if unblocked, it has to be all assigned to the hero.",
+      "effect": { "cannot_assign_to_units": true }
+    },
+    {
+      "id": "summon",
+      "name": "Summon",
+      "description": "At the start of the Block phase, draw a random enemy token of specified color for this enemy. It replaces the enemy in the Block and Assign Damage phases, then it is discarded.",
+      "effect": { "summons_enemy": true }
+    },
+    {
+      "id": "fire_attack",
+      "name": "Fire Attack",
+      "description": "Only Ice and Cold Fire Blocks are efficient when blocking this (others are halved).",
+      "element": "Fire",
+      "effect": { "requires_element_block": ["Ice", "ColdFire"] }
+    },
+    {
+      "id": "ice_attack",
+      "name": "Ice Attack",
+      "description": "Only Fire and Cold Fire Blocks are efficient when blocking this (others are halved).",
+      "element": "Ice",
+      "effect": { "requires_element_block": ["Fire", "ColdFire"] }
+    },
+    {
+      "id": "coldfire_attack",
+      "name": "Cold Fire Attack",
+      "description": "Only Cold Fire Blocks are efficient when blocking this (others are halved).",
+      "element": "ColdFire",
+      "effect": { "requires_element_block": ["ColdFire"] }
+    },
+    {
+      "id": "cumbersome",
+      "name": "Cumbersome",
+      "description": "In the Block phase, you may spend Move points; for each Move point spent, the attack is reduced by 1 for the rest of the turn. An attack reduced to 0 is considered successfully blocked.",
+      "effect": { "can_reduce_with_move": true }
+    },
+    {
+      "id": "vampiric",
+      "name": "Vampiric",
+      "description": "An enemy with the Vampiric ability has its Armor value increased by 1, for the rest of the combat, for each unit its attacks wound and for each wound its attacks cause to be added to a player's hand.",
+      "effect": { "armor_increase_per_wound": 1 }
+    }
+  ],
+  "enemy_defensive_abilities": [
+    {
+      "id": "fortified",
+      "name": "Fortified",
+      "description": "Only Siege Attacks can be used against this enemy in the Ranged and Siege Attacks phase. If it also defends a fortified site, no attacks at all can be used in that phase.",
+      "effect": { "requires_siege_in_ranged_phase": true }
+    },
+    {
+      "id": "physical_resistance",
+      "name": "Physical Resistance",
+      "description": "All physical Attacks (including cards played sideways) are inefficient (halved).",
+      "resistance": "Physical",
+      "effect": { "halves_physical_attacks": true }
+    },
+    {
+      "id": "fire_resistance",
+      "name": "Fire Resistance",
+      "description": "All Fire Attacks are inefficient (halved). The enemy ignores any non-Attack effects of red cards or Unit abilities powered by red mana.",
+      "resistance": "Fire",
+      "effect": { "halves_fire_attacks": true, "ignores_red_effects": true }
+    },
+    {
+      "id": "ice_resistance",
+      "name": "Ice Resistance",
+      "description": "All Ice Attacks are inefficient (halved). The enemy ignores any non-Attack effects of blue cards or Unit abilities powered by blue mana.",
+      "resistance": "Ice",
+      "effect": { "halves_ice_attacks": true, "ignores_blue_effects": true }
+    },
+    {
+      "id": "elusive",
+      "name": "Elusive",
+      "description": "An elusive enemy has two Armor values (shown as X/Y). The lower value is used only in the Attack phase, and only if all of the enemy attacks are successfully blocked. Any Armor modifications apply to both values.",
+      "effect": { "has_two_armor_values": true, "lower_armor_if_all_blocked": true }
+    },
+    {
+      "id": "unfortified",
+      "name": "Unfortified",
+      "description": "All site fortifications are ignored for such an enemy. Can be attacked normally even when defending fortified sites.",
+      "effect": { "ignores_site_fortification": true }
+    },
+    {
+      "id": "arcane_immunity",
+      "name": "Arcane Immunity",
+      "description": "The enemy is not affected by any non-Attack/Block effects. Effects that directly affect enemy attacks still apply.",
+      "effect": { "immune_to_non_combat_effects": true }
+    },
+    {
+      "id": "defend",
+      "name": "Defend",
+      "description": "Enemies with the Defend ability will defend themselves or other enemies when you attack them. All attacks in a phase must target enemies with Defend first.",
+      "effect": { "must_be_targeted_first": true }
+    }
+  ],
+  "unit_resistances": [
+    {
+      "id": "unit_physical_resistance",
+      "name": "Physical Resistance",
+      "description": "Combat with enemies: If the Unit is assigned damage from a physical attack, the damage is reduced by its Armor first (without taking Wounds). If any damage remains, continue as normal. PvP: Opponent must spend twice as much damage to wound that Unit.",
+      "applies_to": "Physical"
+    },
+    {
+      "id": "unit_fire_resistance",
+      "name": "Fire Resistance",
+      "description": "Combat with enemies: If the Unit is assigned damage from a Fire attack, the damage is reduced by its Armor first (without taking Wounds). Also ignores non-Attack effects of opponent's red cards or Unit abilities powered by red mana.",
+      "applies_to": "Fire"
+    },
+    {
+      "id": "unit_ice_resistance",
+      "name": "Ice Resistance",
+      "description": "Combat with enemies: If the Unit is assigned damage from an Ice attack, the damage is reduced by its Armor first (without taking Wounds). Also ignores non-Attack effects of opponent's blue cards or Unit abilities powered by blue mana.",
+      "applies_to": "Ice"
+    }
+  ],
+  "attack_elements": [
+    { "id": "physical", "name": "Physical", "icon": "⚔️", "efficient_blocks": ["Physical", "Fire", "Ice", "ColdFire"] },
+    { "id": "fire", "name": "Fire", "icon": "🔥", "efficient_blocks": ["Ice", "ColdFire"] },
+    { "id": "ice", "name": "Ice", "icon": "❄️", "efficient_blocks": ["Fire", "ColdFire"] },
+    { "id": "coldfire", "name": "Cold Fire", "icon": "💠", "efficient_blocks": ["ColdFire"] }
+  ],
+  "attack_types": [
+    { "id": "melee", "name": "Melee", "description": "Standard attack, can only be used in the Attack phase." },
+    { "id": "ranged", "name": "Ranged", "description": "Can be used in the Ranged and Siege Attack phase. Cannot target Fortified enemies unless the attack is also Siege." },
+    { "id": "siege", "name": "Siege", "description": "Can be used in the Ranged and Siege Attack phase, even against Fortified enemies. Required to damage Fortified enemies before the Attack phase." }
+  ],
+  "block_efficiency": {
+    "description": "When blocking an elemental attack with a non-matching block type, the block value is halved (rounded down).",
+    "rules": [
+      { "attack_type": "Fire", "efficient_blocks": ["Ice", "ColdFire"], "inefficient_blocks": ["Physical", "Fire"] },
+      { "attack_type": "Ice", "efficient_blocks": ["Fire", "ColdFire"], "inefficient_blocks": ["Physical", "Ice"] },
+      { "attack_type": "ColdFire", "efficient_blocks": ["ColdFire"], "inefficient_blocks": ["Physical", "Fire", "Ice"] },
+      { "attack_type": "Physical", "efficient_blocks": ["Physical", "Fire", "Ice", "ColdFire"], "inefficient_blocks": [] }
+    ]
+  }
+}

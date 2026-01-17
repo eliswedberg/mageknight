@@ -12,6 +12,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Enable detailed errors for Blazor circuits in development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddServerSideBlazor()
+        .AddCircuitOptions(options => options.DetailedErrors = true);
+}
+
 // SignalR for real-time communication
 builder.Services.AddSignalR();
 

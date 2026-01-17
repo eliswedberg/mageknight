@@ -1,6 +1,91 @@
 @namespace MageKnightOnline.Web.Components.Game
 @inject IJSRuntime JSRuntime
 
+@* Fullscreen Card Modal *@
+@if (_fullscreenCardIndex.HasValue && _fullscreenCardIndex.Value < Cards.Count)
+{
+    var card = Cards[_fullscreenCardIndex.Value];
+    var canPlayThisCardPowered = CanPlayPoweredForCard?.Invoke(card) ?? CanPlayPowered;
+    
+    <div class="card-modal-overlay" @onclick="CloseFullscreenCard">
+        <div class="card-modal" @onclick:stopPropagation="true">
+            <button class="modal-close-btn" @onclick="CloseFullscreenCard">✕</button>
+            
+            <div class="modal-card-display @GetCardTypeClass(card)">
+                @if (!string.IsNullOrEmpty(card.ImageUrl))
+                {
+                    <img src="@card.ImageUrl" alt="@card.Name" class="modal-card-image" />
+                }
+                else
+                {
+                    <div class="modal-card-placeholder">
+                        <div class="modal-card-name">@card.Name</div>
+                        <div class="modal-card-type-badge">@card.Type</div>
+                    </div>
+                }
+            </div>
+            
+            <div class="modal-card-info">
+                <h2 class="modal-card-title">@card.Name</h2>
+                <span class="modal-card-type @GetCardTypeClass(card)">@card.Type</span>
+                
+                <div class="modal-effects">
+                    <div class="modal-effect basic">
+                        <span class="modal-effect-label">📜 Basic Effect</span>
+                        <span class="modal-effect-text">@card.BasicEffect</span>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(card.PoweredEffect))
+                    {
+                        <div class="modal-effect powered">
+                            <span class="modal-effect-label">⚡ Powered Effect @(!string.IsNullOrEmpty(card.PoweredManaColor) ? $"({card.PoweredManaColor})" : "")</span>
+                            <span class="modal-effect-text">@card.PoweredEffect</span>
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(card.Note))
+                    {
+                        <div class="modal-note">
+                            <span class="modal-note-icon">💡</span>
+                            <span>@card.Note</span>
+                        </div>
+                    }
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-btn modal-btn-play" 
+                            @onclick="() => PlayCardFromModal(_fullscreenCardIndex.Value)"
+                            disabled="@(!card.CanPlay)">
+                        ▶ Play Basic
+                    </button>
+                    
+                    @if (!string.IsNullOrEmpty(card.PoweredEffect) || !string.IsNullOrEmpty(card.PoweredManaColor))
+                    {
+                        var manaReq = !string.IsNullOrEmpty(card.PoweredManaColor) ? card.PoweredManaColor : "any";
+                        <button class="modal-btn modal-btn-powered @(canPlayThisCardPowered ? "" : "disabled")"
+                                @onclick="() => PlayCardPoweredFromModal(_fullscreenCardIndex.Value)"
+                                disabled="@(!canPlayThisCardPowered)"
+                                title="@(canPlayThisCardPowered ? $"Play powered effect" : $"Requires {manaReq} mana - take a mana die first")">
+                            ⚡ Play Powered
+                        </button>
+                    }
+                    
+                    <button class="modal-btn modal-btn-sideways"
+                            @onclick="() => UseSidewaysFromModal(_fullscreenCardIndex.Value)"
+                            disabled="@(!card.CanPlay)"
+                            title="Use sideways for +1 @card.Type">
+                        ↔ Use as +1
+                    </button>
+                    
+                    <button class="modal-btn modal-btn-cancel" @onclick="CloseFullscreenCard">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="card-hand @(IsExpanded ? "expanded" : "")">
     <div class="hand-header" @onclick="ToggleExpand">
         <h4>Your Hand (@Cards.Count cards)</h4>
@@ -461,6 +546,324 @@
         color: var(--color-text-muted);
         margin-top: var(--spacing-xs);
     }
+
+    /* Fullscreen Card Modal */
+    .card-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @@keyframes modalFadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .card-modal {
+        display: flex;
+        gap: 2rem;
+        padding: 2rem;
+        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+        border: 2px solid var(--color-gold);
+        border-radius: 16px;
+        box-shadow: 0 0 60px rgba(212, 168, 83, 0.3), 0 20px 60px rgba(0, 0, 0, 0.6);
+        max-width: 90vw;
+        max-height: 90vh;
+        position: relative;
+        animation: modalSlideIn 0.25s ease-out;
+    }
+
+    @@keyframes modalSlideIn {
+        from {
+            transform: scale(0.9) translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-close-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 1.2rem;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close-btn:hover {
+        background: rgba(239, 68, 68, 0.8);
+        transform: scale(1.1);
+    }
+
+    .modal-card-display {
+        width: 280px;
+        height: 400px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 3px solid var(--color-border);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        flex-shrink: 0;
+    }
+
+    .modal-card-display.move { border-color: #22c55e; }
+    .modal-card-display.attack { border-color: #ef4444; }
+    .modal-card-display.block { border-color: #3b82f6; }
+    .modal-card-display.influence { border-color: #a855f7; }
+    .modal-card-display.heal { border-color: #f472b6; }
+    .modal-card-display.wound { border-color: #6b7280; }
+
+    .modal-card-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .modal-card-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(180deg, #2a2a4a 0%, #1a1a2e 100%);
+        padding: 1.5rem;
+    }
+
+    .modal-card-name {
+        font-family: 'Cinzel', serif;
+        font-size: 1.5rem;
+        color: var(--color-gold);
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .modal-card-type-badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .modal-card-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        min-width: 320px;
+        max-width: 400px;
+    }
+
+    .modal-card-title {
+        font-family: 'Cinzel', serif;
+        font-size: 1.8rem;
+        color: var(--color-gold);
+        margin: 0;
+        text-shadow: 0 2px 10px rgba(212, 168, 83, 0.3);
+    }
+
+    .modal-card-type {
+        display: inline-block;
+        font-size: 0.85rem;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 1px;
+        width: fit-content;
+    }
+
+    .modal-card-type.move { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .modal-card-type.attack { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .modal-card-type.block { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    .modal-card-type.influence { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+    .modal-card-type.heal { background: rgba(244, 114, 182, 0.2); color: #f472b6; }
+    .modal-card-type.wound { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+
+    .modal-effects {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-effect {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .modal-effect-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    .modal-effect.powered .modal-effect-label {
+        color: #f59e0b;
+    }
+
+    .modal-effect-text {
+        font-size: 1rem;
+        color: var(--color-text-primary);
+        line-height: 1.5;
+    }
+
+    .modal-effect.powered .modal-effect-text {
+        color: #fbbf24;
+    }
+
+    .modal-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #888;
+        font-style: italic;
+        padding-top: 0.5rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-note-icon {
+        flex-shrink: 0;
+    }
+
+    .modal-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: auto;
+        padding-top: 1rem;
+    }
+
+    .modal-btn {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .modal-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .modal-btn-play {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+    }
+
+    .modal-btn-play:hover:not(:disabled) {
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    }
+
+    .modal-btn-powered {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .modal-btn-powered:hover:not(:disabled) {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    }
+
+    .modal-btn-powered.disabled,
+    .modal-btn-powered:disabled {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        box-shadow: none;
+    }
+
+    .modal-btn-sideways {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .modal-btn-sideways:hover:not(:disabled) {
+        background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .modal-btn-cancel {
+        background: transparent;
+        color: var(--color-text-muted);
+        border: 1px solid var(--color-border);
+    }
+
+    .modal-btn-cancel:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--color-text-primary);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .card-modal {
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        .modal-card-display {
+            width: 200px;
+            height: 280px;
+        }
+
+        .modal-card-info {
+            min-width: unset;
+            width: 100%;
+        }
+
+        .modal-card-title {
+            font-size: 1.4rem;
+            text-align: center;
+        }
+
+        .modal-card-type {
+            align-self: center;
+        }
+    }
 </style>
 
 @code {
@@ -477,6 +880,7 @@
 
     private bool IsExpanded { get; set; } = true;
     private int? _draggedCardIndex = null;
+    private int? _fullscreenCardIndex = null;
 
     private void ToggleExpand()
     {
@@ -494,9 +898,44 @@
 
     private async Task OnCardClick(int index)
     {
+        // Open fullscreen modal instead of just selecting
+        _fullscreenCardIndex = index;
+        
         if (OnCardSelected.HasDelegate)
         {
             await OnCardSelected.InvokeAsync(index);
+        }
+    }
+
+    private void CloseFullscreenCard()
+    {
+        _fullscreenCardIndex = null;
+    }
+
+    private async Task PlayCardFromModal(int index)
+    {
+        CloseFullscreenCard();
+        if (OnCardPlayed.HasDelegate)
+        {
+            await OnCardPlayed.InvokeAsync(index);
+        }
+    }
+
+    private async Task PlayCardPoweredFromModal(int index)
+    {
+        CloseFullscreenCard();
+        if (OnCardPlayedPowered.HasDelegate)
+        {
+            await OnCardPlayedPowered.InvokeAsync(index);
+        }
+    }
+
+    private async Task UseSidewaysFromModal(int index)
+    {
+        CloseFullscreenCard();
+        if (OnCardUsedSideways.HasDelegate)
+        {
+            await OnCardUsedSideways.InvokeAsync(index);
         }
     }
 

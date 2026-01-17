@@ -370,7 +370,7 @@ public class GameEngine : IGameEngine
         }
     }
 
-    public GameActionResult ExploreTile(HexPosition edgeHex, int? edgePosition = null)
+    public GameActionResult ExploreTile(HexPosition targetHex, int? edgePosition = null)
     {
         var player = GetCurrentPlayer();
         if (player == null)
@@ -379,38 +379,39 @@ public class GameEngine : IGameEngine
         if (_state.Phase != GamePhase.Movement)
             return GameActionResult.Fail("Can only explore during movement phase");
 
-        // Check if player is at the edge hex
-        if (player.Position.Q != edgeHex.Q || player.Position.R != edgeHex.R)
-            return GameActionResult.Fail("You must be at the edge hex to explore");
+        // Check if target hex is unrevealed
+        var targetKey = PosKey(targetHex);
+        if (_state.Map.RevealedHexes.Contains(targetKey))
+            return GameActionResult.Fail("This hex is already revealed");
 
-        // Check if this is actually an edge hex (has unrevealed neighbors)
-        var isEdgeHex = false;
-        HexPosition? unrevealedNeighbor = null;
+        // Check if player is adjacent to the target hex
+        var playerPos = player.Position;
+        bool isAdjacent = false;
+        
         foreach (var dir in HexDirections)
         {
-            var neighbor = edgeHex + dir;
-            var key = PosKey(neighbor);
-            if (!_state.Map.RevealedHexes.Contains(key))
+            var neighbor = playerPos + dir;
+            if (neighbor.Q == targetHex.Q && neighbor.R == targetHex.R)
             {
-                isEdgeHex = true;
-                unrevealedNeighbor = neighbor;
+                isAdjacent = true;
                 break;
             }
         }
 
-        if (!isEdgeHex || unrevealedNeighbor == null)
-            return GameActionResult.Fail("This hex is not at the edge of the map");
+        if (!isAdjacent)
+            return GameActionResult.Fail("You must be adjacent to the hex you want to explore");
 
         // Exploration costs 1 movement point
         if (player.MovementRemaining < 1)
             return GameActionResult.Fail("Not enough movement points to explore (need 1)");
 
         // Draw tile and place it edge-to-edge
-        var result = PlaceNewTileAtEdge(edgeHex, unrevealedNeighbor, edgePosition);
+        // playerPos is the player's current position, targetHex is the direction they're exploring
+        var result = PlaceNewTileAtEdge(playerPos, targetHex, edgePosition);
         if (result.Success)
         {
             player.MovementRemaining -= 1;
-            AddLogEntry("Explore", $"Explored new tile at edge ({edgeHex.Q}, {edgeHex.R})");
+            AddLogEntry("Explore", $"Explored new tile towards ({targetHex.Q}, {targetHex.R})");
         }
 
         return result;
@@ -494,10 +495,12 @@ public class GameEngine : IGameEngine
         if (directionIndex == -1)
             return GameActionResult.Fail("Invalid exploration direction");
 
-        // Tile placement rule: The new tile's center is placed in the direction of exploration
-        // from edgeHex. One of the tile's edge hexes will connect back to edgeHex.
-        // So: tileCenter = edgeHex + direction
-        var tileCenter = edgeHex + direction;
+        // Tile placement rule: The new tile's center must be placed far enough that 
+        // the edge hexes don't overlap with existing hexes.
+        // A 7-hex tile has center + 6 surrounding hexes. 
+        // For edge-to-edge placement: tileCenter = unrevealedNeighbor + direction
+        // This places the center 2 steps away from the player's edge hex
+        var tileCenter = unrevealedNeighbor + direction;
         
         // The edge hex that connects to edgeHex is in the OPPOSITE direction from tile center
         // So we need to rotate the tile so that the edge hex in the opposite direction matches edgeHex
@@ -1149,11 +1152,21 @@ public class GameEngine : IGameEngine
         }
     }
 
-    public GameActionResult RerollManaPool()
+    public GameActionResult UndoUseMana()
     {
-        RollManaPool();
-        AddLogEntry("RerollMana", "Rerolled mana pool");
-        return GameActionResult.Ok("Mana pool rerolled");
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (!player.TemporaryMana.HasValue)
+            return GameActionResult.Fail("No temporary mana to undo");
+
+        var color = player.TemporaryMana.Value;
+        player.TemporaryMana = null;
+        player.UsedManaDieIndex = null;
+
+        AddLogEntry("UndoMana", $"Returned {color} mana - die selection undone");
+        return GameActionResult.Ok($"Returned {color} mana to Source");
     }
 
     public GameActionResult DrawCards()
@@ -1509,17 +1522,7 @@ public class GameEngine : IGameEngine
             var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
             if (enemyDef != null)
             {
-                var combatEnemy = new CombatEnemy
-                {
-                    EnemyId = enemyId,
-                    Name = enemyDef.Name,
-                    Armor = enemyDef.Armor?.Value ?? 3,
-                    Attack = enemyDef.Attack?.Value ?? 3,
-                    AttackType = enemyDef.Attack?.Attributes?.FirstOrDefault() ?? "Physical",
-                    Resistances = enemyDef.Armor?.Resistances ?? new List<string>(),
-                    Abilities = enemyDef.Abilities ?? new List<string>(),
-                    Fame = enemyDef.Fame
-                };
+                var combatEnemy = CreateCombatEnemy(enemyDef);
 
                 // Site-based fortified status
                 if (isFortifiedSite || combatEnemy.Abilities.Contains("Fortified"))
@@ -1582,17 +1585,9 @@ public class GameEngine : IGameEngine
                 var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
                 if (enemyDef != null)
                 {
-                    var summonedEnemy = new CombatEnemy
-                    {
-                        EnemyId = enemyId,
-                        Name = $"{enemyDef.Name} (Summoned)",
-                        Armor = enemyDef.Armor?.Value ?? 3,
-                        Attack = enemyDef.Attack?.Value ?? 3,
-                        AttackType = enemyDef.Attack?.Attributes?.FirstOrDefault() ?? "Physical",
-                        Resistances = enemyDef.Armor?.Resistances ?? new List<string>(),
-                        Abilities = enemyDef.Abilities ?? new List<string>(),
-                        Fame = 0 // Summoned enemies don't give fame
-                    };
+                    var summonedEnemy = CreateCombatEnemy(enemyDef);
+                    summonedEnemy.Name = $"{enemyDef.Name} (Summoned)";
+                    summonedEnemy.Fame = 0; // Summoned enemies don't give fame
                     
                     summonedEnemies.Add(summonedEnemy);
                     AddLogEntry("Combat", $"{summoner.Name} summoned a {enemyDef.Name}!");
@@ -2001,7 +1996,7 @@ public class GameEngine : IGameEngine
                             if (healAmount > 0)
                             {
                                 vampEnemy.CurrentDamage -= healAmount;
-                                vampEnemy.HealedDamage += healAmount;
+                                vampEnemy.VampiricArmorBonus += healAmount;
                                 AddLogEntry("Combat", $"Vampiric! {vampEnemy.Name} healed {healAmount} damage!");
                             }
                         }
@@ -2076,7 +2071,7 @@ public class GameEngine : IGameEngine
                 if (healAmount > 0)
                 {
                     enemy.CurrentDamage -= healAmount;
-                    enemy.HealedDamage += healAmount;
+                    enemy.VampiricArmorBonus += healAmount;
                     messages.Add($"Vampiric! {enemy.Name} healed {healAmount} damage");
                 }
             }
@@ -2801,13 +2796,15 @@ public class GameEngine : IGameEngine
             Name = enemyDef.Name,
             Armor = enemyDef.Armor.Value,
             Attack = enemyDef.Attack.Value,
-            AttackType = enemyDef.Attack.Attributes.FirstOrDefault() ?? "Physical",
+            AttackType = enemyDef.Attack.GetElement(),
+            IsRangedAttack = enemyDef.Attack.IsRanged,
             Resistances = enemyDef.Armor.Resistances,
             Abilities = enemyDef.Abilities,
             Fame = enemyDef.Fame,
             CurrentDamage = 0,
             IsDefeated = false,
-            IsBlocked = false
+            IsBlocked = false,
+            SummonType = enemyDef.SummonType
         };
     }
 
@@ -3269,7 +3266,7 @@ public class GameEngine : IGameEngine
         if (unitDef == null)
             return GameActionResult.Fail("Unit definition not found");
 
-        var abilities = unitDef.ParsedAbilities;
+        var abilities = Definitions.UnitAbilities.FromUnitDefinition(unitDef);
         var abilityTypeLower = abilityType.ToLower();
 
         // Apply the ability based on type and current combat phase
@@ -3578,7 +3575,7 @@ public class GameEngine : IGameEngine
             var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unit.UnitId);
             if (unitDef == null) continue;
 
-            var abilities = unitDef.ParsedAbilities;
+            var abilities = Definitions.UnitAbilities.FromUnitDefinition(unitDef);
             var option = new UnitCombatOption
             {
                 UnitIndex = i,

@@ -301,11 +301,11 @@ public class GameService : IGameService
         });
     }
 
-    public async Task<GameResult> RerollManaAsync(Guid gameId, Guid userId)
+    public async Task<GameResult> UndoUseManaAsync(Guid gameId, Guid userId)
     {
         return await ExecuteGameAction(gameId, userId, engine =>
         {
-            return engine.RerollManaPool();
+            return engine.UndoUseMana();
         });
     }
 

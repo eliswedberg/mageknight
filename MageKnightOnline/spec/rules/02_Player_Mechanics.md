@@ -18,10 +18,11 @@ Mana fuels strong card effects.
 * **Temporary Mana (from Source)**:
     * You can take **one mana die** from the Source per round.
     * Taking a die gives you **temporary mana** of the same color as the die.
-    * Temporary mana persists until the end of your round.
-    * When you use temporary mana for a powered card effect, the mana is consumed but the die stays in the Source pool.
-    * At the end of the round, the used die is rerolled and returned to the Source pool.
+    * Temporary mana persists until the end of your turn.
+    * When you use temporary mana for a powered card effect, the mana is consumed.
+    * At the **end of the round**, all mana dice in the Source are rerolled.
     * You can only have one temporary mana at a time.
+    * **Undo**: You can undo taking a mana die as long as you haven't done anything irreversible (played a card, moved, revealed new information, etc.).
 * **Powered Card Effects**:
     * Cards with powered effects (indicated by `effects_powered` in card definitions) can be played with enhanced effects.
     * Basic Actions: Can use any temporary mana color for powered effects (no specific color requirement).

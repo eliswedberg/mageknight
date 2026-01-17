@@ -88,19 +88,20 @@ public interface IGameEngine
     GameActionResult Rest();
 
     /// <summary>
-    /// Uses a mana die from the pool.
+    /// Uses a mana die from the pool (takes temporary mana).
     /// </summary>
     GameActionResult UseMana(int dieIndex);
+
+    /// <summary>
+    /// Undoes the mana die selection (returns temporary mana).
+    /// Can only be done if no irreversible actions have been taken.
+    /// </summary>
+    GameActionResult UndoUseMana();
 
     /// <summary>
     /// Uses a crystal from the player's inventory.
     /// </summary>
     GameActionResult UseCrystal(ManaColor color);
-
-    /// <summary>
-    /// Rerolls the mana pool (start of turn).
-    /// </summary>
-    GameActionResult RerollManaPool();
 
     /// <summary>
     /// Draws cards up to hand limit.

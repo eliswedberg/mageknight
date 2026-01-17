@@ -1,11 +1,65 @@
 [
-  { "terrain": "Plains", "cost_day": 2, "cost_night": 2 },
-  { "terrain": "Hills", "cost_day": 3, "cost_night": 3 },
-  { "terrain": "Forest", "cost_day": 3, "cost_night": 5 },
-  { "terrain": "Wasteland", "cost_day": 4, "cost_night": 4 },
-  { "terrain": "Desert", "cost_day": 5, "cost_night": 3 },
-  { "terrain": "Swamp", "cost_day": 5, "cost_night": 5 },
-  { "terrain": "Mountain", "cost_day": 99, "cost_night": 99, "note": "Impassable without special ability" },
-  { "terrain": "Water", "cost_day": 99, "cost_night": 99, "note": "Impassable" },
-  { "terrain": "City", "cost_day": 2, "cost_night": 2 }
+  {
+    "terrain": "Plains",
+    "cost_day": 2,
+    "cost_night": 2,
+    "description": "Open grasslands. Easy to traverse at any time."
+  },
+  {
+    "terrain": "Hills",
+    "cost_day": 3,
+    "cost_night": 3,
+    "description": "Rolling hills. Moderate difficulty."
+  },
+  {
+    "terrain": "Forest",
+    "cost_day": 3,
+    "cost_night": 5,
+    "description": "Dense woods. Harder to navigate at night."
+  },
+  {
+    "terrain": "Wasteland",
+    "cost_day": 4,
+    "cost_night": 4,
+    "description": "Barren, difficult terrain. Consistent difficulty."
+  },
+  {
+    "terrain": "Desert",
+    "cost_day": 5,
+    "cost_night": 3,
+    "description": "Scorching by day, cooler at night."
+  },
+  {
+    "terrain": "Swamp",
+    "cost_day": 5,
+    "cost_night": 5,
+    "description": "Treacherous marshland. Always difficult."
+  },
+  {
+    "terrain": "Lake",
+    "cost_day": 99,
+    "cost_night": 99,
+    "description": "Bodies of water. Impassable without special abilities (Flight, Space Bending, etc.).",
+    "special": "impassable"
+  },
+  {
+    "terrain": "Mountain",
+    "cost_day": 99,
+    "cost_night": 99,
+    "description": "Impassable peaks. Requires special abilities to cross.",
+    "special": "impassable"
+  },
+  {
+    "terrain": "Ocean",
+    "cost_day": 99,
+    "cost_night": 99,
+    "description": "Deep waters at map edges. Completely impassable.",
+    "special": "impassable"
+  },
+  {
+    "terrain": "City",
+    "cost_day": 2,
+    "cost_night": 2,
+    "description": "Urban areas. Easy to move through once conquered."
+  }
 ]

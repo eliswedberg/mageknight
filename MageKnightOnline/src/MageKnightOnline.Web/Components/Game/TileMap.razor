@@ -54,14 +54,26 @@
             var isSelected = SelectedHex?.Q == hex.Q && SelectedHex?.R == hex.R;
             var isHighlighted = HighlightedHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) ?? false;
 
-            <g class="hex-overlay @(isSelected ? "selected" : "") @(isHighlighted ? "highlighted" : "")"
+            <g class="hex-overlay @(isSelected ? "selected" : "") @(isHighlighted ? "highlighted" : "") @(hex.IsExplorable ? "explorable" : "")"
                transform="translate(@F(center.X), @F(center.Y))"
                @onclick="() => OnHexClick(hex)"
                @onmouseenter="() => OnHexHover(hex)"
-               style="cursor: pointer;">
+               style="cursor: @(hex.IsExplorable || isHighlighted || hex.IsRevealed ? "pointer" : "default");">
                 
-                <!-- Clickable hex area (invisible) -->
-                <polygon points="@HexPoints" fill="transparent" />
+                <!-- Clickable hex area (invisible or explorable) -->
+                @if (hex.IsExplorable && !hex.IsRevealed)
+                {
+                    <polygon points="@HexPoints" 
+                             fill="rgba(59, 130, 246, 0.2)" 
+                             stroke="#3b82f6" 
+                             stroke-width="2"
+                             stroke-dasharray="8 4" />
+                    @((MarkupString)$"<text x=\"0\" y=\"5\" text-anchor=\"middle\" fill=\"#3b82f6\" font-size=\"24\">🗺️</text>")
+                }
+                else
+                {
+                    <polygon points="@HexPoints" fill="transparent" />
+                }
 
                 <!-- Highlight for valid moves -->
                 @if (isHighlighted)
@@ -157,9 +169,23 @@
         animation: pulse 1.5s ease-in-out infinite;
     }
 
+    .hex-overlay.explorable {
+        animation: explore-pulse 2s ease-in-out infinite;
+    }
+
+    .hex-overlay.explorable:hover polygon {
+        fill: rgba(59, 130, 246, 0.4) !important;
+        stroke-width: 3;
+    }
+
     @@keyframes pulse {
         0%, 100% { fill: rgba(74, 222, 128, 0.2); }
         50% { fill: rgba(74, 222, 128, 0.4); }
+    }
+
+    @@keyframes explore-pulse {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 1; }
     }
 </style>
 
@@ -294,6 +320,7 @@
         public int Q { get; set; }
         public int R { get; set; }
         public bool IsRevealed { get; set; }
+        public bool IsExplorable { get; set; } // Can be explored by clicking
         public string? TerrainType { get; set; }
         public string? SiteType { get; set; }
         public int EnemyCount { get; set; }
