@@ -407,7 +407,6 @@ C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\D
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kl832s6f3j-{0}-33dm25h62e-33dm25h62e.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\u5h4sb88fa-{0}-16a9ezen1h-16a9ezen1h.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\g3sna62vq2-{0}-o2en7d0cg4-o2en7d0cg4.gz
-C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\bsx3ux2yvu-{0}-gkkuq9n1l2-gkkuq9n1l2.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\qib04iorqj-{0}-0lpqfhelzw-0lpqfhelzw.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\376j6yej92-{0}-m2fttak13v-m2fttak13v.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\f7d1ae6x87-{0}-bzv9y8awuy-bzv9y8awuy.gz
@@ -473,3 +472,5 @@ C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\D
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\bin\Debug\net10.0\Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore.dll
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\xxk74yzloj-{0}-zqvco995sp-zqvco995sp.gz
 C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\b7ap1b63uq-{0}-lnr3rbqmge-lnr3rbqmge.gz
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\bsx3ux2yvu-{0}-x3wq5f1ltz-x3wq5f1ltz.gz
+C:\Users\eliwe\Source\mageknight\MageKnightOnline\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\4hwait2z4h-{0}-o1ayblsrk3-o1ayblsrk3.gz

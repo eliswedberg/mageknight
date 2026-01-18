@@ -10,10 +10,9 @@
     <div class="tactics-grid">
         @foreach (var tactic in AvailableTactics.OrderBy(t => t.Position))
         {
-            var isSelected = SelectedTacticId == tactic.Id;
             var isTaken = TakenTacticIds.Contains(tactic.Id);
             
-            <div class="tactic-card @(isSelected ? "selected" : "") @(isTaken ? "taken" : "")"
+            <div class="tactic-card @(isTaken ? "taken" : "")"
                  @onclick="() => SelectTactic(tactic)">
                 @if (!string.IsNullOrEmpty(tactic.Image))
                 {
@@ -38,12 +37,6 @@
         @if (HasSelected)
         {
             <p class="text-success">✓ You have selected your tactic. Waiting for other players...</p>
-        }
-        else if (SelectedTacticId != null)
-        {
-            <button class="btn btn-primary btn-lg" @onclick="ConfirmSelection">
-                Confirm Selection
-            </button>
         }
         else
         {
@@ -197,21 +190,12 @@
     [Parameter]
     public EventCallback<string> OnTacticSelected { get; set; }
 
-    private string? SelectedTacticId { get; set; }
-
-    private void SelectTactic(TacticsDefinition tactic)
+    private async Task SelectTactic(TacticsDefinition tactic)
     {
         if (HasSelected || TakenTacticIds.Contains(tactic.Id))
             return;
 
-        SelectedTacticId = tactic.Id;
-    }
-
-    private async Task ConfirmSelection()
-    {
-        if (SelectedTacticId != null)
-        {
-            await OnTacticSelected.InvokeAsync(SelectedTacticId);
-        }
+        // Directly select and confirm - no need for extra step
+        await OnTacticSelected.InvokeAsync(tactic.Id);
     }
 }

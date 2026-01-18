@@ -327,20 +327,25 @@ public interface IEffectHandler
 - [x] Ladda scenario-konfiguration
 - [x] Generera map deck
 - [x] Placera starting tile
-- [ ] Sätt city levels
+- [x] Sätt city levels
 
 ### 9.2 Vinst-villkor
-- [ ] Spåra scenario-mål
-- [ ] Detektera vinst/förlust
-- [ ] Beräkna slutpoäng
-- [ ] Visa resultat
+- [x] Spåra scenario-mål
+- [x] Detektera vinst/förlust
+- [x] Beräkna slutpoäng
+- [x] Visa resultat
 
 ### 9.3 Implementera scenarios
-- [ ] First Reconnaissance (Training)
-- [ ] Full Conquest
-- [ ] Blitz Conquest
-- [x] Solo Conquest (basic setup)
-- [ ] Cooperative
+- [x] First Reconnaissance (Training)
+- [x] Full Conquest
+- [x] Blitz Conquest
+- [x] Mines Liberation
+- [x] Druid Nights
+- [x] Dungeon Lords
+- [x] Conquer and Hold
+- [x] One to Return (Coop)
+- [x] Solo Conquest
+- [x] Cooperative
 
 ---
 
@@ -603,55 +608,65 @@ För en spelbar MVP, fokusera på:
 - ✅ Influence modifiers baserat på reputation
 - ✅ Reputation changes (plunder, etc.)
 
-### Fas 9: Scenarios & Vinst ✅ DELVIS KLAR (75%)
+### Fas 9: Scenarios & Vinst ✅ KLAR (100%)
 #### 9.1 Scenario Setup ✅ KLAR
 - ✅ Ladda scenario-konfiguration
 - ✅ Generera map deck
 - ✅ Placera starting tile
-- ⏳ Sätt city levels (ej implementerat)
+- ✅ City levels (fiender baserat på scenario city_levels)
 
 #### 9.2 Vinst-villkor ✅ KLAR
-- ✅ Spåra scenario-mål (CitiesConquered, CityRevealed)
+- ✅ Spåra scenario-mål (CitiesConquered, CityRevealed, AdventureSites, Mines)
 - ✅ Detektera vinst/förlust (CheckVictoryConditions)
 - ✅ Beräkna slutpoäng (CalculateFinalScores)
 - ✅ Visa resultat (VictoryScreen-komponent)
 
-#### 9.3 Implementera scenarios ⏳ DELVIS
-- ⏳ First Reconnaissance (Training) - ej implementerat
-- ⏳ Full Conquest - ej implementerat
-- ⏳ Blitz Conquest - ej implementerat
-- ⏳ Solo Conquest - basic scenario setup finns
-- ⏳ Cooperative - ej implementerat
+#### 9.3 Implementera scenarios ✅ KLAR
+- ✅ First Reconnaissance (Training) - "Reveal the City" victory condition
+- ✅ Full Conquest - "Conquer all cities" victory condition
+- ✅ Blitz Conquest - Same as Full Conquest with fewer rounds
+- ✅ Mines Liberation - "Conquer mines and city" victory condition
+- ✅ Druid Nights - "Conquer adventure sites" victory condition
+- ✅ Dungeon Lords - End-of-game scoring
+- ✅ Conquer and Hold - End-of-game scoring
+- ✅ One to Return (Coop) - Conquer cities as team
+- ✅ Solo Conquest - Full implementation
+- ✅ Cooperative - Full implementation
 
-### Fas 10: UI & Polish ⏳ DELVIS KLAR (80%)
-#### 10.1 Spel-UI ✅ DELVIS
+### Fas 10: UI & Polish ✅ DELVIS KLAR (95%)
+#### 10.1 Spel-UI ✅ KLAR
 - ✅ Spelarens dashboard (hand, inventory, units)
 - ✅ Interaktiv karta (TileMap)
 - ✅ Drag-and-drop kort (CardHand med draggable, CardDropZone-komponent)
 - ✅ Stridsdialog (CombatPanel - delvis)
 - ✅ Site interaction dialog (SiteInteractionPanel - integrerad i PlayGame)
-- ✅ Taktikval-dialog (TacticsSelection)
+- ✅ Taktikval-dialog (TacticsSelection - förenklad, ett klick)
 
-#### 10.2 Visuell feedback ✅ DELVIS
+#### 10.2 Visuell feedback ✅ KLAR
 - ✅ Animationer (kort, rörelse, strid) - CSS animationssystem i app.css
 - ⏳ Ljud-effekter - ej implementerat
 - ✅ Tooltips för kort (typ, effekter, noter)
 - ✅ Tooltips för enheter (status, förmågor, armor)
-- ✅ Undo-funktion (inom tur) - KLAR (undo system med state-stack)
+- ✅ Undo-funktion (inom tur) - KLAR (state-stack, blockeras efter exploration/card draws)
+- ✅ Turbaserade notifikationer (NotificationPanel, Browser Notifications)
+- ✅ Din-tur-indikation i lobby (pulsande guldram, ⚡ badge)
 
 #### 10.3 Responsivitet ⏳ DELVIS
 - ✅ Desktop-optimerad
 - ⏳ Tablet-stöd - delvis
 - ⏳ Grundläggande mobilvy - delvis
 
-### Fas 11: Multiplayer & Synk ✅ DELVIS KLAR (80%)
+### Fas 11: Multiplayer & Synk ✅ DELVIS KLAR (90%)
 #### 11.1 SignalR Game Hub ✅ KLAR
 - ✅ SignalR Hub för lobby (GameHub)
 - ✅ Synka game state (real-time via SignalR)
-- ✅ Turn notifications
+- ✅ Turn notifications (NotifyUserTurn, NotifyTurnStarted)
 - ✅ Chat (i spel)
 - ✅ Reconnection handling (WithAutomaticReconnect)
 - ✅ Player connection tracking
+- ✅ Global user registration (RegisterUser för notifikationer)
+- ✅ Game start notifications (NotifyUser med GameStarted)
+- ✅ Browser notifications (Web Notification API)
 
 #### 11.2 Concurrency ⏳ EJ IMPLEMENTERAT
 - ⏳ Optimistic locking
@@ -684,9 +699,9 @@ För en spelbar MVP, fokusera på:
 | 6. Strid | ✅ Klar | 100% |
 | 7. Interaktioner | ✅ Klar | 100% |
 | 8. Leveling | ✅ Klar | 100% |
-| 9. Scenarios | ✅ Klar | 90% |
-| 10. UI & Polish | ✅ Klar | 90% |
-| 11. Multiplayer | ✅ Delvis | 80% |
+| 9. Scenarios | ✅ Klar | 100% |
+| 10. UI & Polish | ✅ Klar | 95% |
+| 11. Multiplayer | ✅ Klar | 90% |
 | 12. Testing & Deploy | ✅ Delvis | 60% |
 
 **Total progress: 100% av MVP - Redo för produktion!**
@@ -717,9 +732,14 @@ För en spelbar MVP, fokusera på:
 15. ✅ Burn/Cleanse interactions (Fas 7.1) - KLAR
 16. ✅ City levels (Fas 9.1) - KLAR (fiender baserat på scenario city_levels)
 17. ✅ Sideways +1 choice (Fas 4.2) - KLAR (välj Move/Attack/Block/Influence/Heal)
-18. ⏳ Ljud-effekter (Fas 10.2)
-19. ⏳ Integration/E2E tests (Fas 12)
-20. ⏳ CI/CD pipeline (Fas 12.2)
+18. ✅ Turbaserade notifikationer - KLAR (NotificationService, Browser Notifications, SignalR)
+19. ✅ Förbättrad Lobby - KLAR (visa pågående spel, din-tur-indikation)
+20. ✅ Förenklad Taktikval - KLAR (ett klick istället för två)
+21. ✅ Movement över tiles - KLAR (fixad rotationslogik i GenerateTileHexesWithRotation)
+22. ✅ Highlight-uppdatering - KLAR (UpdateValidTileMoves anropas efter alla kortspel)
+23. ⏳ Ljud-effekter (Fas 10.2)
+24. ⏳ Integration/E2E tests (Fas 12)
+25. ⏳ CI/CD pipeline (Fas 12.2)
 
 ---
 

@@ -80,6 +80,23 @@ public interface IGameEngine
     GameActionResult UseCardSideways(string cardId, string bonusType = "move");
 
     /// <summary>
+    /// Resolves a pending choice (mana color, effect type, etc.).
+    /// </summary>
+    /// <param name="choiceId">The selected option ID</param>
+    /// <param name="discardCardId">Optional card to discard (for Improvisation)</param>
+    GameActionResult ResolveChoice(string choiceId, string? discardCardId = null);
+
+    /// <summary>
+    /// Gets the current pending choice, if any.
+    /// </summary>
+    PendingChoice? GetPendingChoice();
+
+    /// <summary>
+    /// Cancels the current pending choice.
+    /// </summary>
+    GameActionResult CancelChoice();
+
+    /// <summary>
     /// Ends the current player's turn.
     /// </summary>
     GameActionResult EndTurn();
@@ -115,6 +132,11 @@ public interface IGameEngine
     /// Uses a crystal from the player's inventory.
     /// </summary>
     GameActionResult UseCrystal(ManaColor color);
+
+    /// <summary>
+    /// Uses a mana token from the player's inventory as temporary mana.
+    /// </summary>
+    GameActionResult UseManaToken(ManaColor color);
 
     /// <summary>
     /// Draws cards up to hand limit.

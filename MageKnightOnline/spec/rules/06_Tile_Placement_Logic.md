@@ -128,16 +128,72 @@ The tile must be rotated so that one of its edge hexes connects back to the play
 // The edge that connects back is in the OPPOSITE direction
 var oppositeDirectionIndex = (directionIndex + 3) % 6;
 
+// Map direction index to tile edge position
+var directionToTileEdge = new Dictionary<int, int>
+{
+    { 0, 1 }, // East → Position 1
+    { 1, 3 }, // Northeast → Position 3
+    { 2, 2 }, // Northwest → Position 2
+    { 3, 4 }, // West → Position 4
+    { 4, 6 }, // Southwest → Position 6
+    { 5, 5 }  // Southeast → Position 5
+};
+
+var connectingEdgePosition = directionToTileEdge[oppositeDirectionIndex];
+
 // Calculate rotation to align tile edge with connection point
 var rotationOffset = CalculateRotationOffset(connectingEdgePosition, oppositeDirectionIndex);
 ```
 
-### Step 5: Generate Tile Hexes
+### Step 5: Generate Tile Hexes with Rotation
 Apply rotation and generate all 7 hex positions:
 
 ```csharp
 var tileHexes = GenerateTileHexesWithRotation(tileCenter, tileDef, rotationOffset);
 ```
+
+**Important:** The rotation algorithm must work on **direction indices**, not position indices.
+
+#### Position to Direction Mapping
+Tile positions (1-6) are NOT in circular order around the hex:
+```
+Position:  1    2    3    4    5    6
+Direction: E    NW   NE   W    SE   SW
+Index:     0    2    1    3    5    4
+```
+
+#### Correct Rotation Algorithm
+```csharp
+// Map tile position to HexDirections index
+var positionToDirectionIndex = new[] { -1, 0, 2, 1, 3, 5, 4 };
+
+foreach (var hexDef in tileDef.Hexes)
+{
+    if (hexDef.Position == 0)
+    {
+        // Center hex - no rotation needed
+        hexPos = center;
+    }
+    else
+    {
+        // Get the direction index for this position
+        var dirIndex = positionToDirectionIndex[hexDef.Position];
+        
+        // Rotate the direction
+        var rotatedDirIndex = (dirIndex + rotationOffset) % 6;
+        
+        // Get the hex position using the rotated direction
+        var direction = HexDirections[rotatedDirIndex];
+        hexPos = center + direction;
+    }
+}
+```
+
+#### Why This Matters
+Without proper direction-based rotation, newly placed tiles may have hexes at incorrect world coordinates, causing:
+- Movement to fail across tile boundaries
+- Sites appearing at wrong locations
+- Visual misalignment on the map
 
 ## Visual Representation
 

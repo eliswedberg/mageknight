@@ -10,7 +10,29 @@ public class GameHub : Hub
     // Track which user is connected to which games
     private static readonly Dictionary<string, HashSet<string>> GameConnections = new();
     private static readonly Dictionary<string, string> ConnectionUsernames = new();
+    private static readonly Dictionary<string, Guid> ConnectionUserIds = new();
+    private static readonly Dictionary<Guid, HashSet<string>> UserConnections = new(); // UserId -> ConnectionIds
     private static readonly object _lock = new();
+
+    /// <summary>
+    /// Register user for global notifications (called on app init).
+    /// </summary>
+    public async Task RegisterUser(Guid userId, string username)
+    {
+        var userGroup = $"user_{userId}";
+        await Groups.AddToGroupAsync(Context.ConnectionId, userGroup);
+        
+        lock (_lock)
+        {
+            ConnectionUserIds[Context.ConnectionId] = userId;
+            ConnectionUsernames[Context.ConnectionId] = username;
+            
+            if (!UserConnections.ContainsKey(userId))
+                UserConnections[userId] = new HashSet<string>();
+            
+            UserConnections[userId].Add(Context.ConnectionId);
+        }
+    }
 
     /// <summary>
     /// Join a game room to receive updates.
@@ -85,6 +107,24 @@ public class GameHub : Hub
     }
 
     /// <summary>
+    /// Notify a specific user that it's their turn (works globally, not just in-game).
+    /// </summary>
+    public async Task NotifyUserTurn(Guid userId, Guid gameId, string gameName)
+    {
+        var userGroup = $"user_{userId}";
+        await Clients.Group(userGroup).SendAsync("YourTurn", gameId.ToString(), gameName);
+    }
+
+    /// <summary>
+    /// Notify a specific user about a game event.
+    /// </summary>
+    public async Task NotifyUser(Guid userId, string eventType, string gameId, string gameName, string message)
+    {
+        var userGroup = $"user_{userId}";
+        await Clients.Group(userGroup).SendAsync("GameNotification", eventType, gameId, gameName, message);
+    }
+
+    /// <summary>
     /// Notify that a round has ended.
     /// </summary>
     public async Task NotifyRoundEnded(string gameId, int roundNumber, bool isDay)
@@ -153,12 +193,27 @@ public class GameHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         string? username = null;
+        Guid? userId = null;
         List<string> gameIds = new();
         
         lock (_lock)
         {
             ConnectionUsernames.TryGetValue(Context.ConnectionId, out username);
             ConnectionUsernames.Remove(Context.ConnectionId);
+            
+            // Remove from user connections
+            if (ConnectionUserIds.TryGetValue(Context.ConnectionId, out var uid))
+            {
+                userId = uid;
+                ConnectionUserIds.Remove(Context.ConnectionId);
+                
+                if (UserConnections.TryGetValue(uid, out var connections))
+                {
+                    connections.Remove(Context.ConnectionId);
+                    if (connections.Count == 0)
+                        UserConnections.Remove(uid);
+                }
+            }
             
             // Find all games this connection was in
             foreach (var kvp in GameConnections)
@@ -178,5 +233,16 @@ public class GameHub : Hub
         }
         
         await base.OnDisconnectedAsync(exception);
+    }
+
+    /// <summary>
+    /// Check if a user is currently online.
+    /// </summary>
+    public static bool IsUserOnline(Guid userId)
+    {
+        lock (_lock)
+        {
+            return UserConnections.TryGetValue(userId, out var connections) && connections.Count > 0;
+        }
     }
 }

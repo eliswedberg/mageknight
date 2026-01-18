@@ -250,17 +250,26 @@ public class GameStateInitializer
     {
         var map = new MapState();
 
-        // Starting tile layout (The Portal - tile_01_start)
-        // Center hex (0,0) is the Portal, surrounded by 6 hexes
-        var startingTileHexes = new (int q, int r, string terrain, string? site)[]
+        // Load starting tile from JSON definition
+        var startingTileDef = (await _definitions.GetMapTilesAsync())
+            .FirstOrDefault(t => t.Id == "tile_01_start" || t.IsStartingTile);
+
+        // Position mapping: tile position index -> axial coordinates (Q, R)
+        // Based on tile images orientation:
+        // Position 1 (Kl 12/Top) maps to East (1,0) in game coordinates
+        // Position 4 (Kl 6/Bottom) maps to West (-1,0) in game coordinates
+        //        (2)   (3)
+        //     (4)  (0)  (1)
+        //        (5)   (6)
+        var positionToCoord = new (int q, int r)[]
         {
-            (0, 0, "Plains", "Portal"),      // Center - Portal (starting position)
-            (1, 0, "Plains", null),          // East
-            (1, -1, "Forest", null),         // Northeast
-            (0, -1, "Water", null),          // Northwest
-            (-1, 0, "Water", null),          // West
-            (-1, 1, "Water", null),          // Southwest
-            (0, 1, "Plains", null),          // Southeast
+            (0, 0),    // Position 0: Center
+            (1, 0),    // Position 1: Top (Kl 12) → East
+            (0, -1),   // Position 2: Top-Right (Kl 2) → NW
+            (1, -1),   // Position 3: Bottom-Right (Kl 4) → NE
+            (-1, 0),   // Position 4: Bottom (Kl 6) → West
+            (0, 1),    // Position 5: Bottom-Left (Kl 8) → SE
+            (-1, 1)    // Position 6: Top-Left (Kl 10) → SW
         };
 
         // Add starting tile
@@ -273,18 +282,49 @@ public class GameStateInitializer
         };
         map.Tiles.Add(startingTile);
 
-        // Add hex data for starting tile
-        foreach (var (q, r, terrain, site) in startingTileHexes)
+        // Generate hex data from tile definition
+        if (startingTileDef != null)
         {
-            var key = $"{q},{r}";
-            map.RevealedHexes.Add(key);
-            map.HexData[key] = new HexState
+            foreach (var hexDef in startingTileDef.Hexes)
             {
-                Terrain = terrain,
-                SiteType = site,
-                Enemies = new List<string>(),
-                IsConquered = site == "Portal" // Portal is always "conquered"
+                var (q, r) = positionToCoord[hexDef.Position];
+                var key = $"{q},{r}";
+                map.RevealedHexes.Add(key);
+                map.HexData[key] = new HexState
+                {
+                    Terrain = hexDef.Terrain,
+                    SiteType = hexDef.Site,
+                    Enemies = new List<string>(),
+                    IsConquered = hexDef.Site == "Portal" // Portal is always "conquered"
+                };
+            }
+        }
+        else
+        {
+            // Fallback: hardcoded values matching tile_01_start in JSON
+            var startingTileHexes = new (int q, int r, string terrain, string? site)[]
+            {
+                (0, 0, "Plains", "Portal"),      // Position 0: Center - Portal
+                (-1, 0, "Plains", null),         // Position 1: West - Plains
+                (0, -1, "Forest", null),         // Position 2: North - Forest
+                (1, -1, "Plains", null),         // Position 3: NE - Plains
+                (1, 0, "Water", null),           // Position 4: East - Water
+                (0, 1, "Water", null),           // Position 5: South - Water
+                (-1, 1, "Water", null),          // Position 6: SW - Water
             };
+
+            foreach (var (q, r, terrain, site) in startingTileHexes)
+            {
+                var key = $"{q},{r}";
+                map.RevealedHexes.Add(key);
+                map.HexData[key] = new HexState
+                {
+                    Terrain = terrain,
+                    SiteType = site,
+                    Enemies = new List<string>(),
+                    IsConquered = site == "Portal"
+                };
+            }
         }
 
         // Add a few more tiles around the starting area for exploration

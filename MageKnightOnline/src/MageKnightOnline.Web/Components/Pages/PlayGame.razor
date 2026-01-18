@@ -126,9 +126,11 @@ else
                 <!-- Mana Pool -->
                 <ManaPool Dice="@GetManaDice()"
                           Crystals="@GetPlayerCrystals()"
+                          ManaTokens="@GetPlayerManaTokens()"
                           SelectedDieIndex="@GetSelectedManaDieIndex()"
                           CanUndo="@CanUndoMana"
                           OnDieSelected="SelectMana"
+                          OnManaTokenSelected="SelectManaToken"
                           OnUndoClicked="UndoMana" />
                 
                 <!-- Current player pools -->
@@ -230,6 +232,56 @@ else
                                           IsError="@_siteInteractionIsError"
                                           OnInteractionSelected="HandleSiteInteraction"
                                           OnClose="CloseSitePanel" />
+                    
+                    <!-- Pending Choice Dialog -->
+                    @if (_gameState.PendingChoice != null)
+                    {
+                        <div class="choice-overlay">
+                            <div class="choice-dialog">
+                                <h3>@_gameState.PendingChoice.CardName</h3>
+                                <p class="choice-description">@_gameState.PendingChoice.Description</p>
+                                
+                                @if (_gameState.PendingChoice.RequiresDiscard)
+                                {
+                                    <div class="discard-section">
+                                        <p class="discard-label">Select a card to discard:</p>
+                                        <div class="discard-cards">
+                                            @foreach (var cardId in _myPlayerState?.Hand ?? new List<string>())
+                                            {
+                                                if (cardId != _gameState.PendingChoice.CardId)
+                                                {
+                                                    var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
+                                                    <button class="discard-card-btn @(_selectedDiscardCard == cardId ? "selected" : "")"
+                                                            @onclick="() => SelectDiscardCard(cardId)">
+                                                        @(card?.Name ?? cardId)
+                                                    </button>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                
+                                <div class="choice-options">
+                                    @foreach (var option in _gameState.PendingChoice.Options)
+                                    {
+                                        <button class="choice-option-btn @GetChoiceColorClass(option.Id)"
+                                                @onclick="() => ResolveChoice(option.Id)"
+                                                disabled="@(_gameState.PendingChoice.RequiresDiscard && string.IsNullOrEmpty(_selectedDiscardCard))">
+                                            <span class="option-name">@option.Name</span>
+                                            @if (!string.IsNullOrEmpty(option.Description))
+                                            {
+                                                <span class="option-desc">@option.Description</span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                                
+                                <button class="btn btn-secondary cancel-choice-btn" @onclick="CancelChoice">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    }
                 }
             </main>
 
@@ -979,6 +1031,193 @@ else
         margin-bottom: var(--spacing-xs);
         z-index: 1;
     }
+
+    /* Choice Dialog */
+    .choice-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1100;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .choice-dialog {
+        background: var(--color-bg-card);
+        border: 2px solid var(--color-gold);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 0 30px rgba(212, 168, 83, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+    @@keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .choice-dialog h3 {
+        margin: 0 0 var(--spacing-sm) 0;
+        color: var(--color-gold);
+        text-align: center;
+        font-size: 1.25rem;
+    }
+
+    .choice-description {
+        text-align: center;
+        color: var(--color-text-secondary);
+        margin-bottom: var(--spacing-md);
+        font-size: 0.9rem;
+    }
+
+    .discard-section {
+        margin-bottom: var(--spacing-md);
+        padding: var(--spacing-md);
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--radius-md);
+    }
+
+    .discard-label {
+        margin: 0 0 var(--spacing-sm) 0;
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+    }
+
+    .discard-cards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .discard-card-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: var(--color-bg-dark);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-primary);
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+    }
+
+    .discard-card-btn:hover {
+        background: var(--color-bg-hover);
+        border-color: var(--color-gold);
+    }
+
+    .discard-card-btn.selected {
+        background: rgba(212, 168, 83, 0.2);
+        border-color: var(--color-gold);
+        color: var(--color-gold);
+    }
+
+    .choice-options {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .choice-option-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: var(--spacing-md);
+        background: var(--color-bg-dark);
+        border: 2px solid var(--color-border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .choice-option-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .choice-option-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .choice-option-btn .option-name {
+        font-weight: bold;
+        font-size: 1rem;
+        color: var(--color-text-primary);
+    }
+
+    .choice-option-btn .option-desc {
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+
+    /* Mana color-coded buttons */
+    .choice-option-btn.red {
+        border-color: #dc2626;
+        background: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, var(--color-bg-dark) 100%);
+    }
+    .choice-option-btn.red:hover:not(:disabled) {
+        border-color: #ef4444;
+        box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+    }
+
+    .choice-option-btn.blue {
+        border-color: #2563eb;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, var(--color-bg-dark) 100%);
+    }
+    .choice-option-btn.blue:hover:not(:disabled) {
+        border-color: #3b82f6;
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+    }
+
+    .choice-option-btn.green {
+        border-color: #16a34a;
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, var(--color-bg-dark) 100%);
+    }
+    .choice-option-btn.green:hover:not(:disabled) {
+        border-color: #22c55e;
+        box-shadow: 0 0 15px rgba(22, 163, 74, 0.3);
+    }
+
+    .choice-option-btn.white {
+        border-color: #d6d3d1;
+        background: linear-gradient(135deg, rgba(214, 211, 209, 0.1) 0%, var(--color-bg-dark) 100%);
+    }
+    .choice-option-btn.white:hover:not(:disabled) {
+        border-color: #f5f5f4;
+        box-shadow: 0 0 15px rgba(214, 211, 209, 0.3);
+    }
+
+    /* Effect type buttons */
+    .choice-option-btn.move { border-color: #16a34a; }
+    .choice-option-btn.move:hover:not(:disabled) { box-shadow: 0 0 15px rgba(22, 163, 74, 0.3); }
+    
+    .choice-option-btn.attack { border-color: #dc2626; }
+    .choice-option-btn.attack:hover:not(:disabled) { box-shadow: 0 0 15px rgba(220, 38, 38, 0.3); }
+    
+    .choice-option-btn.block { border-color: #2563eb; }
+    .choice-option-btn.block:hover:not(:disabled) { box-shadow: 0 0 15px rgba(37, 99, 235, 0.3); }
+    
+    .choice-option-btn.influence { border-color: #a855f7; }
+    .choice-option-btn.influence:hover:not(:disabled) { box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
+    
+    .choice-option-btn.heal { border-color: #d6d3d1; }
+    .choice-option-btn.heal:hover:not(:disabled) { box-shadow: 0 0 15px rgba(214, 211, 209, 0.3); }
+    
+    .choice-option-btn.draw { border-color: #f59e0b; }
+    .choice-option-btn.draw:hover:not(:disabled) { box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+
+    .cancel-choice-btn {
+        width: 100%;
+    }
 </style>
 
 @code {
@@ -1029,6 +1268,7 @@ else
     private List<SiteInteractionOption> _siteInteractions = new();
     private string? _siteInteractionMessage;
     private bool _siteInteractionIsError = false;
+    private string? _selectedDiscardCard;
 
     private bool IsMyTurn => _gameState.CurrentPlayerIndex >= 0 
         && _gameState.CurrentPlayerIndex < _gameState.Players.Count
@@ -1266,11 +1506,19 @@ else
 
     private async Task OnTacticSelected(string tacticId)
     {
+        var previousPhase = _gameState?.Phase;
+        
         var result = await GameService.SelectTacticAsync(GameId, AuthService.CurrentUser!.Id, tacticId);
         if (result.Success)
         {
             await LoadGame();
             await NotifyGameStateChanged("Tactic selected");
+            
+            // If we just finished tactics selection, notify the first player that it's their turn
+            if (previousPhase == GamePhase.TacticsSelection && _gameState?.Phase != GamePhase.TacticsSelection)
+            {
+                await NotifyNextPlayerTurn();
+            }
         }
     }
 
@@ -1520,6 +1768,7 @@ else
         if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
         {
             _highlightedTileHexes = null;
+            StateHasChanged();
             return;
         }
 
@@ -1529,6 +1778,7 @@ else
             .Where(h => h != null)
             .Cast<TileMap.HexData>()
             .ToList();
+        StateHasChanged();
     }
 
     private async Task OnTileHexClicked(TileMap.HexData hex)
@@ -1546,6 +1796,9 @@ else
             {
                 await LoadGame();
                 
+                // Update valid moves (this will clear highlights if no movement left)
+                await UpdateValidTileMoves();
+                
                 // Check if we landed on a site - open interaction panel
                 if (_myPlayerState != null)
                 {
@@ -1558,6 +1811,8 @@ else
                         await OpenSitePanel();
                     }
                 }
+                
+                await NotifyGameStateChanged("Player moved");
             }
         }
         else if (!hex.IsRevealed && hex.IsExplorable)
@@ -1678,6 +1933,21 @@ else
         };
     }
 
+    private Dictionary<ManaPool.ManaColor, int> GetPlayerManaTokens()
+    {
+        if (_myPlayerState == null) return new();
+
+        var tokens = _myPlayerState.ManaTokens;
+        return new Dictionary<ManaPool.ManaColor, int>
+        {
+            { ManaPool.ManaColor.Red, tokens.Red },
+            { ManaPool.ManaColor.Blue, tokens.Blue },
+            { ManaPool.ManaColor.Green, tokens.Green },
+            { ManaPool.ManaColor.White, tokens.White },
+            { ManaPool.ManaColor.Black, tokens.Black }
+        };
+    }
+
     private List<CardHand.CardData> GetHandCards()
     {
         if (_myPlayerState == null) return new();
@@ -1768,6 +2038,7 @@ else
         if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
         {
             _highlightedHexes = null;
+            StateHasChanged();
             return;
         }
 
@@ -1777,6 +2048,7 @@ else
             .Where(h => h != null)
             .Cast<HexGrid.HexData>()
             .ToList();
+        StateHasChanged();
     }
 
     private void SelectCard(int index)
@@ -1796,6 +2068,8 @@ else
             _selectedCardIndex = null;
             await LoadGame();
             await UpdateValidMoves();
+            await UpdateValidTileMoves();
+            await NotifyGameStateChanged("Played card");
         }
     }
 
@@ -1803,27 +2077,23 @@ else
     {
         if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
         
-        if (!_myPlayerState.TemporaryMana.HasValue)
-        {
-            await JSRuntime.InvokeVoidAsync("alert", "Please take a mana die from the Source first!");
-            return;
-        }
-
         var cardId = _myPlayerState.Hand[index];
         var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
         
-        // Verify temporary mana matches card requirement
-        if (card != null && !string.IsNullOrEmpty(card.ManaType))
+        // Check if we have any mana available (TemporaryMana or ManaTokens)
+        var hasTemporaryMana = _myPlayerState.TemporaryMana.HasValue;
+        var tokens = _myPlayerState.ManaTokens;
+        var hasManaToken = tokens.Red > 0 || tokens.Blue > 0 || tokens.Green > 0 || 
+                          tokens.White > 0 || tokens.Black > 0 || tokens.Gold > 0;
+        
+        if (!hasTemporaryMana && !hasManaToken)
         {
-            var temporaryMana = _myPlayerState.TemporaryMana.Value;
-            var requiredColor = ParseManaColor(card.ManaType);
-            
-            if (temporaryMana != ManaColor.Gold && temporaryMana != requiredColor)
-            {
-                await JSRuntime.InvokeVoidAsync("alert", $"This card requires {card.ManaType} mana, but you have {temporaryMana}!");
-                return;
-            }
+            await JSRuntime.InvokeVoidAsync("alert", "No mana available! Take a mana die from Source, use a mana token, or play a card that gives mana first.");
+            return;
         }
+
+        // Server-side will handle the mana consumption automatically
+        // It will use TemporaryMana first, then check ManaTokens
         
         var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser!.Id, cardId, true, null);
         
@@ -1832,6 +2102,7 @@ else
             _selectedCardIndex = null;
             await LoadGame();
             await UpdateValidMoves();
+            await UpdateValidTileMoves();
             await NotifyGameStateChanged("Played powered card");
         }
         else
@@ -1851,6 +2122,9 @@ else
         {
             _selectedCardIndex = null;
             await LoadGame();
+            await UpdateValidMoves();
+            await UpdateValidTileMoves();
+            await NotifyGameStateChanged("Used card sideways");
         }
     }
 
@@ -1874,6 +2148,23 @@ else
         else
         {
             await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to take mana die");
+        }
+    }
+
+    private async Task SelectManaToken(ManaPool.ManaColor color)
+    {
+        // Convert ManaPool.ManaColor to string for the service call
+        var colorString = color.ToString();
+        
+        var result = await GameService.UseManaTokenAsync(GameId, AuthService.CurrentUser!.Id, colorString);
+        if (result.Success)
+        {
+            await LoadGame();
+            StateHasChanged();
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to activate mana token");
         }
     }
 
@@ -1914,11 +2205,14 @@ else
         if (card.EffectsPowered == null || !card.EffectsPowered.Any())
             return false;
 
-        // Check if player has temporary mana
-        if (!_myPlayerState.TemporaryMana.HasValue)
-            return false;
+        // Check mana availability: TemporaryMana or ManaTokens
+        var hasTemporaryMana = _myPlayerState.TemporaryMana.HasValue;
+        var tokens = _myPlayerState.ManaTokens;
+        var hasManaToken = tokens.Red > 0 || tokens.Blue > 0 || tokens.Green > 0 || 
+                          tokens.White > 0 || tokens.Black > 0 || tokens.Gold > 0;
 
-        var temporaryMana = _myPlayerState.TemporaryMana.Value;
+        if (!hasTemporaryMana && !hasManaToken)
+            return false;
 
         // If card has no specific mana color requirement, any mana can be used
         if (string.IsNullOrEmpty(card.ManaType))
@@ -1926,8 +2220,27 @@ else
 
         var requiredColor = ParseManaColor(card.ManaType);
         
-        // Gold mana can be used for any color, or exact match
-        return temporaryMana == ManaColor.Gold || temporaryMana == requiredColor;
+        // Check temporary mana first
+        if (hasTemporaryMana)
+        {
+            var temporaryMana = _myPlayerState.TemporaryMana.Value;
+            if (temporaryMana == ManaColor.Gold || temporaryMana == requiredColor)
+                return true;
+        }
+        
+        // Check mana tokens
+        if (tokens.Gold > 0)
+            return true; // Gold can be used for any color
+        
+        return requiredColor switch
+        {
+            ManaColor.Red => tokens.Red > 0,
+            ManaColor.Blue => tokens.Blue > 0,
+            ManaColor.Green => tokens.Green > 0,
+            ManaColor.White => tokens.White > 0,
+            ManaColor.Black => tokens.Black > 0,
+            _ => false
+        };
     }
 
     private ManaColor ParseManaColor(string manaType)
@@ -1966,12 +2279,61 @@ else
 
     private async Task EndTurn()
     {
+        // Check if we're in combat - can't end turn during combat
+        if (_gameState.Combat != null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Cannot end turn during combat. Finish or flee from combat first.");
+            return;
+        }
+
+        // Check if we're in tactics selection phase
+        if (_gameState.Phase == GamePhase.TacticsSelection)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Cannot end turn during tactics selection. Select a tactic first.");
+            return;
+        }
+
         var result = await GameService.EndTurnAsync(GameId, AuthService.CurrentUser!.Id);
         if (result.Success)
         {
             _selectedCardIndex = null;
+            _hasRevealedSomething = false; // Reset for next turn
             await LoadGame();
             await NotifyGameStateChanged("Turn ended");
+            
+            // Notify the next player that it's their turn
+            await NotifyNextPlayerTurn();
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to end turn");
+        }
+    }
+
+    private async Task NotifyNextPlayerTurn()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected || _game == null || _gameState == null)
+            return;
+
+        // Get the current player (after the turn ended, this is the new current player)
+        if (_gameState.CurrentPlayerIndex >= 0 && 
+            _gameState.CurrentPlayerIndex < _gameState.TurnOrder.Count)
+        {
+            var currentPlayerIdx = _gameState.TurnOrder[_gameState.CurrentPlayerIndex];
+            if (currentPlayerIdx >= 0 && currentPlayerIdx < _gameState.Players.Count)
+            {
+                var currentPlayer = _gameState.Players[currentPlayerIdx];
+                
+                // Don't notify yourself
+                if (currentPlayer.UserId != AuthService.CurrentUser?.Id)
+                {
+                    // Send notification via SignalR hub
+                    await _hubConnection.SendAsync("NotifyUserTurn", 
+                        currentPlayer.UserId, 
+                        GameId, 
+                        _game.Name);
+                }
+            }
         }
     }
 
@@ -1996,6 +2358,66 @@ else
         {
             _canUndo = await GameService.CanUndoActionAsync(GameId, AuthService.CurrentUser.Id);
         }
+    }
+
+    // Choice dialog methods
+    private void SelectDiscardCard(string cardId)
+    {
+        _selectedDiscardCard = _selectedDiscardCard == cardId ? null : cardId;
+    }
+
+    private async Task ResolveChoice(string choiceId)
+    {
+        if (AuthService.CurrentUser == null) return;
+
+        var result = await GameService.ResolveChoiceAsync(
+            GameId, 
+            AuthService.CurrentUser.Id, 
+            choiceId, 
+            _selectedDiscardCard);
+        
+        if (result.Success)
+        {
+            _selectedDiscardCard = null;
+            await LoadGame();
+            await UpdateValidMoves();
+            await UpdateValidTileMoves();
+            await NotifyGameStateChanged("Choice resolved");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to resolve choice");
+        }
+    }
+
+    private async Task CancelChoice()
+    {
+        if (AuthService.CurrentUser == null) return;
+
+        var result = await GameService.CancelChoiceAsync(GameId, AuthService.CurrentUser.Id);
+        if (result.Success)
+        {
+            _selectedDiscardCard = null;
+            await LoadGame();
+        }
+    }
+
+    private string GetChoiceColorClass(string optionId)
+    {
+        return optionId.ToLower() switch
+        {
+            "red" => "red",
+            "blue" => "blue",
+            "green" => "green",
+            "white" => "white",
+            "move" => "move",
+            "attack" => "attack",
+            "block" => "block",
+            "influence" => "influence",
+            "heal" => "heal",
+            "draw" => "draw",
+            _ => ""
+        };
     }
 
     private void ReturnToLobby()

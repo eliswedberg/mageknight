@@ -1,0 +1,382 @@
+@using MageKnightOnline.Web.Services
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+@inject NotificationService NotificationService
+@inject AuthStateService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<div class="notification-wrapper">
+    <button class="notification-bell @(_showPanel ? "active" : "")" @onclick="TogglePanel">
+        <span class="bell-icon">🔔</span>
+        @if (NotificationService.UnreadCount > 0)
+        {
+            <span class="notification-badge">@NotificationService.UnreadCount</span>
+        }
+    </button>
+
+    @if (_showPanel)
+    {
+        <div class="notification-panel">
+            <div class="notification-header">
+                <h4>Notifications</h4>
+                @if (NotificationService.Notifications.Any())
+                {
+                    <button class="btn-link" @onclick="MarkAllRead">Mark all read</button>
+                }
+            </div>
+            
+            <div class="notification-list">
+                @if (!NotificationService.Notifications.Any())
+                {
+                    <div class="notification-empty">
+                        <span>No notifications</span>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var notification in NotificationService.Notifications)
+                    {
+                        <div class="notification-item @(notification.IsRead ? "" : "unread") @GetTypeClass(notification.Type)"
+                             @onclick="() => GoToGame(notification)">
+                            <div class="notification-icon">@GetIcon(notification.Type)</div>
+                            <div class="notification-content">
+                                <div class="notification-message">@notification.Message</div>
+                                <div class="notification-time">@GetTimeAgo(notification.Timestamp)</div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showPanel)
+{
+    <div class="notification-backdrop" @onclick="() => _showPanel = false"></div>
+}
+
+<style>
+    .notification-wrapper {
+        position: relative;
+    }
+
+    .notification-bell {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .notification-bell:hover,
+    .notification-bell.active {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .bell-icon {
+        font-size: 1.3rem;
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: var(--color-error);
+        color: white;
+        font-size: 0.65rem;
+        font-weight: bold;
+        min-width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse-badge 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulse-badge {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    .notification-panel {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 320px;
+        max-height: 400px;
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-bg-dark);
+    }
+
+    .notification-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .notification-header .btn-link {
+        background: none;
+        border: none;
+        color: var(--color-gold);
+        font-size: 0.75rem;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .notification-header .btn-link:hover {
+        text-decoration: underline;
+    }
+
+    .notification-list {
+        max-height: 340px;
+        overflow-y: auto;
+    }
+
+    .notification-empty {
+        padding: var(--spacing-lg);
+        text-align: center;
+        color: var(--color-text-muted);
+    }
+
+    .notification-item {
+        display: flex;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        cursor: pointer;
+        transition: background 0.2s ease;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .notification-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .notification-item.unread {
+        background: rgba(212, 168, 83, 0.1);
+    }
+
+    .notification-item.type-turn {
+        border-left: 3px solid var(--color-gold);
+    }
+
+    .notification-item.type-game-started {
+        border-left: 3px solid var(--color-success);
+    }
+
+    .notification-item.type-game-ended {
+        border-left: 3px solid var(--color-info);
+    }
+
+    .notification-icon {
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .notification-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notification-message {
+        font-size: 0.85rem;
+        color: var(--color-text-primary);
+        line-height: 1.3;
+    }
+
+    .notification-time {
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+        margin-top: 2px;
+    }
+
+    .notification-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+    }
+</style>
+
+@code {
+    private bool _showPanel = false;
+    private HubConnection? _hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NotificationService.OnNotificationsChanged += OnNotificationsChanged;
+        
+        if (AuthService.IsAuthenticated)
+        {
+            await SetupSignalR();
+        }
+        
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+    }
+
+    private async void OnAuthStateChanged()
+    {
+        if (AuthService.IsAuthenticated && _hubConnection == null)
+        {
+            await SetupSignalR();
+        }
+        else if (!AuthService.IsAuthenticated && _hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+            _hubConnection = null;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetupSignalR()
+    {
+        if (AuthService.CurrentUser == null) return;
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Handle "Your Turn" notifications
+        _hubConnection.On<string, string>("YourTurn", async (gameId, gameName) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                NotificationService.AddTurnNotification(Guid.Parse(gameId), gameName);
+                
+                // Show browser notification
+                await ShowBrowserNotification($"Your turn in {gameName}!", "Mage Knight Online");
+                
+                StateHasChanged();
+            });
+        });
+
+        // Handle general game notifications
+        _hubConnection.On<string, string, string, string>("GameNotification", async (eventType, gameId, gameName, message) =>
+        {
+            await InvokeAsync(() =>
+            {
+                switch (eventType)
+                {
+                    case "GameStarted":
+                        NotificationService.AddGameStartedNotification(Guid.Parse(gameId), gameName);
+                        break;
+                    case "GameEnded":
+                        NotificationService.AddGameEndedNotification(Guid.Parse(gameId), gameName, message);
+                        break;
+                }
+                StateHasChanged();
+                return Task.CompletedTask;
+            });
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            
+            // Register this user for global notifications
+            await _hubConnection.SendAsync("RegisterUser", AuthService.CurrentUser.Id, AuthService.CurrentUser.Username);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SignalR connection failed: {ex.Message}");
+        }
+    }
+
+    private async Task ShowBrowserNotification(string message, string title)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("showNotification", title, message);
+        }
+        catch
+        {
+            // Browser notifications may not be supported or allowed
+        }
+    }
+
+    private void OnNotificationsChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void TogglePanel()
+    {
+        _showPanel = !_showPanel;
+    }
+
+    private void MarkAllRead()
+    {
+        NotificationService.MarkAllAsRead();
+    }
+
+    private void GoToGame(GameNotification notification)
+    {
+        NotificationService.MarkAsRead(notification.Id);
+        _showPanel = false;
+        
+        if (notification.Type == NotificationType.YourTurn || notification.Type == NotificationType.GameStarted)
+        {
+            Navigation.NavigateTo($"/play/{notification.GameId}");
+        }
+    }
+
+    private string GetIcon(NotificationType type) => type switch
+    {
+        NotificationType.YourTurn => "⚡",
+        NotificationType.GameStarted => "🎮",
+        NotificationType.GameEnded => "🏁",
+        NotificationType.PlayerJoined => "👤",
+        NotificationType.PlayerLeft => "👋",
+        NotificationType.CombatStarted => "⚔️",
+        NotificationType.RoundEnded => "🔄",
+        _ => "📢"
+    };
+
+    private string GetTypeClass(NotificationType type) => type switch
+    {
+        NotificationType.YourTurn => "type-turn",
+        NotificationType.GameStarted => "type-game-started",
+        NotificationType.GameEnded => "type-game-ended",
+        _ => ""
+    };
+
+    private string GetTimeAgo(DateTime timestamp)
+    {
+        var diff = DateTime.UtcNow - timestamp;
+        
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        NotificationService.OnNotificationsChanged -= OnNotificationsChanged;
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+        
+        if (_hubConnection != null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

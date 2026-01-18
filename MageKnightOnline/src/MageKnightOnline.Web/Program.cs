@@ -44,6 +44,9 @@ builder.Services.AddScoped<GameStateInitializer>(sp =>
 // Auth State Service - scoped per circuit (Blazor Server session)
 builder.Services.AddScoped<AuthStateService>();
 
+// Notification Service - scoped per circuit
+builder.Services.AddScoped<MageKnightOnline.Web.Services.NotificationService>();
+
 // Game Service
 builder.Services.AddScoped<IGameService>(sp =>
 {

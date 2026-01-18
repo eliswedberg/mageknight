@@ -69,6 +69,64 @@ public class GameStateModel
 
     [JsonPropertyName("city_revealed")]
     public bool CityRevealed { get; set; } = false;
+
+    // Undo system - persisted across requests
+    [JsonPropertyName("undo_stack")]
+    public List<string> UndoStack { get; set; } = new();
+
+    [JsonPropertyName("can_undo")]
+    public bool CanUndo { get; set; } = true;
+
+    // Pending choice - when a card effect requires user input
+    [JsonPropertyName("pending_choice")]
+    public PendingChoice? PendingChoice { get; set; }
+}
+
+/// <summary>
+/// Represents a pending choice that the player must make.
+/// </summary>
+public class PendingChoice
+{
+    [JsonPropertyName("type")]
+    public ChoiceType Type { get; set; }
+
+    [JsonPropertyName("card_id")]
+    public string CardId { get; set; } = string.Empty;
+
+    [JsonPropertyName("card_name")]
+    public string CardName { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("options")]
+    public List<ChoiceOption> Options { get; set; } = new();
+
+    [JsonPropertyName("requires_discard")]
+    public bool RequiresDiscard { get; set; } = false;
+
+    [JsonPropertyName("effect_value")]
+    public int EffectValue { get; set; } = 0;
+}
+
+public class ChoiceOption
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+}
+
+public enum ChoiceType
+{
+    ManaColor,      // Choose a mana color (Crystallize)
+    EffectType,     // Choose Move/Attack/Block/Influence (Improvisation)
+    HealOrDraw,     // Choose Heal or Draw (Tranquility)
+    DiscardForEffect // Discard a card for an effect
 }
 
 /// <summary>
@@ -440,6 +498,21 @@ public class PlayerState
 
     [JsonPropertyName("advanced_actions")]
     public List<string> AdvancedActions { get; set; } = new(); // Advanced Action IDs
+
+    /// <summary>
+    /// Tracks site interactions used this turn at the current position.
+    /// Format: "HexKey:InteractionType" e.g. "3,2:Harvest" or "3,2:Heal"
+    /// Reset when player moves or ends turn.
+    /// </summary>
+    [JsonPropertyName("used_site_interactions")]
+    public List<string> UsedSiteInteractions { get; set; } = new();
+
+    /// <summary>
+    /// The hex position where the player started their turn.
+    /// Used to track site interactions correctly.
+    /// </summary>
+    [JsonPropertyName("turn_start_position")]
+    public HexPosition? TurnStartPosition { get; set; }
 }
 
 /// <summary>

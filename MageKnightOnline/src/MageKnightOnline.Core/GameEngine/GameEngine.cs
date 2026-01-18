@@ -14,10 +14,8 @@ public class GameEngine : IGameEngine
     private GameStateModel _state = new();
     private readonly Random _random = new();
     
-    // Undo system - stack of previous states
-    private readonly Stack<string> _undoStack = new();
+    // Undo system constants
     private const int MaxUndoHistory = 10;
-    private bool _canUndo = true; // Set to false after irreversible actions
 
     // Terrain costs (day, night)
     private static readonly Dictionary<string, (int Day, int Night)> TerrainCosts = new()
@@ -97,6 +95,10 @@ public class GameEngine : IGameEngine
         visited[PosKey(player.Position)] = movementPoints;
         toVisit.Enqueue((player.Position, movementPoints));
 
+        // Debug: Log revealed hexes count
+        var totalRevealed = _state.Map.RevealedHexes.Count;
+        var totalHexData = _state.Map.HexData.Count;
+
         while (toVisit.Count > 0)
         {
             var (current, remaining) = toVisit.Dequeue();
@@ -106,9 +108,13 @@ public class GameEngine : IGameEngine
                 var neighbor = current + dir;
                 var key = PosKey(neighbor);
 
+                // Check if hex is revealed first
+                if (!_state.Map.RevealedHexes.Contains(key))
+                    continue; // Not revealed - can't move there
+
                 // Get terrain cost
                 var terrain = GetTerrainAt(neighbor);
-                if (terrain == null) continue; // Off map
+                if (terrain == null) continue; // No terrain data (shouldn't happen if revealed)
 
                 var cost = GetTerrainCost(terrain);
                 if (cost >= 99) continue; // Impassable
@@ -519,23 +525,17 @@ public class GameEngine : IGameEngine
         
         // Map HexDirections index to tile edge position
         // HexDirections: [East(0), Northeast(1), Northwest(2), West(3), Southwest(4), Southeast(5)]
-        // Tile positions according to map_tiles.json.desc:
-        // 1: Top (Northwest) = direction 2
-        // 2: Top-Right (Northeast) = direction 1  
-        // 3: Bottom-Right (Southeast) = direction 5
-        // 4: Bottom (Southwest) = direction 4
-        // 5: Bottom-Left = direction ? (need to check)
-        // 6: Top-Left (West) = direction 3
-        
+        // Tile positions: 1=East, 2=NW, 3=NE, 4=West, 5=SE, 6=SW
+        // 
         // Mapping: direction index -> tile edge position
         var directionToTileEdge = new Dictionary<int, int>
         {
-            { 0, 0 }, // East - not a standard edge, use closest
-            { 1, 2 }, // Northeast -> Top-Right
-            { 2, 1 }, // Northwest -> Top
-            { 3, 6 }, // West -> Top-Left
-            { 4, 4 }, // Southwest -> Bottom
-            { 5, 3 }  // Southeast -> Bottom-Right
+            { 0, 1 }, // East → Position 1
+            { 1, 3 }, // Northeast → Position 3
+            { 2, 2 }, // Northwest → Position 2
+            { 3, 4 }, // West → Position 4
+            { 4, 6 }, // Southwest → Position 6
+            { 5, 5 }  // Southeast → Position 5
         };
         
         // Find which tile edge should connect to edgeHex (opposite direction from tile center)
@@ -569,6 +569,9 @@ public class GameEngine : IGameEngine
         var rotationOffset = CalculateRotationOffset(connectingEdgePosition, oppositeDirectionIndex);
         var tileHexes = GenerateTileHexesWithRotation(tileCenter, tileDef, rotationOffset);
         
+        // Track which hexes we're adding for logging
+        var addedHexes = new List<string>();
+        
         foreach (var (hexPos, hexState) in tileHexes)
         {
             var key = PosKey(hexPos);
@@ -577,10 +580,34 @@ public class GameEngine : IGameEngine
             {
                 _state.Map.RevealedHexes.Add(key);
                 _state.Map.HexData[key] = hexState;
+                addedHexes.Add($"({hexPos.Q},{hexPos.R}):{hexState.Terrain}");
+            }
+        }
+        
+        // IMPORTANT: Ensure the connecting hex (unrevealedNeighbor) is definitely revealed
+        // This is the hex that bridges the old tile to the new tile
+        var connectingKey = PosKey(unrevealedNeighbor);
+        if (!_state.Map.RevealedHexes.Contains(connectingKey))
+        {
+            // The connecting hex wasn't part of the generated hexes - this is a bug!
+            // Try to find the correct terrain from the tile
+            var connectingHex = tileHexes.FirstOrDefault(h => PosKey(h.Position) == connectingKey);
+            if (connectingHex.State != null)
+            {
+                _state.Map.RevealedHexes.Add(connectingKey);
+                _state.Map.HexData[connectingKey] = connectingHex.State;
+                addedHexes.Add($"(CONNECTING {unrevealedNeighbor.Q},{unrevealedNeighbor.R})");
+            }
+            else
+            {
+                // Fallback - add a default plains hex to ensure connectivity
+                _state.Map.RevealedHexes.Add(connectingKey);
+                _state.Map.HexData[connectingKey] = new HexState { Terrain = "Plains", SiteType = null, Enemies = new List<string>() };
+                addedHexes.Add($"(FALLBACK CONNECTING {unrevealedNeighbor.Q},{unrevealedNeighbor.R}):Plains");
             }
         }
 
-        AddLogEntry("Explore", $"Placed new tile {tileDef.Id} at center ({tileCenter.Q}, {tileCenter.R})");
+        AddLogEntry("Explore", $"Placed {tileDef.Id} at center ({tileCenter.Q},{tileCenter.R}). Hexes: {string.Join(", ", addedHexes.Take(7))}");
         return GameActionResult.Ok($"Explored new tile: {tileDef.Name ?? tileDef.Id}");
     }
 
@@ -589,15 +616,19 @@ public class GameEngine : IGameEngine
         return (directionIndex + 3) % 6; // Opposite direction in hex grid
     }
 
-    private int CalculateRotationOffset(int tileEdgePosition, int directionIndex)
+    private int CalculateRotationOffset(int tileEdgePosition, int targetDirectionIndex)
     {
-        // Calculate how much to rotate the tile so that tileEdgePosition aligns with directionIndex
-        // Tile edge positions: 1=East, 2=Top-Right, 3=Bottom-Right, 4=Bottom, 5=Bottom-Left, 6=Top-Left
-        // Direction indices: 0=East, 1=Northeast, 2=Northwest, 3=West, 4=Southwest, 5=Southeast
+        // Calculate how much to rotate the tile so that tileEdgePosition aligns with targetDirectionIndex
+        // 
+        // Tile positions: 1=East, 2=NW, 3=NE, 4=West, 5=SE, 6=SW
+        // Direction indices: 0=East, 1=NE, 2=NW, 3=West, 4=SW, 5=SE
+        //
+        // Convert tile position to direction index:
+        var positionToDirectionIndex = new[] { -1, 0, 2, 1, 3, 5, 4 };
+        var baseDirectionIndex = positionToDirectionIndex[tileEdgePosition];
         
-        // We want tile edge at position (tileEdgePosition - 1) to point in direction directionIndex
-        // Rotation offset = directionIndex - (tileEdgePosition - 1)
-        int offset = directionIndex - (tileEdgePosition - 1);
+        // Calculate rotation needed: how many steps to rotate from base direction to target direction
+        int offset = targetDirectionIndex - baseDirectionIndex;
         if (offset < 0) offset += 6;
         return offset % 6;
     }
@@ -607,37 +638,60 @@ public class GameEngine : IGameEngine
         var hexes = new List<(HexPosition, HexState)>();
         
         // Tile hex positions according to map_tiles.json.desc
-        // Rotated one step counter-clockwise to match actual tile images:
         // Position 0: Center
-        // Position 1: Top (Kl 12) → West/NW
-        // Position 2: Top-Right (Kl 2) → North
-        // Position 3: Bottom-Right (Kl 4) → NE
-        // Position 4: Bottom (Kl 6) → East
-        // Position 5: Bottom-Left (Kl 8) → South
-        // Position 6: Top-Left (Kl 10) → SW
+        // Positions 1-6: Edge hexes in clockwise order starting from East
         //
-        // Layout visualization (after rotation):
+        // Layout visualization:
         //        (2)   (3)
         //     (1)  (0)  (4)
         //        (6)   (5)
         
-        var positionToDirection = new[]
+        // Position mapping: maps tile definition position (0-6) to base direction
+        // Position 1 = East, Position 2 = NW, Position 3 = NE, Position 4 = West, Position 5 = SE, Position 6 = SW
+        var positionToBaseDirection = new[]
         {
             new HexPosition { Q = 0, R = 0 },    // 0: Center
-            new HexPosition { Q = -1, R = 0 },   // 1: Top → West/NW
-            new HexPosition { Q = 0, R = -1 },   // 2: Top-Right → North
-            new HexPosition { Q = 1, R = -1 },   // 3: Bottom-Right → NE
-            new HexPosition { Q = 1, R = 0 },    // 4: Bottom → East
-            new HexPosition { Q = 0, R = 1 },    // 5: Bottom-Left → South
-            new HexPosition { Q = -1, R = 1 }    // 6: Top-Left → SW
+            new HexPosition { Q = 1, R = 0 },    // 1: East
+            new HexPosition { Q = 0, R = -1 },   // 2: NW
+            new HexPosition { Q = 1, R = -1 },   // 3: NE
+            new HexPosition { Q = -1, R = 0 },   // 4: West
+            new HexPosition { Q = 0, R = 1 },    // 5: SE
+            new HexPosition { Q = -1, R = 1 }    // 6: SW
         };
+        
+        // HexDirections are in order: East(0), NE(1), NW(2), West(3), SW(4), SE(5)
+        // We need to map position indices to HexDirections for rotation:
+        // Position 1 (East) -> Direction 0
+        // Position 3 (NE) -> Direction 1
+        // Position 2 (NW) -> Direction 2
+        // Position 4 (West) -> Direction 3
+        // Position 6 (SW) -> Direction 4
+        // Position 5 (SE) -> Direction 5
+        var positionToDirectionIndex = new[] { -1, 0, 2, 1, 3, 5, 4 }; // position -> direction index
+        var directionIndexToPosition = new[] { 1, 3, 2, 4, 6, 5 }; // direction index -> position
 
         foreach (var hexDef in tileDef.Hexes)
         {
-            // Apply rotation to the position
-            var rotatedPosition = RotateTilePosition(hexDef.Position, rotationOffset);
-            var direction = positionToDirection[rotatedPosition];
-            var hexPos = center + direction;
+            HexPosition hexPos;
+            
+            if (hexDef.Position == 0)
+            {
+                // Center hex - no rotation needed
+                hexPos = center;
+            }
+            else
+            {
+                // Get the direction index for this position
+                var dirIndex = positionToDirectionIndex[hexDef.Position];
+                
+                // Rotate the direction
+                var rotatedDirIndex = (dirIndex + rotationOffset) % 6;
+                
+                // Get the hex position using the rotated direction
+                var direction = HexDirections[rotatedDirIndex];
+                hexPos = center + direction;
+            }
+            
             var key = PosKey(hexPos);
             
             // Don't overwrite existing hexes
@@ -653,16 +707,6 @@ public class GameEngine : IGameEngine
         }
 
         return hexes;
-    }
-
-    private int RotateTilePosition(int position, int rotation)
-    {
-        if (position == 0) return 0; // Center doesn't rotate
-        
-        // Rotate edge positions (1-6) by rotation steps
-        // Position 1-6 rotate: 1->2->3->4->5->6->1
-        int rotated = ((position - 1 + rotation) % 6) + 1;
-        return rotated;
     }
 
     private List<(HexPosition Position, HexState State)> GenerateTileHexes(HexPosition center, string tileId)
@@ -927,20 +971,19 @@ public class GameEngine : IGameEngine
     /// </summary>
     private void SaveStateForUndo()
     {
-        if (!_canUndo) return;
+        if (!_state.CanUndo) return;
         
-        var stateJson = JsonSerializer.Serialize(_state);
-        _undoStack.Push(stateJson);
+        // Create a copy of state without the undo stack itself to avoid recursion
+        var stateCopy = JsonSerializer.Deserialize<GameStateModel>(JsonSerializer.Serialize(_state))!;
+        stateCopy.UndoStack = new List<string>(); // Don't include undo stack in saved state
+        var stateJson = JsonSerializer.Serialize(stateCopy);
+        
+        _state.UndoStack.Insert(0, stateJson); // Add to front (most recent first)
         
         // Limit stack size
-        while (_undoStack.Count > MaxUndoHistory)
+        while (_state.UndoStack.Count > MaxUndoHistory)
         {
-            // Remove oldest entries (convert to list, trim, convert back)
-            var list = _undoStack.ToList();
-            list.RemoveAt(list.Count - 1);
-            _undoStack.Clear();
-            for (int i = list.Count - 1; i >= 0; i--)
-                _undoStack.Push(list[i]);
+            _state.UndoStack.RemoveAt(_state.UndoStack.Count - 1);
         }
     }
 
@@ -949,8 +992,8 @@ public class GameEngine : IGameEngine
     /// </summary>
     private void MarkIrreversibleAction()
     {
-        _canUndo = false;
-        _undoStack.Clear();
+        _state.CanUndo = false;
+        _state.UndoStack.Clear();
     }
 
     /// <summary>
@@ -958,8 +1001,8 @@ public class GameEngine : IGameEngine
     /// </summary>
     private void ResetUndoForNewTurn()
     {
-        _canUndo = true;
-        _undoStack.Clear();
+        _state.CanUndo = true;
+        _state.UndoStack.Clear();
     }
 
     /// <summary>
@@ -967,7 +1010,7 @@ public class GameEngine : IGameEngine
     /// </summary>
     public bool CanUndoAction()
     {
-        return _canUndo && _undoStack.Count > 0;
+        return _state.CanUndo && _state.UndoStack.Count > 0;
     }
 
     /// <summary>
@@ -975,19 +1018,28 @@ public class GameEngine : IGameEngine
     /// </summary>
     public GameActionResult UndoLastAction()
     {
-        if (!_canUndo)
+        if (!_state.CanUndo)
             return GameActionResult.Fail("Cannot undo - irreversible action has been taken (e.g., explored new tile)");
         
-        if (_undoStack.Count == 0)
+        if (_state.UndoStack.Count == 0)
             return GameActionResult.Fail("Nothing to undo");
         
-        var previousStateJson = _undoStack.Pop();
+        var previousStateJson = _state.UndoStack[0];
+        _state.UndoStack.RemoveAt(0);
+        
         var previousState = JsonSerializer.Deserialize<GameStateModel>(previousStateJson);
         
         if (previousState == null)
             return GameActionResult.Fail("Failed to restore previous state");
         
+        // Preserve the current undo stack and canUndo status
+        var currentUndoStack = _state.UndoStack;
+        var currentCanUndo = _state.CanUndo;
+        
         _state = previousState;
+        _state.UndoStack = currentUndoStack;
+        _state.CanUndo = currentCanUndo;
+        
         AddLogEntry("Undo", "Undid last action");
         return GameActionResult.Ok("Action undone");
     }
@@ -1016,28 +1068,69 @@ public class GameEngine : IGameEngine
         // Check if powered effect requires mana
         if (powered && card.EffectsPowered?.Any() == true)
         {
-            // Use temporary mana from player (taken from Source)
-            if (!player.TemporaryMana.HasValue)
+            // Check for mana availability: TemporaryMana first, then mana tokens
+            ManaColor? manaToUse = null;
+            bool usingTemporaryMana = false;
+            bool usingManaToken = false;
+            
+            var requiredColor = !string.IsNullOrEmpty(card.ManaType) ? ParseManaColor(card.ManaType) : (ManaColor?)null;
+            
+            // 1. Check temporary mana (from Source die)
+            if (player.TemporaryMana.HasValue)
             {
-                var manaRequirement = !string.IsNullOrEmpty(card.ManaType) ? card.ManaType : "mana";
-                return GameActionResult.Fail($"Powered effect requires {manaRequirement}. Take a mana die from the Source first.");
+                var tempMana = player.TemporaryMana.Value;
+                if (requiredColor == null || tempMana == requiredColor || tempMana == ManaColor.Gold)
+                {
+                    manaToUse = tempMana;
+                    usingTemporaryMana = true;
+                }
             }
             
-            var temporaryMana = player.TemporaryMana.Value;
-            
-            // If card has specific mana color requirement, check it
-            if (!string.IsNullOrEmpty(card.ManaType))
+            // 2. If no suitable temporary mana, check mana tokens
+            if (manaToUse == null)
             {
-                var requiredColor = ParseManaColor(card.ManaType);
-                
-                // Check if the mana color matches (Gold can be used for any color)
-                if (temporaryMana != requiredColor && temporaryMana != ManaColor.Gold)
-                    return GameActionResult.Fail($"Wrong mana color - need {card.ManaType}, but you have {temporaryMana}");
+                // Check if we have a matching mana token (or any if no color requirement)
+                if (requiredColor.HasValue)
+                {
+                    // Need specific color - check gold first, then the required color
+                    if (player.ManaTokens.Gold > 0)
+                    {
+                        manaToUse = ManaColor.Gold;
+                        usingManaToken = true;
+                    }
+                    else if (HasManaToken(player, requiredColor.Value))
+                    {
+                        manaToUse = requiredColor.Value;
+                        usingManaToken = true;
+                    }
+                }
+                else
+                {
+                    // Any color works - use the first available token
+                    if (player.ManaTokens.Red > 0) { manaToUse = ManaColor.Red; usingManaToken = true; }
+                    else if (player.ManaTokens.Blue > 0) { manaToUse = ManaColor.Blue; usingManaToken = true; }
+                    else if (player.ManaTokens.Green > 0) { manaToUse = ManaColor.Green; usingManaToken = true; }
+                    else if (player.ManaTokens.White > 0) { manaToUse = ManaColor.White; usingManaToken = true; }
+                    else if (player.ManaTokens.Black > 0) { manaToUse = ManaColor.Black; usingManaToken = true; }
+                    else if (player.ManaTokens.Gold > 0) { manaToUse = ManaColor.Gold; usingManaToken = true; }
+                }
             }
-            // If no specific color requirement, any mana can be used (basic actions)
             
-            // Temporary mana is consumed when used (but die stays in pool until end of round)
-            player.TemporaryMana = null;
+            if (manaToUse == null)
+            {
+                var manaRequirement = requiredColor.HasValue ? requiredColor.Value.ToString() : "any";
+                return GameActionResult.Fail($"Powered effect requires {manaRequirement} mana. Take a mana die from Source or use a mana token.");
+            }
+            
+            // Consume the mana
+            if (usingTemporaryMana)
+            {
+                player.TemporaryMana = null;
+            }
+            else if (usingManaToken)
+            {
+                ConsumeManaToken(player, manaToUse.Value);
+            }
         }
 
         // Remove card from hand, add to discard
@@ -1059,6 +1152,19 @@ public class GameEngine : IGameEngine
         {
             var value = effect.Value ?? 0;
             var effectType = effect.Type?.ToLower() ?? "";
+            var desc = effect.Description ?? "";
+
+            // Check for OR choices in description first
+            if (desc.Contains(" OR ", StringComparison.OrdinalIgnoreCase))
+            {
+                var orChoice = CreateOrChoicePendingChoice(card, effect, value, powered);
+                if (orChoice != null)
+                {
+                    _state.PendingChoice = orChoice;
+                    AddLogEntry("PlayCard", $"Played {card.Name} - choose effect");
+                    return GameActionResult.Ok($"Played {card.Name} - choose effect");
+                }
+            }
 
             switch (effectType)
             {
@@ -1080,6 +1186,29 @@ public class GameEngine : IGameEngine
                     break;
                     
                 case "attack":
+                    // Check for OR in description
+                    if (desc.Contains("OR Block", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var blockValue = ExtractValueFromOrDescription(desc, "Block");
+                        var isRanged = effect.Attributes?.Contains("Ranged") == true;
+                        _state.PendingChoice = new PendingChoice
+                        {
+                            Type = ChoiceType.EffectType,
+                            CardId = cardId,
+                            CardName = card.Name,
+                            Description = $"Choose: {(isRanged ? "Ranged " : "")}Attack {value} OR Block {blockValue}",
+                            EffectValue = value,
+                            Options = new List<ChoiceOption>
+                            {
+                                new() { Id = isRanged ? "ranged_attack" : "attack", Name = isRanged ? "Ranged Attack" : "Attack", Description = $"+{value} {(isRanged ? "Ranged " : "")}Attack" },
+                                new() { Id = "block", Name = "Block", Description = $"+{blockValue} Block" }
+                            }
+                        };
+                        // Store the alternative value for the choice resolver
+                        _state.PendingChoice.Options[1].Id = $"block_{blockValue}";
+                        AddLogEntry("PlayCard", $"Played {card.Name} - choose Attack or Block");
+                        return GameActionResult.Ok($"Played {card.Name} - choose Attack or Block");
+                    }
                     player.AttackPool += value;
                     // Check for element attributes
                     if (effect.Attributes?.Contains("Fire") == true)
@@ -1088,7 +1217,11 @@ public class GameEngine : IGameEngine
                         player.AttackElements.Add("Ice");
                     if (effect.Attributes?.Contains("ColdFire") == true)
                         player.AttackElements.Add("ColdFire");
-                    effectDescriptions.Add($"+{value} Attack");
+                    // Check for Ranged attribute
+                    if (effect.Attributes?.Contains("Ranged") == true)
+                        player.RangedAttack += value;
+                    else
+                        effectDescriptions.Add($"+{value} Attack");
                     break;
                     
                 case "ranged_attack":
@@ -1104,11 +1237,51 @@ public class GameEngine : IGameEngine
                     break;
                     
                 case "block":
+                    // Check for OR in description
+                    if (desc.Contains("OR Attack", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var attackValue = ExtractValueFromOrDescription(desc, "Attack");
+                        _state.PendingChoice = new PendingChoice
+                        {
+                            Type = ChoiceType.EffectType,
+                            CardId = cardId,
+                            CardName = card.Name,
+                            Description = $"Choose: Block {value} OR Attack {attackValue}",
+                            EffectValue = value,
+                            Options = new List<ChoiceOption>
+                            {
+                                new() { Id = $"block_{value}", Name = "Block", Description = $"+{value} Block" },
+                                new() { Id = $"attack_{attackValue}", Name = "Attack", Description = $"+{attackValue} Attack" }
+                            }
+                        };
+                        AddLogEntry("PlayCard", $"Played {card.Name} - choose Block or Attack");
+                        return GameActionResult.Ok($"Played {card.Name} - choose Block or Attack");
+                    }
                     player.BlockPool += value;
                     effectDescriptions.Add($"+{value} Block");
                     break;
                     
                 case "influence":
+                    // Check for OR in description (Learning: "OR Block 2")
+                    if (desc.Contains("OR Block", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var blockValue = ExtractValueFromOrDescription(desc, "Block");
+                        _state.PendingChoice = new PendingChoice
+                        {
+                            Type = ChoiceType.EffectType,
+                            CardId = cardId,
+                            CardName = card.Name,
+                            Description = $"Choose: Influence {value} OR Block {blockValue}",
+                            EffectValue = value,
+                            Options = new List<ChoiceOption>
+                            {
+                                new() { Id = $"influence_{value}", Name = "Influence", Description = $"+{value} Influence" },
+                                new() { Id = $"block_{blockValue}", Name = "Block", Description = $"+{blockValue} Block" }
+                            }
+                        };
+                        AddLogEntry("PlayCard", $"Played {card.Name} - choose Influence or Block");
+                        return GameActionResult.Ok($"Played {card.Name} - choose Influence or Block");
+                    }
                     player.InfluencePool += value;
                     effectDescriptions.Add($"+{value} Influence");
                     break;
@@ -1119,17 +1292,113 @@ public class GameEngine : IGameEngine
                     break;
                     
                 case "draw":
-                    // Draw cards
-                    for (int i = 0; i < value && player.DeedDeck.Count > 0; i++)
+                case "drawcard":
+                    // Check if this is Improvisation (requires discard)
+                    if (desc.Contains("Discard a card", StringComparison.OrdinalIgnoreCase))
                     {
-                        var drawnCard = player.DeedDeck[0];
-                        player.DeedDeck.RemoveAt(0);
-                        player.Hand.Add(drawnCard);
+                        // Set up pending choice for Improvisation
+                        _state.PendingChoice = new PendingChoice
+                        {
+                            Type = ChoiceType.DiscardForEffect,
+                            CardId = cardId,
+                            CardName = card.Name,
+                            Description = $"Discard a card to gain Move/Attack/Block/Influence {value}",
+                            RequiresDiscard = true,
+                            EffectValue = value > 0 ? value : (powered ? 5 : 3), // Improvisation: basic 3, powered 5
+                            Options = new List<ChoiceOption>
+                            {
+                                new() { Id = "move", Name = "Move", Description = $"+{(value > 0 ? value : (powered ? 5 : 3))} Move" },
+                                new() { Id = "attack", Name = "Attack", Description = $"+{(value > 0 ? value : (powered ? 5 : 3))} Attack" },
+                                new() { Id = "block", Name = "Block", Description = $"+{(value > 0 ? value : (powered ? 5 : 3))} Block" },
+                                new() { Id = "influence", Name = "Influence", Description = $"+{(value > 0 ? value : (powered ? 5 : 3))} Influence" }
+                            }
+                        };
+                        AddLogEntry("PlayCard", $"Played {card.Name} - choose a card to discard");
+                        return GameActionResult.Ok($"Played {card.Name} - choose a card to discard and select effect type");
                     }
-                    effectDescriptions.Add($"Draw {value} card(s)");
+                    else
+                    {
+                        // Normal draw cards
+                        for (int i = 0; i < value && player.DeedDeck.Count > 0; i++)
+                        {
+                            var drawnCard = player.DeedDeck[0];
+                            player.DeedDeck.RemoveAt(0);
+                            player.Hand.Add(drawnCard);
+                        }
+                        effectDescriptions.Add($"Draw {value} card(s)");
+                    }
                     break;
+
+                case "gainmana":
+                    // Choose a mana color - handle multiple mana tokens
+                    _state.PendingChoice = new PendingChoice
+                    {
+                        Type = ChoiceType.ManaColor,
+                        CardId = cardId,
+                        CardName = card.Name,
+                        Description = value > 1 ? $"Choose {value} mana colors to gain" : "Choose a mana color to gain",
+                        EffectValue = value,
+                        Options = new List<ChoiceOption>
+                        {
+                            new() { Id = "red", Name = "Red Mana", Description = $"Gain {value} Red mana token(s)" },
+                            new() { Id = "blue", Name = "Blue Mana", Description = $"Gain {value} Blue mana token(s)" },
+                            new() { Id = "green", Name = "Green Mana", Description = $"Gain {value} Green mana token(s)" },
+                            new() { Id = "white", Name = "White Mana", Description = $"Gain {value} White mana token(s)" }
+                        }
+                    };
+                    AddLogEntry("PlayCard", $"Played {card.Name} - choose mana color");
+                    return GameActionResult.Ok($"Played {card.Name} - choose mana color");
+
+                case "gaincrystal":
+                    // Choose a crystal color - handle Blood Ritual (Take 1 Wound) and multiple crystals
+                    var crystalCount = value > 0 ? value : 1;
+                    var extraEffect = desc.Contains("Take 1 Wound", StringComparison.OrdinalIgnoreCase) 
+                        ? " (Take 1 Wound)" : "";
+                    _state.PendingChoice = new PendingChoice
+                    {
+                        Type = ChoiceType.ManaColor,
+                        CardId = cardId,
+                        CardName = card.Name,
+                        Description = $"Choose a crystal color to gain{extraEffect}",
+                        EffectValue = crystalCount,
+                        Options = new List<ChoiceOption>
+                        {
+                            new() { Id = "red_crystal", Name = "Red Crystal", Description = $"Gain {crystalCount} Red crystal(s){extraEffect}" },
+                            new() { Id = "blue_crystal", Name = "Blue Crystal", Description = $"Gain {crystalCount} Blue crystal(s){extraEffect}" },
+                            new() { Id = "green_crystal", Name = "Green Crystal", Description = $"Gain {crystalCount} Green crystal(s){extraEffect}" },
+                            new() { Id = "white_crystal", Name = "White Crystal", Description = $"Gain {crystalCount} White crystal(s){extraEffect}" }
+                        }
+                    };
+                    // Flag if this card causes a wound (Blood Ritual)
+                    if (desc.Contains("Take 1 Wound", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _state.PendingChoice.RequiresDiscard = false; // Reuse this flag to indicate wound
+                        _state.PendingChoice.Description += "\n⚠️ This will cause 1 Wound!";
+                    }
+                    AddLogEntry("PlayCard", $"Played {card.Name} - choose crystal color");
+                    return GameActionResult.Ok($"Played {card.Name} - choose crystal color");
                     
                 default:
+                    // Check for Tranquility-style OR effects
+                    if (effect.Description?.Contains(" OR ") == true)
+                    {
+                        // Parse the OR options
+                        _state.PendingChoice = new PendingChoice
+                        {
+                            Type = ChoiceType.HealOrDraw,
+                            CardId = cardId,
+                            CardName = card.Name,
+                            Description = effect.Description,
+                            EffectValue = value,
+                            Options = new List<ChoiceOption>
+                            {
+                                new() { Id = "heal", Name = "Heal", Description = $"+{value} Heal" },
+                                new() { Id = "draw", Name = "Draw Card", Description = "Draw 1 card" }
+                            }
+                        };
+                        AddLogEntry("PlayCard", $"Played {card.Name} - choose effect");
+                        return GameActionResult.Ok($"Played {card.Name} - choose effect");
+                    }
                     if (!string.IsNullOrEmpty(effect.Description))
                         effectDescriptions.Add(effect.Description);
                     break;
@@ -1139,6 +1408,71 @@ public class GameEngine : IGameEngine
         var description = string.Join(", ", effectDescriptions);
         AddLogEntry("PlayCard", $"Played {card.Name}{(powered ? " (powered)" : "")}: {description}");
         return GameActionResult.Ok($"Played {card.Name}: {description}");
+    }
+
+    /// <summary>
+    /// Extracts a numeric value from an OR description like "OR Block 3" or "OR Attack 5"
+    /// </summary>
+    private int ExtractValueFromOrDescription(string description, string effectType)
+    {
+        // Pattern: "OR Block 3" or "OR Attack 5"
+        var pattern = $@"OR\s+{effectType}\s+(\d+)";
+        var match = System.Text.RegularExpressions.Regex.Match(description, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var value))
+        {
+            return value;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Creates a pending choice for OR-based effects from card description
+    /// </summary>
+    private PendingChoice? CreateOrChoicePendingChoice(CardDefinition card, CardEffect effect, int value, bool powered)
+    {
+        var desc = effect.Description ?? "";
+        var effectType = effect.Type?.ToLower() ?? "";
+        
+        // Move X OR Block Y (Dodge and Weave)
+        if (effectType == "move" && desc.Contains("OR Block", StringComparison.OrdinalIgnoreCase))
+        {
+            var blockValue = ExtractValueFromOrDescription(desc, "Block");
+            return new PendingChoice
+            {
+                Type = ChoiceType.EffectType,
+                CardId = card.Id,
+                CardName = card.Name,
+                Description = $"Choose: Move {value} OR Block {blockValue}",
+                EffectValue = value,
+                Options = new List<ChoiceOption>
+                {
+                    new() { Id = $"move_{value}", Name = "Move", Description = $"+{value} Move" },
+                    new() { Id = $"block_{blockValue}", Name = "Block", Description = $"+{blockValue} Block" }
+                }
+            };
+        }
+        
+        // Heal X OR Draw Y (Tranquility basic)
+        if (effectType == "heal" && desc.Contains("OR Draw", StringComparison.OrdinalIgnoreCase))
+        {
+            var drawValue = ExtractValueFromOrDescription(desc, "Draw");
+            if (drawValue == 0) drawValue = 1; // Default to 1 card
+            return new PendingChoice
+            {
+                Type = ChoiceType.HealOrDraw,
+                CardId = card.Id,
+                CardName = card.Name,
+                Description = $"Choose: Heal {value} OR Draw {drawValue} card(s)",
+                EffectValue = value,
+                Options = new List<ChoiceOption>
+                {
+                    new() { Id = $"heal_{value}", Name = "Heal", Description = $"+{value} Heal" },
+                    new() { Id = $"draw_{drawValue}", Name = "Draw Cards", Description = $"Draw {drawValue} card(s)" }
+                }
+            };
+        }
+        
+        return null;
     }
 
     private ManaColor ParseManaColor(string colorName)
@@ -1153,6 +1487,58 @@ public class GameEngine : IGameEngine
             "gold" => ManaColor.Gold,
             _ => ManaColor.Red
         };
+    }
+
+    private bool HasManaToken(PlayerState player, ManaColor color)
+    {
+        return color switch
+        {
+            ManaColor.Red => player.ManaTokens.Red > 0,
+            ManaColor.Blue => player.ManaTokens.Blue > 0,
+            ManaColor.Green => player.ManaTokens.Green > 0,
+            ManaColor.White => player.ManaTokens.White > 0,
+            ManaColor.Black => player.ManaTokens.Black > 0,
+            ManaColor.Gold => player.ManaTokens.Gold > 0,
+            _ => false
+        };
+    }
+
+    private void ConsumeManaToken(PlayerState player, ManaColor color)
+    {
+        switch (color)
+        {
+            case ManaColor.Red: player.ManaTokens.Red--; break;
+            case ManaColor.Blue: player.ManaTokens.Blue--; break;
+            case ManaColor.Green: player.ManaTokens.Green--; break;
+            case ManaColor.White: player.ManaTokens.White--; break;
+            case ManaColor.Black: player.ManaTokens.Black--; break;
+            case ManaColor.Gold: player.ManaTokens.Gold--; break;
+        }
+    }
+
+    /// <summary>
+    /// Uses a mana token from inventory as temporary mana for powering cards.
+    /// </summary>
+    public GameActionResult UseManaToken(ManaColor color)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        // Check if player already has temporary mana
+        if (player.TemporaryMana.HasValue)
+            return GameActionResult.Fail($"You already have {player.TemporaryMana.Value} mana active. Use it first or undo.");
+
+        if (!HasManaToken(player, color))
+            return GameActionResult.Fail($"You don't have any {color} mana tokens.");
+
+        SaveStateForUndo();
+        
+        ConsumeManaToken(player, color);
+        player.TemporaryMana = color;
+        
+        AddLogEntry("UseManaToken", $"Activated {color} mana token");
+        return GameActionResult.Ok($"Activated {color} mana token - ready to power a card!");
     }
 
     public GameActionResult UseCardSideways(string cardId, string bonusType = "move")
@@ -1170,6 +1556,9 @@ public class GameEngine : IGameEngine
 
         if (card == null)
             return GameActionResult.Fail("Card not found");
+
+        // Save state for undo before using card
+        SaveStateForUndo();
 
         // Remove card from hand, add to discard
         player.Hand.Remove(cardId);
@@ -1196,14 +1585,248 @@ public class GameEngine : IGameEngine
         return effectType;
     }
 
+    /// <summary>
+    /// Resolves a pending choice made by the player.
+    /// </summary>
+    public GameActionResult ResolveChoice(string choiceId, string? discardCardId = null)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.PendingChoice == null)
+            return GameActionResult.Fail("No pending choice to resolve");
+
+        var choice = _state.PendingChoice;
+        var result = choice.Type switch
+        {
+            ChoiceType.ManaColor => ResolveManaColorChoice(player, choice, choiceId),
+            ChoiceType.EffectType => ResolveEffectTypeChoice(player, choice, choiceId),
+            ChoiceType.HealOrDraw => ResolveHealOrDrawChoice(player, choice, choiceId),
+            ChoiceType.DiscardForEffect => ResolveDiscardForEffectChoice(player, choice, choiceId, discardCardId),
+            _ => GameActionResult.Fail("Unknown choice type")
+        };
+
+        if (result.Success)
+        {
+            _state.PendingChoice = null;
+        }
+
+        return result;
+    }
+
+    private GameActionResult ResolveManaColorChoice(PlayerState player, PendingChoice choice, string colorId)
+    {
+        // Parse colorId - could be "red", "blue_crystal", "green", etc.
+        var parts = colorId.ToLower().Split('_');
+        var colorName = parts[0];
+        var isCrystal = parts.Length > 1 && parts[1] == "crystal" || 
+                        choice.Description.Contains("crystal", StringComparison.OrdinalIgnoreCase);
+        
+        var color = colorName switch
+        {
+            "red" => ManaColor.Red,
+            "blue" => ManaColor.Blue,
+            "green" => ManaColor.Green,
+            "white" => ManaColor.White,
+            _ => ManaColor.Red
+        };
+
+        var count = choice.EffectValue > 0 ? choice.EffectValue : 1;
+
+        if (isCrystal)
+        {
+            // Add crystals
+            for (int i = 0; i < count; i++)
+            {
+                switch (color)
+                {
+                    case ManaColor.Red: player.Crystals.Red++; break;
+                    case ManaColor.Blue: player.Crystals.Blue++; break;
+                    case ManaColor.Green: player.Crystals.Green++; break;
+                    case ManaColor.White: player.Crystals.White++; break;
+                }
+            }
+            
+            // Check for Blood Ritual - take 1 wound
+            if (choice.Description.Contains("Wound", StringComparison.OrdinalIgnoreCase))
+            {
+                player.Hand.Add("wound");
+                AddLogEntry("Choice", $"Gained {count} {color} crystal(s), took 1 wound");
+                return GameActionResult.Ok($"Gained {count} {color} crystal(s), took 1 wound");
+            }
+            
+            AddLogEntry("Choice", $"Gained {count} {color} crystal(s)");
+            return GameActionResult.Ok($"Gained {count} {color} crystal(s)");
+        }
+        else
+        {
+            // Add mana tokens
+            for (int i = 0; i < count; i++)
+            {
+                switch (color)
+                {
+                    case ManaColor.Red: player.ManaTokens.Red++; break;
+                    case ManaColor.Blue: player.ManaTokens.Blue++; break;
+                    case ManaColor.Green: player.ManaTokens.Green++; break;
+                    case ManaColor.White: player.ManaTokens.White++; break;
+                }
+            }
+            AddLogEntry("Choice", $"Gained {count} {color} mana token(s)");
+            return GameActionResult.Ok($"Gained {count} {color} mana token(s)");
+        }
+    }
+
+    private GameActionResult ResolveEffectTypeChoice(PlayerState player, PendingChoice choice, string effectId)
+    {
+        // Parse effectId - could be "move", "attack", "block_3", "attack_5", etc.
+        var parts = effectId.ToLower().Split('_');
+        var effectType = parts[0];
+        var value = parts.Length > 1 && int.TryParse(parts[1], out var v) ? v : choice.EffectValue;
+        
+        switch (effectType)
+        {
+            case "move":
+                player.MovementRemaining += value;
+                AddLogEntry("Choice", $"+{value} Move from {choice.CardName}");
+                return GameActionResult.Ok($"+{value} Move");
+            case "attack":
+                player.AttackPool += value;
+                AddLogEntry("Choice", $"+{value} Attack from {choice.CardName}");
+                return GameActionResult.Ok($"+{value} Attack");
+            case "ranged":
+                player.RangedAttack += value;
+                AddLogEntry("Choice", $"+{value} Ranged Attack from {choice.CardName}");
+                return GameActionResult.Ok($"+{value} Ranged Attack");
+            case "block":
+                player.BlockPool += value;
+                AddLogEntry("Choice", $"+{value} Block from {choice.CardName}");
+                return GameActionResult.Ok($"+{value} Block");
+            case "influence":
+                player.InfluencePool += value;
+                AddLogEntry("Choice", $"+{value} Influence from {choice.CardName}");
+                return GameActionResult.Ok($"+{value} Influence");
+            default:
+                return GameActionResult.Fail("Invalid effect type");
+        }
+    }
+
+    private GameActionResult ResolveHealOrDrawChoice(PlayerState player, PendingChoice choice, string effectId)
+    {
+        // Parse effectId - could be "heal", "draw", "heal_2", "draw_3", etc.
+        var parts = effectId.ToLower().Split('_');
+        var effectType = parts[0];
+        var value = parts.Length > 1 && int.TryParse(parts[1], out var v) ? v : choice.EffectValue;
+        
+        switch (effectType)
+        {
+            case "heal":
+                var healValue = value > 0 ? value : choice.EffectValue;
+                player.HealPool += healValue;
+                AddLogEntry("Choice", $"+{healValue} Heal from {choice.CardName}");
+                return GameActionResult.Ok($"+{healValue} Heal");
+            case "draw":
+                var drawCount = value > 0 ? value : 1;
+                var cardsDrawn = 0;
+                for (int i = 0; i < drawCount && player.DeedDeck.Count > 0; i++)
+                {
+                    var drawnCard = player.DeedDeck[0];
+                    player.DeedDeck.RemoveAt(0);
+                    player.Hand.Add(drawnCard);
+                    cardsDrawn++;
+                }
+                if (cardsDrawn > 0)
+                {
+                    AddLogEntry("Choice", $"Drew {cardsDrawn} card(s) from {choice.CardName}");
+                    return GameActionResult.Ok($"Drew {cardsDrawn} card(s)");
+                }
+                return GameActionResult.Fail("No cards to draw");
+            default:
+                return GameActionResult.Fail("Invalid choice");
+        }
+    }
+
+    private GameActionResult ResolveDiscardForEffectChoice(PlayerState player, PendingChoice choice, string effectId, string? discardCardId)
+    {
+        if (string.IsNullOrEmpty(discardCardId))
+            return GameActionResult.Fail("Must select a card to discard");
+
+        if (!player.Hand.Contains(discardCardId))
+            return GameActionResult.Fail("Card not in hand");
+
+        // Discard the selected card
+        player.Hand.Remove(discardCardId);
+        player.DiscardPile.Add(discardCardId);
+
+        // Get card name for logging
+        var discardedCard = _definitions.GetBasicActionsAsync().Result.FirstOrDefault(c => c.Id == discardCardId)
+                         ?? _definitions.GetAdvancedActionsAsync().Result.FirstOrDefault(c => c.Id == discardCardId);
+        var cardName = discardedCard?.Name ?? discardCardId;
+
+        // Apply the chosen effect
+        var value = choice.EffectValue;
+        switch (effectId.ToLower())
+        {
+            case "move":
+                player.MovementRemaining += value;
+                AddLogEntry("Choice", $"Discarded {cardName} for +{value} Move");
+                return GameActionResult.Ok($"Discarded {cardName} for +{value} Move");
+            case "attack":
+                player.AttackPool += value;
+                AddLogEntry("Choice", $"Discarded {cardName} for +{value} Attack");
+                return GameActionResult.Ok($"Discarded {cardName} for +{value} Attack");
+            case "block":
+                player.BlockPool += value;
+                AddLogEntry("Choice", $"Discarded {cardName} for +{value} Block");
+                return GameActionResult.Ok($"Discarded {cardName} for +{value} Block");
+            case "influence":
+                player.InfluencePool += value;
+                AddLogEntry("Choice", $"Discarded {cardName} for +{value} Influence");
+                return GameActionResult.Ok($"Discarded {cardName} for +{value} Influence");
+            default:
+                return GameActionResult.Fail("Invalid effect type");
+        }
+    }
+
+    /// <summary>
+    /// Checks if there is a pending choice that needs to be resolved.
+    /// </summary>
+    public PendingChoice? GetPendingChoice() => _state.PendingChoice;
+
+    /// <summary>
+    /// Cancels the pending choice and returns the card to hand.
+    /// </summary>
+    public GameActionResult CancelChoice()
+    {
+        if (_state.PendingChoice == null)
+            return GameActionResult.Fail("No pending choice to cancel");
+
+        // Note: The card was already moved to discard in PlayCard
+        // We would need to track this to undo it properly
+        // For now, just clear the choice
+        _state.PendingChoice = null;
+        return GameActionResult.Ok("Choice cancelled");
+    }
+
     public GameActionResult EndTurn()
     {
         var player = GetCurrentPlayer();
         if (player == null)
             return GameActionResult.Fail("No current player");
 
+        // Cannot end turn during combat
+        if (_state.Combat != null)
+            return GameActionResult.Fail("Cannot end turn during combat. Finish or flee from combat first.");
+
+        // Cannot end turn during tactics selection
+        if (_state.Phase == GamePhase.TacticsSelection)
+            return GameActionResult.Fail("Cannot end turn during tactics selection. Select a tactic first.");
+
         // Reset all player pools and state for next turn
         ResetPlayerTurnState(player);
+
+        // Reset undo for the next player's turn
+        ResetUndoForNewTurn();
 
         AddLogEntry("EndTurn", $"Player ended their turn");
 
@@ -1253,6 +1876,8 @@ public class GameEngine : IGameEngine
         player.SiegeAttack = 0;
         player.AttackElements.Clear();
         player.HasRested = false;
+        player.UsedSiteInteractions.Clear(); // Reset site interactions for new turn
+        player.TurnStartPosition = null;
     }
 
     public GameActionResult Rest()
@@ -1293,6 +1918,9 @@ public class GameEngine : IGameEngine
         // Check if player already has temporary mana (can only take one)
         if (player.TemporaryMana.HasValue)
             return GameActionResult.Fail("You can only take one mana die per round. You already have temporary mana.");
+
+        // Save state for undo before taking mana
+        SaveStateForUndo();
 
         var color = _state.ManaPool[dieIndex];
         
@@ -2599,9 +3227,9 @@ public class GameEngine : IGameEngine
                 yield return new SiteInteractionOption
                 {
                     Type = "BuyFame",
-                    Description = "Buy 2 Fame (10 Influence)",
-                    InfluenceCost = 10,
-                    IsAvailable = player.InfluencePool >= 10
+                    Description = "Buy 1 Fame (2 Influence) - repeatable",
+                    InfluenceCost = 2,
+                    IsAvailable = player.InfluencePool >= 2
                 };
             }
         }
@@ -2648,31 +3276,91 @@ public class GameEngine : IGameEngine
         if (hexState == null || string.IsNullOrEmpty(hexState.SiteType))
             return GameActionResult.Fail("No site at current position");
 
+        var hexKey = PosKey(player.Position);
+        var interactionKey = $"{hexKey}:{interactionType.ToLower()}";
+
+        // Check if this is a repeatable interaction
+        var isRepeatable = IsRepeatableInteraction(interactionType, hexState.SiteType);
+        
+        // Check if this non-repeatable interaction was already used at this hex this turn
+        if (!isRepeatable && player.UsedSiteInteractions.Contains(interactionKey))
+        {
+            return GameActionResult.Fail($"You have already used {interactionType} at this site this turn");
+        }
+
+        // Execute the interaction
+        GameActionResult result;
         switch (interactionType.ToLower())
         {
             case "heal":
-                return HealAtSite(1);
+                result = HealAtSite(1);
+                break;
             case "plunder":
-                return Plunder();
+                result = Plunder();
+                break;
             case "empower":
-                return Empower();
+                result = Empower();
+                break;
             case "harvest":
-                return Harvest(hexState.SiteType);
+                result = Harvest(hexState.SiteType);
+                break;
             case "training":
-                return Training();
+                result = Training();
+                break;
             case "drawruins":
-                return DrawRuinsToken();
+                result = DrawRuinsToken();
+                break;
             case "buyfame":
-                return BuyFame();
+                result = BuyFame();
+                break;
             case "learnspell":
-                return LearnSpell();
+                result = LearnSpell();
+                break;
             case "burn":
-                return BurnMonastery();
+                result = BurnMonastery();
+                break;
             case "cleanse":
-                return CleanseGlade();
+                result = CleanseGlade();
+                break;
             default:
                 return GameActionResult.Fail($"Unknown interaction type: {interactionType}");
         }
+
+        // If successful and not repeatable, mark as used
+        if (result.Success && !isRepeatable)
+        {
+            player.UsedSiteInteractions.Add(interactionKey);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Determines if a site interaction can be used multiple times per turn.
+    /// </summary>
+    private bool IsRepeatableInteraction(string interactionType, string siteType)
+    {
+        var type = interactionType.ToLower();
+        var site = siteType.ToLower();
+
+        // Heal is repeatable at villages, monasteries, cities, glades
+        if (type == "heal")
+            return true;
+
+        // BuyFame is repeatable at conquered cities
+        if (type == "buyfame" && site.Contains("city"))
+            return true;
+
+        // Everything else is NOT repeatable:
+        // - Harvest (once per mine per turn)
+        // - Empower (once per glade per turn)
+        // - Training (once per site per turn)
+        // - LearnSpell (once per site per turn)
+        // - Plunder (once, and ends interaction)
+        // - Burn (destroys site)
+        // - Cleanse (once per corrupted glade)
+        // - DrawRuins (once per ruins)
+        return false;
     }
 
     public GameActionResult RecruitUnit(string unitId)
@@ -2803,6 +3491,9 @@ public class GameEngine : IGameEngine
         if (hexState.IsBurned)
             return GameActionResult.Fail("This monastery has already been burned");
 
+        // Mark as irreversible - destroying a site permanently changes the game state
+        MarkIrreversibleAction();
+
         // Mark as burned
         hexState.IsBurned = true;
 
@@ -2812,14 +3503,16 @@ public class GameEngine : IGameEngine
         // Lose 3 Reputation
         player.Reputation -= 3;
 
-        // Draw an Artifact
-        var artifacts = _definitions.GetArtifactsAsync().Result;
-        if (artifacts.Any())
+        // Draw an Artifact from deck
+        if (_state.Decks.Artifacts.Any())
         {
-            var artifact = artifacts[_random.Next(artifacts.Count)];
-            player.Artifacts.Add(artifact.Id);
-            AddLogEntry("Burn", $"🔥 Burned the Monastery! Gained 4 Fame, -3 Reputation, gained artifact: {artifact.Name}");
-            return GameActionResult.Ok($"🔥 Burned the Monastery! Gained 4 Fame, lost 3 Reputation, and found {artifact.Name}!");
+            var artifactId = _state.Decks.Artifacts[0];
+            _state.Decks.Artifacts.RemoveAt(0);
+            player.Artifacts.Add(artifactId);
+            var artifactDef = _definitions.GetArtifactsAsync().Result.FirstOrDefault(a => a.Id == artifactId);
+            var artifactName = artifactDef?.Name ?? artifactId;
+            AddLogEntry("Burn", $"🔥 Burned the Monastery! Gained 4 Fame, -3 Reputation, gained artifact: {artifactName}");
+            return GameActionResult.Ok($"🔥 Burned the Monastery! Gained 4 Fame, lost 3 Reputation, and found {artifactName}!");
         }
 
         AddLogEntry("Burn", "🔥 Burned the Monastery! Gained 4 Fame, -3 Reputation");
@@ -2873,6 +3566,8 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
+        SaveStateForUndo();
+
         var color = GetMineColor(siteType.ToLower());
         
         switch (color)
@@ -2907,12 +3602,26 @@ public class GameEngine : IGameEngine
         if (player.InfluencePool < 6)
             return GameActionResult.Fail("Not enough influence (need 6)");
 
-        // In a full implementation, this would let the player choose an advanced action
-        // For now, just deduct the cost and add a placeholder
+        // Check if there are advanced actions available
+        if (!_state.Decks.AdvancedActions.Any())
+            return GameActionResult.Fail("No Advanced Actions available");
+
+        SaveStateForUndo();
+
+        // Mark as irreversible - drawing from shared deck reveals new information
+        MarkIrreversibleAction();
+
+        // Draw top advanced action from deck
+        var cardId = _state.Decks.AdvancedActions[0];
+        _state.Decks.AdvancedActions.RemoveAt(0);
+        player.DiscardPile.Add(cardId); // Goes to discard, will be shuffled in at end of round
         player.InfluencePool -= 6;
 
-        AddLogEntry("Training", "Trained at monastery - gained Advanced Action");
-        return GameActionResult.Ok("Trained! Choose an Advanced Action.");
+        var cardDef = _definitions.GetAdvancedActionsAsync().Result.FirstOrDefault(c => c.Id == cardId);
+        var cardName = cardDef?.Name ?? cardId;
+
+        AddLogEntry("Training", $"Trained at monastery - gained Advanced Action: {cardName}");
+        return GameActionResult.Ok($"Trained! Gained {cardName}.");
     }
 
     private GameActionResult BuyFame()
@@ -2921,16 +3630,24 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
-        if (player.InfluencePool < 10)
-            return GameActionResult.Fail("Not enough influence (need 10)");
+        // Check if at a conquered city
+        var hexState = GetHexStateAt(player.Position);
+        if (hexState?.SiteType?.ToLower().Contains("city") != true)
+            return GameActionResult.Fail("Must be at a city to buy fame");
 
-        player.InfluencePool -= 10;
-        player.Fame += 2;
+        // Cost: 2 Influence per 1 Fame (as per rules)
+        if (player.InfluencePool < 2)
+            return GameActionResult.Fail("Not enough influence (need 2)");
+
+        SaveStateForUndo();
+
+        player.InfluencePool -= 2;
+        player.Fame += 1;
 
         CheckForLevelUp();
 
-        AddLogEntry("BuyFame", "Bought 2 Fame at city for 10 Influence");
-        return GameActionResult.Ok("Gained 2 Fame!");
+        AddLogEntry("BuyFame", "Bought 1 Fame at city for 2 Influence");
+        return GameActionResult.Ok("Gained 1 Fame!");
     }
 
     private GameActionResult LearnSpell()
@@ -2942,8 +3659,38 @@ public class GameEngine : IGameEngine
         if (player.InfluencePool < 7)
             return GameActionResult.Fail("Not enough influence (need 7)");
 
+        // Check if player has mana (temporary or crystal)
+        var hasMana = player.TemporaryMana.HasValue || 
+                      player.Crystals.Red > 0 || player.Crystals.Blue > 0 || 
+                      player.Crystals.Green > 0 || player.Crystals.White > 0 ||
+                      player.Crystals.Gold > 0;
+        
+        if (!hasMana)
+            return GameActionResult.Fail("Learning a spell requires 1 mana (temporary or crystal)");
+
         if (!_state.Decks.Spells.Any())
             return GameActionResult.Fail("No spells available");
+
+        SaveStateForUndo();
+
+        // Consume temporary mana first, otherwise use a crystal
+        if (player.TemporaryMana.HasValue)
+        {
+            player.TemporaryMana = null;
+            player.UsedManaDieIndex = null;
+        }
+        else
+        {
+            // Use first available crystal
+            if (player.Crystals.Gold > 0) player.Crystals.Gold--;
+            else if (player.Crystals.Red > 0) player.Crystals.Red--;
+            else if (player.Crystals.Blue > 0) player.Crystals.Blue--;
+            else if (player.Crystals.Green > 0) player.Crystals.Green--;
+            else if (player.Crystals.White > 0) player.Crystals.White--;
+        }
+
+        // Mark as irreversible - drawing from shared deck reveals new information
+        MarkIrreversibleAction();
 
         // Draw top spell from deck
         var spellId = _state.Decks.Spells[0];
@@ -2971,6 +3718,9 @@ public class GameEngine : IGameEngine
 
         if (!_state.Decks.RuinsTokens.Any())
             return GameActionResult.Fail("No ruins tokens remaining");
+
+        // Mark as irreversible - drawing from shared deck reveals new information
+        MarkIrreversibleAction();
 
         // Draw top token
         var tokenId = _state.Decks.RuinsTokens[0];

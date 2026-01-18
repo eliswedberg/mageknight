@@ -12,6 +12,7 @@ This summary is divided into the following sections:
 5. **[Scenarios](05_Scenarios.md)**: Scenario setup, Site Interactions, and winning conditions.
 6. **[Tile Placement Logic](06_Tile_Placement_Logic.md)**: Hexagonal coordinates, tile structure, placement algorithm, and implementation details.
 7. **[Site Tokens and Enemies](07_Site_Tokens_and_Enemies.md)**: Enemy generation, site types, visual indicators, and ruins token system.
+8. **[Undo and State Management](08_Undo_and_State_Management.md)**: Undo mechanics, when undo is blocked, and technical implementation.
 
 ## Related Definition Files
 

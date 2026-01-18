@@ -282,6 +282,22 @@ public class GameService : IGameService
         });
     }
 
+    public async Task<GameResult> ResolveChoiceAsync(Guid gameId, Guid userId, string choiceId, string? discardCardId = null)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            return engine.ResolveChoice(choiceId, discardCardId);
+        });
+    }
+
+    public async Task<GameResult> CancelChoiceAsync(Guid gameId, Guid userId)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            return engine.CancelChoice();
+        });
+    }
+
     public async Task<GameResult> UseManaAsync(Guid gameId, Guid userId, int dieIndex)
     {
         return await ExecuteGameAction(gameId, userId, engine =>
@@ -298,6 +314,17 @@ public class GameService : IGameService
                 return GameActionResult.Fail($"Invalid mana color: {color}");
             
             return engine.UseCrystal(manaColor);
+        });
+    }
+
+    public async Task<GameResult> UseManaTokenAsync(Guid gameId, Guid userId, string color)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            if (!Enum.TryParse<ManaColor>(color, true, out var manaColor))
+                return GameActionResult.Fail($"Invalid mana color: {color}");
+            
+            return engine.UseManaToken(manaColor);
         });
     }
 

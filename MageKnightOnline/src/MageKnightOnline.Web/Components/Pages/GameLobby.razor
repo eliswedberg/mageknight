@@ -1,4 +1,6 @@
 @page "/game/{GameId:guid}"
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 @inject AuthStateService AuthService
 @inject IGameService GameService
 @inject IGameDefinitionService DefinitionService
@@ -393,6 +395,7 @@ else
     private bool _isLoading = true;
     private string? _errorMessage;
     private string? _successMessage;
+    private HubConnection? _hubConnection;
 
     private bool _isCreator => _game?.CreatedByUserId == AuthService.CurrentUser?.Id;
     private GamePlayer? _currentPlayer => _game?.Players.FirstOrDefault(p => p.UserId == AuthService.CurrentUser?.Id);
@@ -405,6 +408,58 @@ else
     {
         _heroes = (await DefinitionService.GetHeroesAsync()).ToList();
         await LoadGame();
+        await SetupSignalR();
+    }
+
+    private async Task SetupSignalR()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/gamehub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Handle game started notification (for non-creators)
+        _hubConnection.On<string>("GameStarted", (gameName) =>
+        {
+            InvokeAsync(() =>
+            {
+                // Navigate to the play page
+                Navigation.NavigateTo($"/play/{GameId}");
+            });
+        });
+
+        // Handle player joined/left (refresh the lobby)
+        _hubConnection.On<string, string>("PlayerJoined", async (username, connectionId) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadGame();
+                StateHasChanged();
+            });
+        });
+
+        _hubConnection.On<string, string>("PlayerLeft", async (username, connectionId) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadGame();
+                StateHasChanged();
+            });
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            
+            if (AuthService.CurrentUser != null)
+            {
+                await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"SignalR connection failed: {ex.Message}");
+        }
     }
 
     private async Task LoadGame()
@@ -470,6 +525,22 @@ else
         
         if (result.Success)
         {
+            // Notify all players in this game lobby that the game has started
+            if (_hubConnection?.State == HubConnectionState.Connected && _game != null)
+            {
+                // Notify all players in the game group
+                await _hubConnection.SendAsync("NotifyGameStateChanged", GameId.ToString(), "Game started!");
+                
+                // Send individual notifications to all players (they'll receive it via NotificationPanel)
+                foreach (var player in _game.Players)
+                {
+                    if (player.UserId != AuthService.CurrentUser!.Id)
+                    {
+                        await _hubConnection.SendAsync("NotifyUser", player.UserId, "GameStarted", GameId.ToString(), _game.Name, "Game has started!");
+                    }
+                }
+            }
+            
             Navigation.NavigateTo($"/play/{GameId}");
         }
         else
@@ -503,6 +574,15 @@ else
         else
         {
             _errorMessage = result.ErrorMessage;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.SendAsync("LeaveGame", GameId.ToString());
+            await _hubConnection.DisposeAsync();
         }
     }
 }
