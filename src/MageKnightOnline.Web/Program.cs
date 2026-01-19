@@ -22,9 +22,10 @@ if (builder.Environment.IsDevelopment())
 // SignalR for real-time communication
 builder.Services.AddSignalR();
 
-// Database
+// Database - SQLite
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<MageKnightDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(connectionString));
 
 // Game Definition Service
 builder.Services.AddSingleton<IGameDefinitionService>(sp =>
@@ -68,12 +69,33 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Auto-migrate database in development
-if (app.Environment.IsDevelopment())
+// Auto-migrate database
+// In development: always migrate
+// In production: migrate on startup (Azure will handle this)
+try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MageKnightDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    logger.LogInformation("Applying database migrations...");
     db.Database.Migrate();
+    logger.LogInformation("Database migrations completed successfully.");
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while migrating the database.");
+    // In production, we might want to continue anyway if migrations fail
+    // but log the error for investigation
+    if (!app.Environment.IsDevelopment())
+    {
+        logger.LogWarning("Continuing despite migration error. Please check database connection.");
+    }
+    else
+    {
+        throw; // In development, fail fast
+    }
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);

@@ -37,9 +37,9 @@ public class MageKnightDbContext : DbContext
             entity.Property(e => e.ScenarioId).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(50);
             
-            // JSON columns
-            entity.Property(e => e.Settings).HasColumnType("nvarchar(max)");
-            entity.Property(e => e.GameState).HasColumnType("nvarchar(max)");
+            // JSON columns (stored as TEXT in SQLite)
+            entity.Property(e => e.Settings).HasColumnType("TEXT");
+            entity.Property(e => e.GameState).HasColumnType("TEXT");
 
             // Relationships
             entity.HasOne(e => e.CreatedBy)

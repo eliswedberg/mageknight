@@ -15,12 +15,12 @@ namespace MageKnightOnline.Data.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Username = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    PasswordHash = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    LastLoginAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
+                    PasswordHash = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastLoginAt = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -31,18 +31,18 @@ namespace MageKnightOnline.Data.Migrations
                 name: "Games",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    ScenarioId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    MinPlayers = table.Column<int>(type: "int", nullable: false),
-                    MaxPlayers = table.Column<int>(type: "int", nullable: false),
-                    Settings = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    GameState = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    EndedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    Status = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    ScenarioId = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    MinPlayers = table.Column<int>(type: "INTEGER", nullable: false),
+                    MaxPlayers = table.Column<int>(type: "INTEGER", nullable: false),
+                    Settings = table.Column<string>(type: "TEXT", nullable: true),
+                    GameState = table.Column<string>(type: "TEXT", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    EndedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    CreatedByUserId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,13 +59,13 @@ namespace MageKnightOnline.Data.Migrations
                 name: "GamePlayers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    GameId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    HeroId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    IsReady = table.Column<bool>(type: "bit", nullable: false),
-                    TurnOrder = table.Column<int>(type: "int", nullable: false),
-                    JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    GameId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    UserId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    HeroId = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    IsReady = table.Column<bool>(type: "INTEGER", nullable: false),
+                    TurnOrder = table.Column<int>(type: "INTEGER", nullable: false),
+                    JoinedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
