@@ -43,6 +43,7 @@ jobs:
     needs: build
     environment:
       name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
       - name: Download artifact from build job
@@ -51,13 +52,10 @@ jobs:
           name: .net-app
           path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy to Azure Web App using CLI
-        run: |
-          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          zip -r ../app.zip .
-          az webapp deploy --resource-group DefaultResourceGroup-SEC --name ${{ env.AZURE_WEBAPP_NAME }} --src-path ../app.zip --type zip
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
