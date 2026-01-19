@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: mageknightonline    # Ändra till ditt Azure Web App namn
+  AZURE_WEBAPP_NAME: mageknightonline
+  AZURE_SUBSCRIPTION_ID: a9c4cfc5-7ca7-4640-a87c-c4e1799b9a43
   AZURE_WEBAPP_PACKAGE_PATH: './publish'
   DOTNET_VERSION: '10.0.x'
 
@@ -52,10 +53,15 @@ jobs:
           name: .net-app
           path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
