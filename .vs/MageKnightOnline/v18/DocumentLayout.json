@@ -1,0 +1,71 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|c:\\users\\eliswedberg\\source\\repos\\mageknight\\mageknightonline\\mage_knight_implementation_plan.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|solutionrelative:mage_knight_implementation_plan.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|c:\\users\\eliswedberg\\source\\repos\\mageknight\\mageknightonline\\components\\_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|solutionrelative:components\\_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|c:\\users\\eliswedberg\\source\\repos\\mageknight\\mageknightonline\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{B0B9EF3D-B2FD-9D9F-7887-2FC6EE4DD767}|MageKnightOnline.csproj|solutionrelative:controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MAGE_KNIGHT_IMPLEMENTATION_PLAN.md",
+              "DocumentMoniker": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\MAGE_KNIGHT_IMPLEMENTATION_PLAN.md",
+              "RelativeDocumentMoniker": "MAGE_KNIGHT_IMPLEMENTATION_PLAN.md",
+              "ToolTip": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\MAGE_KNIGHT_IMPLEMENTATION_PLAN.md",
+              "RelativeToolTip": "MAGE_KNIGHT_IMPLEMENTATION_PLAN.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2025-11-20T17:48:14.092Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "_Imports.razor",
+              "DocumentMoniker": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\Components\\_Imports.razor",
+              "RelativeDocumentMoniker": "Components\\_Imports.razor",
+              "ToolTip": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\Components\\_Imports.razor",
+              "RelativeToolTip": "Components\\_Imports.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-11-20T17:48:13.994Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AccountController.cs",
+              "DocumentMoniker": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\Controllers\\AccountController.cs",
+              "RelativeDocumentMoniker": "Controllers\\AccountController.cs",
+              "ToolTip": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\Controllers\\AccountController.cs",
+              "RelativeToolTip": "Controllers\\AccountController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-20T17:48:13.92Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
