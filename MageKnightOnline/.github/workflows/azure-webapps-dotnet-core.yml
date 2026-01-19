@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: your-app-name    # Ändra till ditt Azure Web App namn
+  AZURE_WEBAPP_NAME: mageknightonline    # Ändra till ditt Azure Web App namn
   AZURE_WEBAPP_PACKAGE_PATH: './publish'
   DOTNET_VERSION: '10.0.x'
 
