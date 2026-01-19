@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj": {}
+    "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+    "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
         "projectName": "MageKnightOnline.Core",
-        "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
-        "packagesPath": "C:\\Users\\ElisWedberg\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\obj\\",
+        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ElisWedberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -71,7 +71,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -349,20 +349,20 @@
         }
       }
     },
-    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
+    "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
+        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
         "projectName": "MageKnightOnline.Data",
-        "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
-        "packagesPath": "C:\\Users\\ElisWedberg\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\obj\\",
+        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
+        "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ElisWedberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -377,8 +377,8 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
-                "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
+              "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+                "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
               }
             }
           }
@@ -426,7 +426,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -704,20 +704,20 @@
         }
       }
     },
-    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj": {
+    "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
+        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
         "projectName": "MageKnightOnline.Web",
-        "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
-        "packagesPath": "C:\\Users\\ElisWedberg\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Web\\obj\\",
+        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
+        "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ElisWedberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -732,11 +732,11 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
-                "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
+              "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+                "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
               },
-              "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
-                "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj"
+              "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
+                "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj"
               }
             }
           }
@@ -760,7 +760,7 @@
             "Microsoft.AspNetCore.App.Internal.Assets": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[10.0.2, )",
+              "version": "[10.0.1, )",
               "autoReferenced": true
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
@@ -801,7 +801,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
