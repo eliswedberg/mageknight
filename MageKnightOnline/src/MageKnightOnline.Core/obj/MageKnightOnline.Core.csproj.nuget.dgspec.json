@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\eliwe\\Source\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {}
+    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {}
   },
   "projects": {
-    "C:\\Users\\eliwe\\Source\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+    "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "projectUniqueName": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
         "projectName": "MageKnightOnline.Core",
-        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
-        "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\obj\\",
+        "projectPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "packagesPath": "C:\\Users\\ElisWedberg\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\ElisWedberg\\source\\repos\\mageknight\\MageKnightOnline\\src\\MageKnightOnline.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\ElisWedberg\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -71,7 +71,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
