@@ -15,7 +15,7 @@
           }
         }
       },
-      "Microsoft.AspNetCore.App.Internal.Assets/10.0.1": {
+      "Microsoft.AspNetCore.App.Internal.Assets/10.0.2": {
         "type": "package",
         "build": {
           "build/Microsoft.AspNetCore.App.Internal.Assets.props": {},
@@ -926,10 +926,10 @@
         "logo.png"
       ]
     },
-    "Microsoft.AspNetCore.App.Internal.Assets/10.0.1": {
-      "sha512": "rafnWkNfJPA0nCZ5u9bFLiIhCv+aGDWBPJMejuROFMHEpsNhTdv8Cvhv+2jIH+b5485FhndbiwOQJUBMeBa6BQ==",
+    "Microsoft.AspNetCore.App.Internal.Assets/10.0.2": {
+      "sha512": "fMAqrUm+aspxRAsCJ6Hlgs96XSHwNIr9HBNt7wyBAzQkPlfE7w+0C4NzDoJnso5YZyDI0VcRtEXxG9odt3KiZA==",
       "type": "package",
-      "path": "microsoft.aspnetcore.app.internal.assets/10.0.1",
+      "path": "microsoft.aspnetcore.app.internal.assets/10.0.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -945,7 +945,7 @@
         "build/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildMultiTargeting/Microsoft.AspNetCore.App.Internal.Assets.targets",
         "buildTransitive/Microsoft.AspNetCore.App.Internal.Assets.targets",
-        "microsoft.aspnetcore.app.internal.assets.10.0.1.nupkg.sha512",
+        "microsoft.aspnetcore.app.internal.assets.10.0.2.nupkg.sha512",
         "microsoft.aspnetcore.app.internal.assets.nuspec"
       ]
     },
@@ -2636,7 +2636,7 @@
     "net10.0": [
       "MageKnightOnline.Core >= 1.0.0",
       "MageKnightOnline.Data >= 1.0.0",
-      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.1",
+      "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.2",
       "Microsoft.AspNetCore.Identity.EntityFrameworkCore >= 10.0.2",
       "Microsoft.AspNetCore.SignalR.Client >= 10.0.2",
       "Microsoft.EntityFrameworkCore.Design >= 10.0.2",
@@ -2645,42 +2645,35 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\eliwe\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\eliwe\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
+      "projectUniqueName": "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
       "projectName": "MageKnightOnline.Web",
-      "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
+      "projectPath": "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
       "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\obj\\",
+      "outputPath": "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Web\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
-              "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
+            "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+              "projectPath": "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
             },
-            "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
-              "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj"
+            "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj": {
+              "projectPath": "C:\\Users\\eliwe\\source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj"
             }
           }
         }
@@ -2704,7 +2697,7 @@
           "Microsoft.AspNetCore.App.Internal.Assets": {
             "suppressParent": "All",
             "target": "Package",
-            "version": "[10.0.1, )",
+            "version": "[10.0.2, )",
             "autoReferenced": true
           },
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
@@ -2749,7 +2742,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

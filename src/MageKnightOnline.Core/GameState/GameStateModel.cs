@@ -80,6 +80,16 @@ public class GameStateModel
     // Pending choice - when a card effect requires user input
     [JsonPropertyName("pending_choice")]
     public PendingChoice? PendingChoice { get; set; }
+
+    // Offers - cards and units available for purchase/recruitment
+    [JsonPropertyName("unit_offers")]
+    public UnitOfferState UnitOffers { get; set; } = new();
+
+    [JsonPropertyName("spell_offers")]
+    public SpellOfferState SpellOffers { get; set; } = new();
+
+    [JsonPropertyName("advanced_action_offers")]
+    public AdvancedActionOfferState AdvancedActionOffers { get; set; } = new();
 }
 
 /// <summary>
@@ -126,7 +136,10 @@ public enum ChoiceType
     ManaColor,      // Choose a mana color (Crystallize)
     EffectType,     // Choose Move/Attack/Block/Influence (Improvisation)
     HealOrDraw,     // Choose Heal or Draw (Tranquility)
-    DiscardForEffect // Discard a card for an effect
+    DiscardForEffect, // Discard a card for an effect
+    UnitFromOffer,  // Choose a unit from the unit offer
+    SpellFromOffer, // Choose a spell from the spell offer
+    AdvancedActionFromOffer // Choose an advanced action from the offer
 }
 
 /// <summary>
@@ -763,4 +776,34 @@ public class ManaTokenInventory
 
     [JsonPropertyName("gold")]
     public int Gold { get; set; } = 0;
+}
+
+/// <summary>
+/// State for unit offers - units available for recruitment.
+/// </summary>
+public class UnitOfferState
+{
+    [JsonPropertyName("regular_units")]
+    public List<string> RegularUnits { get; set; } = new(); // Unit IDs (3 units)
+
+    [JsonPropertyName("elite_units")]
+    public List<string> EliteUnits { get; set; } = new(); // Unit IDs (2 units)
+}
+
+/// <summary>
+/// State for spell offers - spells available for learning.
+/// </summary>
+public class SpellOfferState
+{
+    [JsonPropertyName("spells")]
+    public List<string> Spells { get; set; } = new(); // Spell IDs (3 spells)
+}
+
+/// <summary>
+/// State for advanced action offers - advanced actions available for training.
+/// </summary>
+public class AdvancedActionOfferState
+{
+    [JsonPropertyName("advanced_actions")]
+    public List<string> AdvancedActions { get; set; } = new(); // Advanced Action IDs (3 actions)
 }

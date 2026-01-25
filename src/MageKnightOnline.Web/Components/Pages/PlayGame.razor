@@ -346,6 +346,83 @@ else
                     }
                 </div>
 
+                <!-- Offers -->
+                <div class="card offers-card">
+                    <h3>📋 Offers</h3>
+                    
+                    <!-- Unit Offers -->
+                    <div class="offer-section">
+                        <h4>⚔️ Units</h4>
+                        <div class="offer-list">
+                            @if (_gameState.UnitOffers != null && (_gameState.UnitOffers.RegularUnits.Any() || _gameState.UnitOffers.EliteUnits.Any()))
+                            {
+                                @foreach (var unitId in _gameState.UnitOffers.RegularUnits)
+                                {
+                                    var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unitId);
+                                    <div class="offer-item">
+                                        <span class="offer-name">@(unitDef?.Name ?? unitId)</span>
+                                        <span class="offer-badge regular">Regular</span>
+                                    </div>
+                                }
+                                @foreach (var unitId in _gameState.UnitOffers.EliteUnits)
+                                {
+                                    var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unitId);
+                                    <div class="offer-item">
+                                        <span class="offer-name">@(unitDef?.Name ?? unitId)</span>
+                                        <span class="offer-badge elite">Elite</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted text-sm">No units available</p>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Spell Offers -->
+                    <div class="offer-section">
+                        <h4>✨ Spells</h4>
+                        <div class="offer-list">
+                            @if (_gameState.SpellOffers != null && _gameState.SpellOffers.Spells.Any())
+                            {
+                                @foreach (var spellId in _gameState.SpellOffers.Spells)
+                                {
+                                    var spellDef = _spellDefinitions.FirstOrDefault(s => s.Id == spellId);
+                                    <div class="offer-item">
+                                        <span class="offer-name">@(spellDef?.Name ?? spellId)</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted text-sm">No spells available</p>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Advanced Action Offers -->
+                    <div class="offer-section">
+                        <h4>🎯 Advanced Actions</h4>
+                        <div class="offer-list">
+                            @if (_gameState.AdvancedActionOffers != null && _gameState.AdvancedActionOffers.AdvancedActions.Any())
+                            {
+                                @foreach (var actionId in _gameState.AdvancedActionOffers.AdvancedActions)
+                                {
+                                    var actionDef = _advancedActionDefinitions.FirstOrDefault(a => a.Id == actionId);
+                                    <div class="offer-item">
+                                        <span class="offer-name">@(actionDef?.Name ?? actionId)</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted text-sm">No advanced actions available</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Card Hand at bottom of sidebar -->
                 <CardHand Cards="@GetHandCards()"
                           SelectedCardIndex="_selectedCardIndex"
@@ -1032,6 +1109,74 @@ else
         z-index: 1;
     }
 
+    /* Offers card styling */
+    .offers-card {
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .offers-card h3 {
+        margin-bottom: var(--spacing-md);
+        font-size: 1rem;
+    }
+
+    .offer-section {
+        margin-bottom: var(--spacing-md);
+    }
+
+    .offer-section h4 {
+        font-size: 0.85rem;
+        margin-bottom: var(--spacing-xs);
+        color: var(--color-text-secondary);
+        font-weight: 600;
+    }
+
+    .offer-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .offer-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: var(--color-bg-dark);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-border);
+        font-size: 0.85rem;
+    }
+
+    .offer-item:hover {
+        background: var(--color-bg-medium);
+        border-color: var(--color-gold);
+    }
+
+    .offer-name {
+        flex: 1;
+        color: var(--color-text-primary);
+    }
+
+    .offer-badge {
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .offer-badge.regular {
+        background: rgba(100, 150, 255, 0.2);
+        color: #6496ff;
+        border: 1px solid #6496ff;
+    }
+
+    .offer-badge.elite {
+        background: rgba(212, 168, 83, 0.2);
+        color: var(--color-gold);
+        border: 1px solid var(--color-gold);
+    }
+
     /* Choice Dialog */
     .choice-overlay {
         position: fixed;
@@ -1229,6 +1374,8 @@ else
     private List<HeroDefinition> _heroes = new();
     private List<CardDefinition> _cardDefinitions = new();
     private List<UnitDefinition> _unitDefinitions = new();
+    private List<CardDefinition> _spellDefinitions = new();
+    private List<CardDefinition> _advancedActionDefinitions = new();
     private List<TacticsDefinition> _availableTactics = new();
     private bool _isLoading = true;
 
@@ -1336,6 +1483,8 @@ else
         var advancedActions = await DefinitionService.GetAdvancedActionsAsync();
         _cardDefinitions = basicActions.Concat(advancedActions).ToList();
         _unitDefinitions = (await DefinitionService.GetUnitsAsync()).ToList();
+        _spellDefinitions = (await DefinitionService.GetSpellsAsync()).ToList();
+        _advancedActionDefinitions = advancedActions.ToList();
         
         // Load tile definitions
         var mapTiles = await DefinitionService.GetMapTilesAsync();
@@ -1536,7 +1685,12 @@ else
             {
                 try
                 {
-                    _gameState = JsonSerializer.Deserialize<GameStateModel>(_game.GameState) ?? new GameStateModel();
+                    // Use GameEngine to load state and ensure offers are filled
+                    var engine = new MageKnightOnline.Core.GameEngine.GameEngine(DefinitionService);
+                    engine.LoadState(_game.GameState);
+                    
+                    // Get state from engine (offers will be filled if they were empty)
+                    _gameState = engine.State;
                 }
                 catch
                 {

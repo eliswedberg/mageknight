@@ -245,6 +245,11 @@ public interface IGameEngine
     GameActionResult RecruitUnit(string unitId);
 
     /// <summary>
+    /// Learns a spell from the spell offer.
+    /// </summary>
+    GameActionResult LearnSpell(string spellId);
+
+    /// <summary>
     /// Heals wounds at a site.
     /// </summary>
     GameActionResult HealAtSite(int woundsToHeal);

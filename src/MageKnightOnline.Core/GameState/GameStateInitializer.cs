@@ -51,6 +51,11 @@ public class GameStateInitializer
         // Roll initial mana pool
         state.ManaPool = RollManaPool(state.Players.Count);
 
+        // Initialize and fill offers for first round
+        state.UnitOffers = await CreateUnitOffersAsync();
+        state.SpellOffers = await CreateSpellOffersAsync();
+        state.AdvancedActionOffers = await CreateAdvancedActionOffersAsync();
+
         // Add game start log
         state.GameLog.Add(new GameLogEntry
         {
@@ -382,5 +387,42 @@ public class GameStateInitializer
             int k = _random.Next(n + 1);
             (list[k], list[n]) = (list[n], list[k]);
         }
+    }
+
+    private async Task<UnitOfferState> CreateUnitOffersAsync()
+    {
+        var regularUnits = (await _definitions.GetRegularUnitsAsync()).ToList();
+        var eliteUnits = (await _definitions.GetEliteUnitsAsync()).ToList();
+        
+        Shuffle(regularUnits);
+        Shuffle(eliteUnits);
+        
+        return new UnitOfferState
+        {
+            RegularUnits = regularUnits.Take(3).Select(u => u.Id).ToList(),
+            EliteUnits = eliteUnits.Take(2).Select(u => u.Id).ToList()
+        };
+    }
+
+    private async Task<SpellOfferState> CreateSpellOffersAsync()
+    {
+        var spells = (await _definitions.GetSpellsAsync()).ToList();
+        Shuffle(spells);
+        
+        return new SpellOfferState
+        {
+            Spells = spells.Take(3).Select(s => s.Id).ToList()
+        };
+    }
+
+    private async Task<AdvancedActionOfferState> CreateAdvancedActionOffersAsync()
+    {
+        var advancedActions = (await _definitions.GetAdvancedActionsAsync()).ToList();
+        Shuffle(advancedActions);
+        
+        return new AdvancedActionOfferState
+        {
+            AdvancedActions = advancedActions.Take(3).Select(a => a.Id).ToList()
+        };
     }
 }

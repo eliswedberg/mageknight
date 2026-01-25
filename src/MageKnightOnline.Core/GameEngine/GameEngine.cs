@@ -58,6 +58,21 @@ public class GameEngine : IGameEngine
         }
 
         _state = JsonSerializer.Deserialize<GameStateModel>(gameStateJson) ?? new GameStateModel();
+        
+        // Initialize offers if they are null (for games created before offers were added)
+        if (_state.UnitOffers == null)
+            _state.UnitOffers = new UnitOfferState();
+        if (_state.SpellOffers == null)
+            _state.SpellOffers = new SpellOfferState();
+        if (_state.AdvancedActionOffers == null)
+            _state.AdvancedActionOffers = new AdvancedActionOfferState();
+        
+        // Fill offers if they are empty (for existing games)
+        // Always ensure offers are filled - this handles both new and existing games
+        if (_state.UnitOffers.RegularUnits.Count < 3 || _state.UnitOffers.EliteUnits.Count < 2)
+            RefillUnitOffers();
+        if (_state.SpellOffers.Spells.Count < 3)
+            RefillCardOffers();
     }
 
     public string SaveState()
@@ -1604,6 +1619,9 @@ public class GameEngine : IGameEngine
             ChoiceType.EffectType => ResolveEffectTypeChoice(player, choice, choiceId),
             ChoiceType.HealOrDraw => ResolveHealOrDrawChoice(player, choice, choiceId),
             ChoiceType.DiscardForEffect => ResolveDiscardForEffectChoice(player, choice, choiceId, discardCardId),
+            ChoiceType.UnitFromOffer => RecruitUnit(choiceId),
+            ChoiceType.SpellFromOffer => LearnSpell(choiceId),
+            ChoiceType.AdvancedActionFromOffer => Training(choiceId),
             _ => GameActionResult.Fail("Unknown choice type")
         };
 
@@ -2217,13 +2235,65 @@ public class GameEngine : IGameEngine
         // Regular units: 3 in offer
         // Elite units: 2 in offer (or based on player count)
         
-        // This is a simplified version - in full game, would use actual offer mechanics
+        var regularUnits = _definitions.GetRegularUnitsAsync().Result.ToList();
+        var eliteUnits = _definitions.GetEliteUnitsAsync().Result.ToList();
+        
+        // Remove units that are already in the offer
+        var availableRegular = regularUnits
+            .Where(u => !_state.UnitOffers.RegularUnits.Contains(u.Id))
+            .ToList();
+        var availableElite = eliteUnits
+            .Where(u => !_state.UnitOffers.EliteUnits.Contains(u.Id))
+            .ToList();
+        
+        // Fill regular units to 3
+        while (_state.UnitOffers.RegularUnits.Count < 3 && availableRegular.Any())
+        {
+            var unit = availableRegular[_random.Next(availableRegular.Count)];
+            _state.UnitOffers.RegularUnits.Add(unit.Id);
+            availableRegular.Remove(unit);
+        }
+        
+        // Fill elite units to 2
+        while (_state.UnitOffers.EliteUnits.Count < 2 && availableElite.Any())
+        {
+            var unit = availableElite[_random.Next(availableElite.Count)];
+            _state.UnitOffers.EliteUnits.Add(unit.Id);
+            availableElite.Remove(unit);
+        }
     }
     
     private void RefillCardOffers()
     {
         // Ensure spell and advanced action offers are full
-        // Simplified version - full game would have specific offer mechanics
+        // 3 spells in offer, 3 advanced actions in offer
+        
+        var spells = _definitions.GetSpellsAsync().Result.ToList();
+        var advancedActions = _definitions.GetAdvancedActionsAsync().Result.ToList();
+        
+        // Remove cards that are already in the offer
+        var availableSpells = spells
+            .Where(s => !_state.SpellOffers.Spells.Contains(s.Id))
+            .ToList();
+        var availableAdvancedActions = advancedActions
+            .Where(a => !_state.AdvancedActionOffers.AdvancedActions.Contains(a.Id))
+            .ToList();
+        
+        // Fill spells to 3
+        while (_state.SpellOffers.Spells.Count < 3 && availableSpells.Any())
+        {
+            var spell = availableSpells[_random.Next(availableSpells.Count)];
+            _state.SpellOffers.Spells.Add(spell.Id);
+            availableSpells.Remove(spell);
+        }
+        
+        // Fill advanced actions to 3
+        while (_state.AdvancedActionOffers.AdvancedActions.Count < 3 && availableAdvancedActions.Any())
+        {
+            var action = availableAdvancedActions[_random.Next(availableAdvancedActions.Count)];
+            _state.AdvancedActionOffers.AdvancedActions.Add(action.Id);
+            availableAdvancedActions.Remove(action);
+        }
     }
 
     private ManaColor RollManaDie()
@@ -3305,7 +3375,7 @@ public class GameEngine : IGameEngine
                 result = Harvest(hexState.SiteType);
                 break;
             case "training":
-                result = Training();
+                result = ShowAdvancedActionOfferChoice();
                 break;
             case "drawruins":
                 result = DrawRuinsToken();
@@ -3314,7 +3384,10 @@ public class GameEngine : IGameEngine
                 result = BuyFame();
                 break;
             case "learnspell":
-                result = LearnSpell();
+                result = ShowSpellOfferChoice();
+                break;
+            case "recruit":
+                result = ShowUnitOfferChoice();
                 break;
             case "burn":
                 result = BurnMonastery();
@@ -3377,10 +3450,24 @@ public class GameEngine : IGameEngine
         if (player.Units.Count >= player.CommandTokens)
             return GameActionResult.Fail($"Unit limit reached ({player.CommandTokens})");
 
+        // Check if unit is in offer
+        var isRegular = _state.UnitOffers.RegularUnits.Contains(unitId);
+        var isElite = _state.UnitOffers.EliteUnits.Contains(unitId);
+        if (!isRegular && !isElite)
+            return GameActionResult.Fail("Unit not available in offer");
+
         // Get unit definition
         var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unitId);
         if (unitDef == null)
             return GameActionResult.Fail("Invalid unit");
+
+        SaveStateForUndo();
+
+        // Remove unit from offer
+        if (isRegular)
+            _state.UnitOffers.RegularUnits.Remove(unitId);
+        else
+            _state.UnitOffers.EliteUnits.Remove(unitId);
 
         // Add unit to player
         player.Units.Add(new UnitState
@@ -3393,6 +3480,12 @@ public class GameEngine : IGameEngine
             UsedThisCombat = false
         });
         player.InfluencePool -= cost;
+
+        // Refill offer
+        RefillUnitOffers();
+
+        // Clear pending choice
+        _state.PendingChoice = null;
 
         AddLogEntry("Recruit", $"Recruited {unitDef.Name} for {cost} influence");
         return GameActionResult.Ok($"Recruited {unitDef.Name}!");
@@ -3593,7 +3686,7 @@ public class GameEngine : IGameEngine
         return GameActionResult.Ok($"Harvested 1 {color} Crystal!");
     }
 
-    private GameActionResult Training()
+    private GameActionResult ShowAdvancedActionOfferChoice()
     {
         var player = GetCurrentPlayer();
         if (player == null)
@@ -3602,23 +3695,67 @@ public class GameEngine : IGameEngine
         if (player.InfluencePool < 6)
             return GameActionResult.Fail("Not enough influence (need 6)");
 
-        // Check if there are advanced actions available
-        if (!_state.Decks.AdvancedActions.Any())
-            return GameActionResult.Fail("No Advanced Actions available");
+        // Ensure offers are filled
+        RefillCardOffers();
+
+        if (!_state.AdvancedActionOffers.AdvancedActions.Any())
+            return GameActionResult.Fail("No Advanced Actions available in offer");
+
+        // Create choice for player to select from advanced action offer
+        var advancedActions = _definitions.GetAdvancedActionsAsync().Result;
+        var options = _state.AdvancedActionOffers.AdvancedActions
+            .Select(actionId =>
+            {
+                var action = advancedActions.FirstOrDefault(a => a.Id == actionId);
+                return new ChoiceOption
+                {
+                    Id = actionId,
+                    Name = action?.Name ?? actionId,
+                    Description = ""
+                };
+            })
+            .ToList();
+
+        _state.PendingChoice = new PendingChoice
+        {
+            Type = ChoiceType.AdvancedActionFromOffer,
+            Description = "Choose an Advanced Action from the offer (6 Influence)",
+            Options = options
+        };
+
+        return GameActionResult.Ok("Select an Advanced Action from the offer");
+    }
+
+    private GameActionResult Training(string advancedActionId)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (player.InfluencePool < 6)
+            return GameActionResult.Fail("Not enough influence (need 6)");
+
+        if (!_state.AdvancedActionOffers.AdvancedActions.Contains(advancedActionId))
+            return GameActionResult.Fail("Advanced Action not available in offer");
 
         SaveStateForUndo();
 
         // Mark as irreversible - drawing from shared deck reveals new information
         MarkIrreversibleAction();
 
-        // Draw top advanced action from deck
-        var cardId = _state.Decks.AdvancedActions[0];
-        _state.Decks.AdvancedActions.RemoveAt(0);
-        player.DiscardPile.Add(cardId); // Goes to discard, will be shuffled in at end of round
+        // Remove advanced action from offer and add to player's discard
+        _state.AdvancedActionOffers.AdvancedActions.Remove(advancedActionId);
+        player.DiscardPile.Add(advancedActionId); // Goes to discard, will be shuffled in at end of round
         player.InfluencePool -= 6;
 
-        var cardDef = _definitions.GetAdvancedActionsAsync().Result.FirstOrDefault(c => c.Id == cardId);
-        var cardName = cardDef?.Name ?? cardId;
+        // Refill offer
+        RefillCardOffers();
+
+        // Clear pending choice
+        _state.PendingChoice = null;
+
+        var cardDef = _definitions.GetAdvancedActionsAsync().Result.FirstOrDefault(c => c.Id == advancedActionId);
+        var cardName = cardDef?.Name ?? advancedActionId;
 
         AddLogEntry("Training", $"Trained at monastery - gained Advanced Action: {cardName}");
         return GameActionResult.Ok($"Trained! Gained {cardName}.");
@@ -3650,7 +3787,7 @@ public class GameEngine : IGameEngine
         return GameActionResult.Ok("Gained 1 Fame!");
     }
 
-    private GameActionResult LearnSpell()
+    private GameActionResult ShowSpellOfferChoice()
     {
         var player = GetCurrentPlayer();
         if (player == null)
@@ -3668,8 +3805,57 @@ public class GameEngine : IGameEngine
         if (!hasMana)
             return GameActionResult.Fail("Learning a spell requires 1 mana (temporary or crystal)");
 
-        if (!_state.Decks.Spells.Any())
-            return GameActionResult.Fail("No spells available");
+        // Ensure offers are filled
+        RefillCardOffers();
+
+        if (!_state.SpellOffers.Spells.Any())
+            return GameActionResult.Fail("No spells available in offer");
+
+        // Create choice for player to select from spell offer
+        var spells = _definitions.GetSpellsAsync().Result;
+        var options = _state.SpellOffers.Spells
+            .Select(spellId =>
+            {
+                var spell = spells.FirstOrDefault(s => s.Id == spellId);
+                return new ChoiceOption
+                {
+                    Id = spellId,
+                    Name = spell?.Name ?? spellId,
+                    Description = ""
+                };
+            })
+            .ToList();
+
+        _state.PendingChoice = new PendingChoice
+        {
+            Type = ChoiceType.SpellFromOffer,
+            Description = "Choose a spell from the offer (7 Influence + 1 Mana)",
+            Options = options
+        };
+
+        return GameActionResult.Ok("Select a spell from the offer");
+    }
+
+    public GameActionResult LearnSpell(string spellId)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (player.InfluencePool < 7)
+            return GameActionResult.Fail("Not enough influence (need 7)");
+
+        // Check if player has mana (temporary or crystal)
+        var hasMana = player.TemporaryMana.HasValue || 
+                      player.Crystals.Red > 0 || player.Crystals.Blue > 0 || 
+                      player.Crystals.Green > 0 || player.Crystals.White > 0 ||
+                      player.Crystals.Gold > 0;
+        
+        if (!hasMana)
+            return GameActionResult.Fail("Learning a spell requires 1 mana (temporary or crystal)");
+
+        if (!_state.SpellOffers.Spells.Contains(spellId))
+            return GameActionResult.Fail("Spell not available in offer");
 
         SaveStateForUndo();
 
@@ -3692,17 +3878,69 @@ public class GameEngine : IGameEngine
         // Mark as irreversible - drawing from shared deck reveals new information
         MarkIrreversibleAction();
 
-        // Draw top spell from deck
-        var spellId = _state.Decks.Spells[0];
-        _state.Decks.Spells.RemoveAt(0);
+        // Remove spell from offer and add to player
+        _state.SpellOffers.Spells.Remove(spellId);
         player.Spells.Add(spellId);
         player.InfluencePool -= 7;
+
+        // Refill offer
+        RefillCardOffers();
+
+        // Clear pending choice
+        _state.PendingChoice = null;
 
         var spellDef = _definitions.GetSpellsAsync().Result.FirstOrDefault(s => s.Id == spellId);
         var spellName = spellDef?.Name ?? spellId;
 
         AddLogEntry("LearnSpell", $"Learned spell: {spellName}");
         return GameActionResult.Ok($"Learned {spellName}!");
+    }
+
+    private GameActionResult ShowUnitOfferChoice()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        var cost = GetRecruitCost();
+        if (player.InfluencePool < cost)
+            return GameActionResult.Fail($"Not enough influence (need {cost})");
+
+        // Check unit limit
+        if (player.Units.Count >= player.CommandTokens)
+            return GameActionResult.Fail($"Unit limit reached ({player.CommandTokens})");
+
+        // Ensure offers are filled
+        RefillUnitOffers();
+
+        // Get all available units (regular + elite)
+        var allUnits = _state.UnitOffers.RegularUnits.Concat(_state.UnitOffers.EliteUnits).ToList();
+        if (!allUnits.Any())
+            return GameActionResult.Fail("No units available in offer");
+
+        // Create choice for player to select from unit offer
+        var unitDefs = _definitions.GetUnitsAsync().Result;
+        var options = allUnits
+            .Select(unitId =>
+            {
+                var unit = unitDefs.FirstOrDefault(u => u.Id == unitId);
+                return new ChoiceOption
+                {
+                    Id = unitId,
+                    Name = unit?.Name ?? unitId,
+                    Description = $"Armor: {unit?.Armor ?? 0}, Cost: {cost} Influence"
+                };
+            })
+            .ToList();
+
+        _state.PendingChoice = new PendingChoice
+        {
+            Type = ChoiceType.UnitFromOffer,
+            Description = $"Choose a unit from the offer ({cost} Influence)",
+            Options = options
+        };
+
+        return GameActionResult.Ok("Select a unit from the offer");
     }
 
     // ==================== RUINS TOKEN SYSTEM ====================
