@@ -606,7 +606,6 @@ C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\comp
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\juicail3i0-{0}-vr9zsajeji-vr9zsajeji.gz
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\qbpgsooeht-{0}-5dvswpm1x8-5dvswpm1x8.gz
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\asmrvtlnzh-{0}-qgcgqund6m-qgcgqund6m.gz
-C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\b7ap1b63uq-{0}-lnr3rbqmge-lnr3rbqmge.gz
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kl832s6f3j-{0}-33dm25h62e-33dm25h62e.gz
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\u5h4sb88fa-{0}-16a9ezen1h-16a9ezen1h.gz
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\g3sna62vq2-{0}-o2en7d0cg4-o2en7d0cg4.gz
@@ -706,3 +705,4 @@ C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\bin\Debug\net10.0\runt
 C:\Users\eliwe\Source\mageknight\src\MageKnightOnline.Web\bin\Debug\net10.0\runtimes\win-x86\native\e_sqlite3.dll
 C:\Users\eliwe\source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kzykohbthg-{0}-2i0r6wwb69-2i0r6wwb69.gz
 C:\Users\eliwe\source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\m0ra281q8m-{0}-iz83ucvm53-iz83ucvm53.gz
+C:\Users\eliwe\source\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\b7ap1b63uq-{0}-u7gjss27ms-u7gjss27ms.gz

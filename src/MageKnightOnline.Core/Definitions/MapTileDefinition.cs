@@ -31,8 +31,9 @@ public class MapTileDefinition
 
 public class TileHexDefinition
 {
+    /// <summary>Compass position on tile: C (center), NE, NW, E, SE, SW, W.</summary>
     [JsonPropertyName("position")]
-    public int Position { get; set; } // 0 = center, 1-6 = surrounding hexes
+    public string Position { get; set; } = "C";
 
     [JsonPropertyName("terrain")]
     public string Terrain { get; set; } = "Plains";

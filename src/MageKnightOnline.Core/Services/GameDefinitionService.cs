@@ -35,6 +35,7 @@ public class GameDefinitionService : IGameDefinitionService
             ReadCommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true
         };
+        _jsonOptions.Converters.Add(new TileHexDefinitionJsonConverter());
     }
 
     private async Task<List<T>> LoadJsonAsync<T>(string fileName)

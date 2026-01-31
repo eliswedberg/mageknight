@@ -1,15 +1,9 @@
 Varje bricka består av en Center-hex och 6 omgivande hexar. För att JSON-filen ska vara användbar programmatiskt antar vi ett index-system (0-6) för hexarna på brickan:
 
-0: Center
-
-1: Top (Kl 12)
-
-2: Top-Right (Kl 2)
-
-3: Bottom-Right (Kl 4)
-
-4: Bottom (Kl 6)
-
-5: Bottom-Left (Kl 8)
-
-6: Top-Left (Kl 10)
+C: är i mitten (0)
+NE: top höger (1)
+NW: top vänster (2)
+E: höger (3)
+SE: nere höger (4)
+SW: nere vänster (5)
+W: vänster (6)

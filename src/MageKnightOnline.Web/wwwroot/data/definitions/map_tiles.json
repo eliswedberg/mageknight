@@ -7,13 +7,13 @@
     "image": "images/MK_map_tiles_01-A.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Plains", "site": "Portal" },
-      { "position": 1, "terrain": "Plains", "site": null },
-      { "position": 2, "terrain": "Forest", "site": null },
-      { "position": 3, "terrain": "Plains", "site": null },
-      { "position": 4, "terrain": "Water", "site": null },
-      { "position": 5, "terrain": "Water", "site": null },
-      { "position": 6, "terrain": "Water", "site": null }
+      { "position": "C", "terrain": "Plains", "site": "Portal" },
+      { "position": "NW", "terrain": "Plains", "site": null },
+      { "position": "NE", "terrain": "Forest", "site": null },
+      { "position": "E", "terrain": "Plains", "site": null },
+      { "position": "SE", "terrain": "Water", "site": null },
+      { "position": "SW", "terrain": "Water", "site": null },
+      { "position": "W", "terrain": "Water", "site": null }
     ]
   },
   {
@@ -22,13 +22,13 @@
     "image": "images/MK_map_tiles_01-1.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Plains", "site": "MagicalGlade" },
-      { "position": 1, "terrain": "Forest", "site": "OrcMarauders" },
-      { "position": 2, "terrain": "Water", "site": null },
-      { "position": 3, "terrain": "Plains", "site": "Village" },
-      { "position": 4, "terrain": "Plains", "site": null },
-      { "position": 5, "terrain": "Plains", "site": null },
-      { "position": 6, "terrain": "Forest", "site": null }
+      { "position": "C", "terrain": "Plains", "site": "MagicalGlade" },
+      { "position": "NW", "terrain": "Forest", "site": "OrcMarauders" },
+      { "position": "NE", "terrain": "Water", "site": null },
+      { "position": "E", "terrain": "Plains", "site": "Village" },
+      { "position": "SE", "terrain": "Plains", "site": null },
+      { "position": "SW", "terrain": "Plains", "site": null },
+      { "position": "W", "terrain": "Forest", "site": null }
     ]
   },
   {
@@ -37,13 +37,13 @@
     "image": "images/MK_map_tiles_01-2.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Hills", "site": null },
-      { "position": 1, "terrain": "Plains", "site": "OrcMarauders" },
-      { "position": 2, "terrain": "Forest", "site": "MagicalGlade" },
-      { "position": 3, "terrain": "Plains", "site": "Village" },
-      { "position": 4, "terrain": "Plains", "site": null },
-      { "position": 5, "terrain": "Hills", "site": "Mine_Green" },
-      { "position": 6, "terrain": "Plains", "site": null }
+      { "position": "C", "terrain": "Hills", "site": null },
+      { "position": "NW", "terrain": "Plains", "site": "OrcMarauders" },
+      { "position": "NE", "terrain": "Forest", "site": "MagicalGlade" },
+      { "position": "E", "terrain": "Plains", "site": "Village" },
+      { "position": "SE", "terrain": "Plains", "site": null },
+      { "position": "SW", "terrain": "Hills", "site": "Mine_Green" },
+      { "position": "W", "terrain": "Plains", "site": null }
     ]
   },
   {
@@ -52,13 +52,13 @@
     "image": "images/MK_map_tiles_01-3.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Forest", "site": null },
-      { "position": 1, "terrain": "Plains", "site": null },
-      { "position": 2, "terrain": "Hills", "site": "Keep" },
-      { "position": 3, "terrain": "Hills", "site": null },
-      { "position": 4, "terrain": "Hills", "site": "Mine_White" },
-      { "position": 5, "terrain": "Plains", "site": "Village" },
-      { "position": 6, "terrain": "Plains", "site": null }
+      { "position": "C", "terrain": "Forest", "site": null },
+      { "position": "NW", "terrain": "Plains", "site": null },
+      { "position": "NE", "terrain": "Hills", "site": "Keep" },
+      { "position": "E", "terrain": "Hills", "site": null },
+      { "position": "SE", "terrain": "Hills", "site": "Mine_White" },
+      { "position": "SW", "terrain": "Plains", "site": "Village" },
+      { "position": "W", "terrain": "Plains", "site": null }
     ]
   },
   {
@@ -67,13 +67,13 @@
     "image": "images/MK_map_tiles_01-4.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Desert", "site": "MageTower" },
-      { "position": 1, "terrain": "Desert", "site": null },
-      { "position": 2, "terrain": "Desert", "site": null },
-      { "position": 3, "terrain": "Mountain", "site": null},
-      { "position": 4, "terrain": "Plains", "site": "Village" },
-      { "position": 5, "terrain": "Plains", "site": null },
-      { "position": 6, "terrain": "Hills", "site": "OrcMarauders" }
+      { "position": "C", "terrain": "Desert", "site": "MageTower" },
+      { "position": "NW", "terrain": "Desert", "site": null },
+      { "position": "NE", "terrain": "Desert", "site": null },
+      { "position": "E", "terrain": "Mountain", "site": null},
+      { "position": "SE", "terrain": "Plains", "site": "Village" },
+      { "position": "SW", "terrain": "Plains", "site": null },
+      { "position": "W", "terrain": "Hills", "site": "OrcMarauders" }
     ]
   },
   {
@@ -82,13 +82,13 @@
     "image": "images/MK_map_tiles_01-5.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Water", "site": null },
-      { "position": 1, "terrain": "Forest", "site": null },
-      { "position": 2, "terrain": "Plains", "site": "Monastery" },
-      { "position": 3, "terrain": "Plains", "site": "OrcMarauders" },
-      { "position": 4, "terrain": "Hills", "site": "Mine_Blue" },
-      { "position": 5, "terrain": "Forest", "site": null },
-      { "position": 6, "terrain": "Forest", "site": "MagicalGlade" }
+      { "position": "C", "terrain": "Water", "site": null },
+      { "position": "NW", "terrain": "Forest", "site": null },
+      { "position": "NE", "terrain": "Plains", "site": "Monastery" },
+      { "position": "E", "terrain": "Plains", "site": "OrcMarauders" },
+      { "position": "SE", "terrain": "Hills", "site": "Mine_Blue" },
+      { "position": "SW", "terrain": "Forest", "site": null },
+      { "position": "W", "terrain": "Forest", "site": "MagicalGlade" }
     ]
   },
   {
@@ -97,13 +97,13 @@
     "image": "images/MK_map_tiles_01-6.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Hills", "site": "Mine_Red" },
-      { "position": 1, "terrain": "Mountain", "site": null },
-      { "position": 2, "terrain": "Forest", "site": null },
-      { "position": 3, "terrain": "Plains", "site": null },
-      { "position": 4, "terrain": "Forest", "site": "OrcMarauders" },
-      { "position": 5, "terrain": "Hills", "site": null },
-      { "position": 6, "terrain": "Hills", "site": "MonsterDen" }
+      { "position": "C", "terrain": "Hills", "site": "Mine_Red" },
+      { "position": "NW", "terrain": "Mountain", "site": null },
+      { "position": "NE", "terrain": "Forest", "site": null },
+      { "position": "E", "terrain": "Plains", "site": null },
+      { "position": "SE", "terrain": "Forest", "site": "OrcMarauders" },
+      { "position": "SW", "terrain": "Hills", "site": null },
+      { "position": "W", "terrain": "Hills", "site": "MonsterDen" }
     ]
   },
   {
@@ -112,13 +112,13 @@
     "image": "images/MK_map_tiles_01-7.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Swamp", "site": null },
-      { "position": 1, "terrain": "Water", "site": null },
-      { "position": 2, "terrain": "Forest", "site": "OrcMarauders" },
-      { "position": 3, "terrain": "Forest", "site": "MagicalGlade" },
-      { "position": 4, "terrain": "Plains", "site": "Dungeon" },
-      { "position": 5, "terrain": "Plains", "site": null },
-      { "position": 6, "terrain": "Plains", "site": "Monastery" }
+      { "position": "C", "terrain": "Swamp", "site": null },
+      { "position": "NW", "terrain": "Water", "site": null },
+      { "position": "NE", "terrain": "Forest", "site": "OrcMarauders" },
+      { "position": "E", "terrain": "Forest", "site": "MagicalGlade" },
+      { "position": "SE", "terrain": "Plains", "site": "Dungeon" },
+      { "position": "SW", "terrain": "Plains", "site": null },
+      { "position": "W", "terrain": "Plains", "site": "Monastery" }
     ]
   },
   {
@@ -127,13 +127,13 @@
     "image": "images/MK_map_tiles_01-8.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Swamp", "site": "OrcMarauders" },
-      { "position": 1, "terrain": "Forest", "site": "MagicalGlade" },
-      { "position": 2, "terrain": "Forest", "site": "AncientRuins" },
-      { "position": 3, "terrain": "Plains", "site": null },
-      { "position": 4, "terrain": "Swamp", "site": "Village" },
-      { "position": 5, "terrain": "Swamp", "site": null },
-      { "position": 6, "terrain": "Forest", "site": null }
+      { "position": "C", "terrain": "Swamp", "site": "OrcMarauders" },
+      { "position": "NW", "terrain": "Forest", "site": "MagicalGlade" },
+      { "position": "NE", "terrain": "Forest", "site": "AncientRuins" },
+      { "position": "E", "terrain": "Plains", "site": null },
+      { "position": "SE", "terrain": "Swamp", "site": "Village" },
+      { "position": "SW", "terrain": "Swamp", "site": null },
+      { "position": "W", "terrain": "Forest", "site": null }
     ]
   },
   {
@@ -142,13 +142,13 @@
     "image": "images/MK_map_tiles_01-9.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Mountain", "site": null },
-      { "position": 1, "terrain": "Wasteland", "site": "Dungeon" },
-      { "position": 2, "terrain": "Mountain", "site": null },
-      { "position": 3, "terrain": "Wasteland", "site": "Keep" },
-      { "position": 4, "terrain": "Plains", "site": null },
-      { "position": 5, "terrain": "Wasteland", "site": "MageTower" },
-      { "position": 6, "terrain": "Plains", "site": null }
+      { "position": "C", "terrain": "Mountain", "site": null },
+      { "position": "NW", "terrain": "Wasteland", "site": "Dungeon" },
+      { "position": "NE", "terrain": "Mountain", "site": null },
+      { "position": "E", "terrain": "Wasteland", "site": "Keep" },
+      { "position": "SE", "terrain": "Plains", "site": null },
+      { "position": "SW", "terrain": "Wasteland", "site": "MageTower" },
+      { "position": "W", "terrain": "Plains", "site": null }
     ]
   },
   {
@@ -157,13 +157,13 @@
     "image": "images/MK_map_tiles_01-10.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Mountain", "site": null },
-      { "position": 1, "terrain": "Hills", "site": "MonsterDen" },
-      { "position": 2, "terrain": "Forest", "site": null },
-      { "position": 3, "terrain": "Plains", "site": null },
-      { "position": 4, "terrain": "Hills", "site": "AncientRuins" },
-      { "position": 5, "terrain": "Hills", "site": "Keep" },
-      { "position": 6, "terrain": "Hills", "site": null }
+      { "position": "C", "terrain": "Mountain", "site": null },
+      { "position": "NW", "terrain": "Hills", "site": "MonsterDen" },
+      { "position": "NE", "terrain": "Forest", "site": null },
+      { "position": "E", "terrain": "Plains", "site": null },
+      { "position": "SE", "terrain": "Hills", "site": "AncientRuins" },
+      { "position": "SW", "terrain": "Hills", "site": "Keep" },
+      { "position": "W", "terrain": "Hills", "site": null }
     ]
   },
   {
@@ -172,13 +172,13 @@
     "image": "images/MK_map_tiles_01-11.png",
     "back_image": "images/MK_map_tiles_01-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Plains", "site": "MageTower" },
-      { "position": 1, "terrain": "Hills", "site": null },
-      { "position": 2, "terrain": "Water", "site": null },
-      { "position": 3, "terrain": "Water", "site": null },
-      { "position": 4, "terrain": "Hills", "site": "OrcMarauders" },
-      { "position": 5, "terrain": "Water", "site": null },
-      { "position": 6, "terrain": "Plains", "site": "AncientRuins" }
+      { "position": "C", "terrain": "Plains", "site": "MageTower" },
+      { "position": "NW", "terrain": "Hills", "site": null },
+      { "position": "NE", "terrain": "Water", "site": null },
+      { "position": "E", "terrain": "Water", "site": null },
+      { "position": "SE", "terrain": "Hills", "site": "OrcMarauders" },
+      { "position": "SW", "terrain": "Water", "site": null },
+      { "position": "W", "terrain": "Plains", "site": "AncientRuins" }
     ]
   },
   {
@@ -187,13 +187,13 @@
     "image": "images/MK_map_tiles_02-1.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Desert", "site": "Monastery" },
-      { "position": 1, "terrain": "Mountain", "site": null },
-      { "position": 2, "terrain": "Desert", "site": "Tomb" },
-      { "position": 3, "terrain": "Desert", "site": null },
-      { "position": 4, "terrain": "Desert", "site": null },
-      { "position": 5, "terrain": "Hills", "site": null },
-      { "position": 6, "terrain": "Hills", "site": "SpawningGrounds" }
+      { "position": "C", "terrain": "Desert", "site": "Monastery" },
+      { "position": "NW", "terrain": "Mountain", "site": null },
+      { "position": "NE", "terrain": "Desert", "site": "Tomb" },
+      { "position": "E", "terrain": "Desert", "site": null },
+      { "position": "SE", "terrain": "Desert", "site": null },
+      { "position": "SW", "terrain": "Hills", "site": null },
+      { "position": "W", "terrain": "Hills", "site": "SpawningGrounds" }
     ]
   },
   {
@@ -202,13 +202,13 @@
     "image": "images/MK_map_tiles_02-2.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Water", "site": null },
-      { "position": 1, "terrain": "Water", "site": null },
-      { "position": 2, "terrain": "Swamp", "site": "AncientRuins" },
-      { "position": 3, "terrain": "Hills", "site": "Mine_Green" },
-      { "position": 4, "terrain": "Swamp", "site": "Draconum" },
-      { "position": 5, "terrain": "Swamp", "site": "MageTower" },
-      { "position": 6, "terrain": "Forest", "site": null }
+      { "position": "C", "terrain": "Water", "site": null },
+      { "position": "NW", "terrain": "Water", "site": null },
+      { "position": "NE", "terrain": "Swamp", "site": "AncientRuins" },
+      { "position": "E", "terrain": "Hills", "site": "Mine_Green" },
+      { "position": "SE", "terrain": "Swamp", "site": "Draconum" },
+      { "position": "SW", "terrain": "Swamp", "site": "MageTower" },
+      { "position": "W", "terrain": "Forest", "site": null }
     ]
   },
   {
@@ -217,13 +217,13 @@
     "image": "images/MK_map_tiles_02-3.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Wasteland", "site": null },
-      { "position": 1, "terrain": "Mountain", "site": null },
-      { "position": 2, "terrain": "Wasteland", "site": "AncientRuins" },
-      { "position": 3, "terrain": "Hills", "site": "MageTower" },
-      { "position": 4, "terrain": "Wasteland", "site": null },
-      { "position": 5, "terrain": "Hills", "site": "Mine_White" },
-      { "position": 6, "terrain": "Wasteland", "site": "Tomb" }
+      { "position": "C", "terrain": "Wasteland", "site": null },
+      { "position": "NW", "terrain": "Mountain", "site": null },
+      { "position": "NE", "terrain": "Wasteland", "site": "AncientRuins" },
+      { "position": "E", "terrain": "Hills", "site": "MageTower" },
+      { "position": "SE", "terrain": "Wasteland", "site": null },
+      { "position": "SW", "terrain": "Hills", "site": "Mine_White" },
+      { "position": "W", "terrain": "Wasteland", "site": "Tomb" }
     ]
   },
   {
@@ -232,13 +232,13 @@
     "image": "images/MK_map_tiles_02-4.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Mountain", "site": "Draconum" },
-      { "position": 1, "terrain": "Hills", "site": "Mine_Blue" },
-      { "position": 2, "terrain": "Hills", "site": null },
-      { "position": 3, "terrain": "Wasteland", "site": "Keep" },
-      { "position": 4, "terrain": "Wasteland", "site": null },
-      { "position": 5, "terrain": "Wasteland", "site": "AncientRuins" },
-      { "position": 6, "terrain": "Wasteland", "site": null }
+      { "position": "C", "terrain": "Mountain", "site": "Draconum" },
+      { "position": "NW", "terrain": "Hills", "site": "Mine_Blue" },
+      { "position": "NE", "terrain": "Hills", "site": null },
+      { "position": "E", "terrain": "Wasteland", "site": "Keep" },
+      { "position": "SE", "terrain": "Wasteland", "site": null },
+      { "position": "SW", "terrain": "Wasteland", "site": "AncientRuins" },
+      { "position": "W", "terrain": "Wasteland", "site": null }
     ]
   },
   {
@@ -247,13 +247,13 @@
     "image": "images/MK_map_tiles_02-5.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Wasteland", "site": "City_Green" },
-      { "position": 1, "terrain": "Forest", "site": "MagicalGlade" },
-      { "position": 2, "terrain": "Wasteland", "site": "Village" },
-      { "position": 3, "terrain": "Wasteland", "site": "OrcMarauders" },
-      { "position": 4, "terrain": "Wasteland", "site": null },
-      { "position": 5, "terrain": "Forest", "site": "OrcMarauders" },
-      { "position": 6, "terrain": "Water", "site": null }
+      { "position": "C", "terrain": "Wasteland", "site": "City_Green" },
+      { "position": "NW", "terrain": "Forest", "site": "MagicalGlade" },
+      { "position": "NE", "terrain": "Wasteland", "site": "Village" },
+      { "position": "E", "terrain": "Wasteland", "site": "OrcMarauders" },
+      { "position": "SE", "terrain": "Wasteland", "site": null },
+      { "position": "SW", "terrain": "Forest", "site": "OrcMarauders" },
+      { "position": "W", "terrain": "Water", "site": null }
     ]
   },
   {
@@ -262,13 +262,13 @@
     "image": "images/MK_map_tiles_02-6.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Plains", "site": "City_Blue" },
-      { "position": 1, "terrain": "Forest", "site": null },
-      { "position": 2, "terrain": "Plains", "site": "Monastery" },
-      { "position": 3, "terrain": "Water", "site": null },
-      { "position": 4, "terrain": "Water", "site": null },
-      { "position": 5, "terrain": "Hills", "site": null },
-      { "position": 6, "terrain": "Mountain", "site": "Draconum" }
+      { "position": "C", "terrain": "Plains", "site": "City_Blue" },
+      { "position": "NW", "terrain": "Forest", "site": null },
+      { "position": "NE", "terrain": "Plains", "site": "Monastery" },
+      { "position": "E", "terrain": "Water", "site": null },
+      { "position": "SE", "terrain": "Water", "site": null },
+      { "position": "SW", "terrain": "Hills", "site": null },
+      { "position": "W", "terrain": "Mountain", "site": "Draconum" }
     ]
   },
   {
@@ -277,13 +277,13 @@
     "image": "images/MK_map_tiles_02-7.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Plains", "site": "City_White" },
-      { "position": 1, "terrain": "Wasteland", "site": "SpawningGrounds" },
-      { "position": 2, "terrain": "Plains", "site": null },
-      { "position": 3, "terrain": "Forest", "site": null },
-      { "position": 4, "terrain": "Water", "site": "Draconum" },
-      { "position": 5, "terrain": "Water", "site": null },
-      { "position": 6, "terrain": "Wasteland", "site": "Keep" }
+      { "position": "C", "terrain": "Plains", "site": "City_White" },
+      { "position": "NW", "terrain": "Wasteland", "site": "SpawningGrounds" },
+      { "position": "NE", "terrain": "Plains", "site": null },
+      { "position": "E", "terrain": "Forest", "site": null },
+      { "position": "SE", "terrain": "Water", "site": "Draconum" },
+      { "position": "SW", "terrain": "Water", "site": null },
+      { "position": "W", "terrain": "Wasteland", "site": "Keep" }
     ]
   },
   {
@@ -292,13 +292,13 @@
     "image": "images/MK_map_tiles_02-8.png",
     "back_image": "images/MK_map_tiles_02-back.png",
     "hexes": [
-      { "position": 0, "terrain": "Desert", "site": "City_Red" },
-      { "position": 1, "terrain": "Desert", "site": "AncientRuins" },
-      { "position": 2, "terrain": "Hills", "site": "Mine_Red" },
-      { "position": 3, "terrain": "Desert", "site": null },
-      { "position": 4, "terrain": "Desert", "site": "Draconum" },
-      { "position": 5, "terrain": "Wasteland", "site": null },
-      { "position": 6, "terrain": "Wasteland", "site": "Draconum" }
+      { "position": "C", "terrain": "Desert", "site": "City_Red" },
+      { "position": "NW", "terrain": "Desert", "site": "AncientRuins" },
+      { "position": "NE", "terrain": "Hills", "site": "Mine_Red" },
+      { "position": "E", "terrain": "Desert", "site": null },
+      { "position": "SE", "terrain": "Desert", "site": "Draconum" },
+      { "position": "SW", "terrain": "Wasteland", "site": null },
+      { "position": "W", "terrain": "Wasteland", "site": "Draconum" }
     ]
   }
 ]

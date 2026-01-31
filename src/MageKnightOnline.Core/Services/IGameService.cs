@@ -8,7 +8,10 @@ public interface IGameService
     Task<IReadOnlyList<Game>> GetAvailableGamesAsync();
     Task<IReadOnlyList<Game>> GetMyGamesAsync(Guid userId);
     Task<Game?> GetGameAsync(Guid gameId);
-    
+
+    /// <summary>Removes all games that are WaitingForPlayers or InProgress. Returns number of games removed.</summary>
+    Task<int> ClearOngoingGamesAsync();
+
     Task<GameResult> CreateGameAsync(Guid userId, CreateGameRequest request);
     Task<GameResult> JoinGameAsync(Guid gameId, Guid userId);
     Task<GameResult> LeaveGameAsync(Guid gameId, Guid userId);

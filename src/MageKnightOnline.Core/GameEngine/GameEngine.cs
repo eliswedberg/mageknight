@@ -538,23 +538,13 @@ public class GameEngine : IGameEngine
         // So we need to rotate the tile so that the edge hex in the opposite direction matches edgeHex
         var oppositeDirectionIndex = GetOppositeDirection(directionIndex);
         
-        // Map HexDirections index to tile edge position
-        // HexDirections: [East(0), Northeast(1), Northwest(2), West(3), Southwest(4), Southeast(5)]
-        // Tile positions: 1=East, 2=NW, 3=NE, 4=West, 5=SE, 6=SW
-        // 
-        // Mapping: direction index -> tile edge position
-        var directionToTileEdge = new Dictionary<int, int>
+        // Map HexDirections index to tile edge position (compass: map_tiles.json.desc)
+        // Direction index -> position string C, NE, NW, E, SE, SW, W
+        var directionToTileEdge = new Dictionary<int, string>
         {
-            { 0, 1 }, // East → Position 1
-            { 1, 3 }, // Northeast → Position 3
-            { 2, 2 }, // Northwest → Position 2
-            { 3, 4 }, // West → Position 4
-            { 4, 6 }, // Southwest → Position 6
-            { 5, 5 }  // Southeast → Position 5
+            { 0, "E" }, { 1, "NE" }, { 2, "NW" }, { 3, "W" }, { 4, "SW" }, { 5, "SE" }
         };
-        
-        // Find which tile edge should connect to edgeHex (opposite direction from tile center)
-        var connectingEdgePosition = directionToTileEdge.GetValueOrDefault(oppositeDirectionIndex, 1);
+        var connectingEdgePosition = directionToTileEdge.GetValueOrDefault(oppositeDirectionIndex, "E");
 
         // Check if tile center position is already occupied
         var tileCenterKey = PosKey(tileCenter);
@@ -581,7 +571,7 @@ public class GameEngine : IGameEngine
         // Generate hex data for the new tile
         // We need to rotate the tile so that the correct edge hex connects to edgeHex
         // The edge hex at connectingEdgePosition should be at oppositeDirectionIndex from center
-        var rotationOffset = CalculateRotationOffset(connectingEdgePosition, oppositeDirectionIndex);
+        var rotationOffset = CalculateRotationOffsetFromPosition(connectingEdgePosition, oppositeDirectionIndex);
         var tileHexes = GenerateTileHexesWithRotation(tileCenter, tileDef, rotationOffset);
         
         // Track which hexes we're adding for logging
@@ -631,18 +621,27 @@ public class GameEngine : IGameEngine
         return (directionIndex + 3) % 6; // Opposite direction in hex grid
     }
 
-    private int CalculateRotationOffset(int tileEdgePosition, int targetDirectionIndex)
+    /// <summary>Position string (C, NE, NW, E, SE, SW, W) to direction index. C has no direction (-1).</summary>
+    private static int GetDirectionIndexFromPosition(string position)
     {
-        // Calculate how much to rotate the tile so that tileEdgePosition aligns with targetDirectionIndex
-        // 
-        // Tile positions: 1=East, 2=NW, 3=NE, 4=West, 5=SE, 6=SW
-        // Direction indices: 0=East, 1=NE, 2=NW, 3=West, 4=SW, 5=SE
-        //
-        // Convert tile position to direction index:
-        var positionToDirectionIndex = new[] { -1, 0, 2, 1, 3, 5, 4 };
-        var baseDirectionIndex = positionToDirectionIndex[tileEdgePosition];
-        
-        // Calculate rotation needed: how many steps to rotate from base direction to target direction
+        return position?.ToUpperInvariant() switch
+        {
+            "C" => -1,
+            "E" => 0,
+            "NE" => 1,
+            "NW" => 2,
+            "W" => 3,
+            "SW" => 4,
+            "SE" => 5,
+            _ => -1
+        };
+    }
+
+    private int CalculateRotationOffsetFromPosition(string tileEdgePosition, int targetDirectionIndex)
+    {
+        // Rotate tile so that the hex at tileEdgePosition (e.g. "E", "NW") ends up at targetDirectionIndex.
+        var baseDirectionIndex = GetDirectionIndexFromPosition(tileEdgePosition);
+        if (baseDirectionIndex < 0) return 0;
         int offset = targetDirectionIndex - baseDirectionIndex;
         if (offset < 0) offset += 6;
         return offset % 6;
@@ -651,65 +650,22 @@ public class GameEngine : IGameEngine
     private List<(HexPosition Position, HexState State)> GenerateTileHexesWithRotation(HexPosition center, MapTileDefinition tileDef, int rotationOffset)
     {
         var hexes = new List<(HexPosition, HexState)>();
-        
-        // Tile hex positions according to map_tiles.json.desc
-        // Position 0: Center
-        // Positions 1-6: Edge hexes in clockwise order starting from East
-        //
-        // Layout visualization:
-        //        (2)   (3)
-        //     (1)  (0)  (4)
-        //        (6)   (5)
-        
-        // Position mapping: maps tile definition position (0-6) to base direction
-        // Position 1 = East, Position 2 = NW, Position 3 = NE, Position 4 = West, Position 5 = SE, Position 6 = SW
-        var positionToBaseDirection = new[]
-        {
-            new HexPosition { Q = 0, R = 0 },    // 0: Center
-            new HexPosition { Q = 1, R = 0 },    // 1: East
-            new HexPosition { Q = 0, R = -1 },   // 2: NW
-            new HexPosition { Q = 1, R = -1 },   // 3: NE
-            new HexPosition { Q = -1, R = 0 },   // 4: West
-            new HexPosition { Q = 0, R = 1 },    // 5: SE
-            new HexPosition { Q = -1, R = 1 }    // 6: SW
-        };
-        
-        // HexDirections are in order: East(0), NE(1), NW(2), West(3), SW(4), SE(5)
-        // We need to map position indices to HexDirections for rotation:
-        // Position 1 (East) -> Direction 0
-        // Position 3 (NE) -> Direction 1
-        // Position 2 (NW) -> Direction 2
-        // Position 4 (West) -> Direction 3
-        // Position 6 (SW) -> Direction 4
-        // Position 5 (SE) -> Direction 5
-        var positionToDirectionIndex = new[] { -1, 0, 2, 1, 3, 5, 4 }; // position -> direction index
-        var directionIndexToPosition = new[] { 1, 3, 2, 4, 6, 5 }; // direction index -> position
+        // Positions per map_tiles.json.desc: C (center), NE, NW, E, SE, SW, W
 
         foreach (var hexDef in tileDef.Hexes)
         {
+            var dirIndex = GetDirectionIndexFromPosition(hexDef.Position ?? "C");
             HexPosition hexPos;
-            
-            if (hexDef.Position == 0)
+            if (dirIndex < 0)
             {
-                // Center hex - no rotation needed
                 hexPos = center;
             }
             else
             {
-                // Get the direction index for this position
-                var dirIndex = positionToDirectionIndex[hexDef.Position];
-                
-                // Rotate the direction
                 var rotatedDirIndex = (dirIndex + rotationOffset) % 6;
-                
-                // Get the hex position using the rotated direction
-                var direction = HexDirections[rotatedDirIndex];
-                hexPos = center + direction;
+                hexPos = center + HexDirections[rotatedDirIndex];
             }
-            
             var key = PosKey(hexPos);
-            
-            // Don't overwrite existing hexes
             if (!_state.Map.HexData.ContainsKey(key) || !_state.Map.RevealedHexes.Contains(key))
             {
                 hexes.Add((hexPos, new HexState
@@ -720,7 +676,6 @@ public class GameEngine : IGameEngine
                 }));
             }
         }
-
         return hexes;
     }
 
@@ -774,7 +729,7 @@ public class GameEngine : IGameEngine
             // Use actual tile definition
             foreach (var hexDef in tileDef.Hexes)
             {
-                var hexPos = GetHexPositionFromTileIndex(center, hexDef.Position);
+                var hexPos = GetHexPositionFromTilePosition(center, hexDef.Position ?? "C");
                 var key = PosKey(hexPos);
                 
                 // Don't overwrite existing hexes
@@ -828,34 +783,21 @@ public class GameEngine : IGameEngine
         return hexes;
     }
 
-    private HexPosition GetHexPositionFromTileIndex(HexPosition center, int index)
+    /// <summary>Convert tile position string (C, NE, NW, E, SE, SW, W) to hex coordinates relative to center.</summary>
+    private static HexPosition GetHexPositionFromTilePosition(HexPosition center, string position)
     {
-        // Convert tile hex index (0-6) to actual hex position
-        // According to map_tiles.json.desc (rotated one step counter-clockwise to match images):
-        // 0: Center
-        // 1: Top (Kl 12) → maps to NW direction
-        // 2: Top-Right (Kl 2) → maps to N direction
-        // 3: Bottom-Right (Kl 4) → maps to NE direction
-        // 4: Bottom (Kl 6) → maps to E direction
-        // 5: Bottom-Left (Kl 8) → maps to S direction
-        // 6: Top-Left (Kl 10) → maps to SW direction
-        //
-        // Layout visualization (after rotation):
-        //        (2)   (3)
-        //     (1)  (0)  (4)
-        //        (6)   (5)
-        
-        return index switch
+        var offset = (position?.ToUpperInvariant()) switch
         {
-            0 => center,                                        // Center
-            1 => center + new HexPosition { Q = -1, R = 0 },    // Top → West/NW
-            2 => center + new HexPosition { Q = 0, R = -1 },    // Top-Right → North
-            3 => center + new HexPosition { Q = 1, R = -1 },    // Bottom-Right → NE
-            4 => center + new HexPosition { Q = 1, R = 0 },     // Bottom → East
-            5 => center + new HexPosition { Q = 0, R = 1 },     // Bottom-Left → South
-            6 => center + new HexPosition { Q = -1, R = 1 },    // Top-Left → SW
-            _ => center
+            "C" => new HexPosition { Q = 0, R = 0 },
+            "E" => new HexPosition { Q = 1, R = 0 },
+            "NE" => new HexPosition { Q = 1, R = -1 },
+            "NW" => new HexPosition { Q = 0, R = -1 },
+            "W" => new HexPosition { Q = -1, R = 0 },
+            "SW" => new HexPosition { Q = -1, R = 1 },
+            "SE" => new HexPosition { Q = 0, R = 1 },
+            _ => new HexPosition { Q = 0, R = 0 }
         };
+        return center + offset;
     }
 
     private List<string> GenerateEnemiesForSite(string? siteType, bool isCity = false)

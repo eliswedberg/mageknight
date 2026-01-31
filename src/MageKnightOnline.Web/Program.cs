@@ -103,14 +103,29 @@ app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
+// Rensa pågående spel i databasen vid start om miljövariabeln är satt
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CLEAR_ONGOING_GAMES")))
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
+        var removed = await gameService.ClearOngoingGamesAsync();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Rensade {Count} pågående spel från databasen.", removed);
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Kunde inte rensa pågående spel.");
+    }
+}
+
 app.MapStaticAssets();
+app.MapHub<GameHub>("/gamehub");
+app.MapHealthChecks("/health");
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-// Map SignalR hub
-app.MapHub<GameHub>("/gamehub");
-
-// Map health check endpoint
-app.MapHealthChecks("/health");
 
 app.Run();

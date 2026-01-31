@@ -50,6 +50,17 @@ public class GameService : IGameService
             .FirstOrDefaultAsync(g => g.Id == gameId);
     }
 
+    public async Task<int> ClearOngoingGamesAsync()
+    {
+        var ongoing = await _dbContext.Set<Game>()
+            .Where(g => g.Status == GameStatus.WaitingForPlayers || g.Status == GameStatus.InProgress)
+            .ToListAsync();
+        var count = ongoing.Count;
+        _dbContext.Set<Game>().RemoveRange(ongoing);
+        await _dbContext.SaveChangesAsync();
+        return count;
+    }
+
     public async Task<GameResult> CreateGameAsync(Guid userId, CreateGameRequest request)
     {
         // Validate scenario

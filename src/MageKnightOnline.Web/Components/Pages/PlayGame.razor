@@ -61,39 +61,36 @@ else if (_gameState.Phase == GamePhase.TacticsSelection)
 else
 {
     <div class="game-board-container">
-        <header class="game-header">
-            <div class="game-title">
-                <h1>@_game.Name</h1>
-                <span class="scenario-name">@_scenario?.Name</span>
-            </div>
-            <div class="status-badges">
-                <span class="status-badge round">📅 Round @_gameState.Round/@(_scenario?.Rounds ?? 3)</span>
-                <span class="status-badge @(_gameState.IsDay ? "day" : "night")">
-                    @(_gameState.IsDay ? "☀️ Day" : "🌙 Night")
-                </span>
-                <span class="connected-players" title="@string.Join(", ", _connectedPlayers)">
-                    👥 @_connectedPlayers.Count
-                </span>
-            </div>
-            <div class="game-controls">
-                <button class="btn btn-secondary btn-sm" @onclick="ToggleChat">
-                    💬 @(_chatMessages.Count > 0 ? $"({_chatMessages.Count})" : "")
-                </button>
-                <button class="btn btn-secondary btn-sm" @onclick="ToggleLog">
-                    📜
-                </button>
-                @if (_game.CreatedByUserId == AuthService.CurrentUser?.Id)
-                {
-                    <button class="btn btn-danger btn-sm" @onclick="EndGame" title="End this game">
-                        🛑
-                    </button>
-                }
-            </div>
-        </header>
-
         <div class="game-layout">
-            <!-- Left sidebar - Player info -->
+            <!-- Left sidebar - Game info box + Player info -->
             <aside class="player-sidebar">
+                <div class="card game-info-box">
+                    <h3 class="game-info-title">@_game.Name</h3>
+                    <span class="game-info-scenario">@_scenario?.Name</span>
+                    <div class="game-info-badges">
+                        <span class="status-badge round">📅 @_gameState.Round/@(_scenario?.Rounds ?? 3)</span>
+                        <span class="status-badge @(_gameState.IsDay ? "day" : "night")">
+                            @(_gameState.IsDay ? "☀️ Day" : "🌙 Night")
+                        </span>
+                        <span class="connected-players" title="@string.Join(", ", _connectedPlayers)">
+                            👥 @_connectedPlayers.Count
+                        </span>
+                    </div>
+                    <div class="game-info-controls">
+                        <button class="btn btn-secondary btn-sm" @onclick="ToggleChat">
+                            💬 @(_chatMessages.Count > 0 ? $"({_chatMessages.Count})" : "")
+                        </button>
+                        <button class="btn btn-secondary btn-sm" @onclick="ToggleLog">
+                            📜
+                        </button>
+                        @if (_game.CreatedByUserId == AuthService.CurrentUser?.Id)
+                        {
+                            <button class="btn btn-danger btn-sm" @onclick="EndGame" title="End this game">
+                                🛑
+                            </button>
+                        }
+                    </div>
+                </div>
                 <div class="card">
                     <h3>Players</h3>
                     @foreach (var (playerState, index) in _gameState.Players.Select((p, i) => (p, i)))
@@ -188,7 +185,7 @@ else
                 }
             </aside>
 
-            <!-- Main game board area -->
+            <!-- Main game board area: map + hand below -->
             <main class="game-board">
                 @if (_gameState.Combat != null)
                 {
@@ -210,16 +207,28 @@ else
                 }
                 else
                 {
-                    <TileMap Width="900" 
-                             Height="700" 
-                             Scale="0.5"
-                             Tiles="_tiles"
-                             Hexes="_tileHexes"
-                             SelectedHex="_selectedTileHex"
-                             HighlightedHexes="_highlightedTileHexes"
-                             ShowCoordinates="@_showCoordinates"
-                             OnHexClicked="OnTileHexClicked"
-                             OnHexHovered="OnTileHexHovered" />
+                    <div class="game-board-map-area">
+                        <TileMap Width="900" 
+                                 Height="500" 
+                                 Scale="0.5"
+                                 Tiles="_tiles"
+                                 Hexes="_tileHexes"
+                                 SelectedHex="_selectedTileHex"
+                                 HighlightedHexes="_highlightedTileHexes"
+                                 ShowCoordinates="@_showCoordinates"
+                                 OnHexClicked="OnTileHexClicked"
+                                 OnHexHovered="OnTileHexHovered" />
+                    </div>
+                    <div class="game-board-hand-area">
+                        <CardHand Cards="@GetHandCards()"
+                                  SelectedCardIndex="_selectedCardIndex"
+                                  CanPlayPowered="@CanPlayPoweredForSelectedCard()"
+                                  CanPlayPoweredForCard="@CanPlayPoweredForCard"
+                                  OnCardSelected="SelectCard"
+                                  OnCardPlayed="PlayCard"
+                                  OnCardPlayedPowered="PlayCardPowered"
+                                  OnCardUsedSideways="UseSidewaysCard" />
+                    </div>
                     
                     <!-- Site Interaction Panel -->
                     <SiteInteractionPanel IsVisible="@_showSitePanel"
@@ -359,7 +368,8 @@ else
                                 @foreach (var unitId in _gameState.UnitOffers.RegularUnits)
                                 {
                                     var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unitId);
-                                    <div class="offer-item">
+                                    var unitToShow = unitDef;
+                                    <div class="offer-item offer-item-clickable" @onclick="() => ShowUnitDetail(unitToShow)" role="button" tabindex="0" @onkeydown="@(e => { if (e.Key == "Enter") ShowUnitDetail(unitToShow); })">
                                         <span class="offer-name">@(unitDef?.Name ?? unitId)</span>
                                         <span class="offer-badge regular">Regular</span>
                                     </div>
@@ -367,7 +377,8 @@ else
                                 @foreach (var unitId in _gameState.UnitOffers.EliteUnits)
                                 {
                                     var unitDef = _unitDefinitions.FirstOrDefault(u => u.Id == unitId);
-                                    <div class="offer-item">
+                                    var unitToShow = unitDef;
+                                    <div class="offer-item offer-item-clickable" @onclick="() => ShowUnitDetail(unitToShow)" role="button" tabindex="0" @onkeydown="@(e => { if (e.Key == "Enter") ShowUnitDetail(unitToShow); })">
                                         <span class="offer-name">@(unitDef?.Name ?? unitId)</span>
                                         <span class="offer-badge elite">Elite</span>
                                     </div>
@@ -389,7 +400,8 @@ else
                                 @foreach (var spellId in _gameState.SpellOffers.Spells)
                                 {
                                     var spellDef = _spellDefinitions.FirstOrDefault(s => s.Id == spellId);
-                                    <div class="offer-item">
+                                    var spellToShow = spellDef;
+                                    <div class="offer-item offer-item-clickable" @onclick="() => ShowSpellDetail(spellToShow)" role="button" tabindex="0" @onkeydown="@(e => { if (e.Key == "Enter") ShowSpellDetail(spellToShow); })">
                                         <span class="offer-name">@(spellDef?.Name ?? spellId)</span>
                                     </div>
                                 }
@@ -422,16 +434,6 @@ else
                         </div>
                     </div>
                 </div>
-
-                <!-- Card Hand at bottom of sidebar -->
-                <CardHand Cards="@GetHandCards()"
-                          SelectedCardIndex="_selectedCardIndex"
-                          CanPlayPowered="@CanPlayPoweredForSelectedCard()"
-                          CanPlayPoweredForCard="@CanPlayPoweredForCard"
-                          OnCardSelected="SelectCard"
-                          OnCardPlayed="PlayCard"
-                          OnCardPlayedPowered="PlayCardPowered"
-                          OnCardUsedSideways="UseSidewaysCard" />
             </aside>
         </div>
 
@@ -489,48 +491,103 @@ else
                 </div>
             </div>
         }
+
+        @if (_detailUnit != null || _detailSpell != null)
+        {
+            <div class="detail-overlay" @onclick="CloseDetailModal">
+                <div class="detail-modal card" @onclick:stopPropagation="true">
+                    <div class="detail-modal-header">
+                        <h3>@(_detailUnit?.Name ?? _detailSpell?.Name ?? "")</h3>
+                        <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseDetailModal" aria-label="Stäng">✕</button>
+                    </div>
+                    <div class="detail-modal-body">
+                        @if (_detailUnit != null)
+                        {
+                            var u = _detailUnit;
+                            var unitImg = GetDefinitionImageUrl(u.Image);
+                            <div class="detail-content">
+                                @if (!string.IsNullOrEmpty(unitImg))
+                                {
+                                    <img src="@unitImg" alt="@u.Name" class="detail-image" />
+                                }
+                                <div class="detail-info">
+                                    <p class="detail-meta"><span class="offer-badge @(u.IsElite ? "elite" : "regular")">@u.Rank</span> · Recruit cost: @u.RecruitCost · Armor: @u.Armor</p>
+                                    @if (u.Abilities?.Any() == true)
+                                    {
+                                        <p class="detail-label">Abilities:</p>
+                                        <ul class="detail-list">
+                                            @foreach (var a in u.Abilities)
+                                            {
+                                                <li>@a</li>
+                                            }
+                                        </ul>
+                                    }
+                                    @if (u.Resistances?.Any() == true)
+                                    {
+                                        <p class="detail-label">Resistances: @string.Join(", ", u.Resistances)</p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(u.Notes))
+                                    {
+                                        <p class="detail-notes">@u.Notes</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (_detailSpell != null)
+                        {
+                            var s = _detailSpell;
+                            var spellImg = GetDefinitionImageUrl(s.Image);
+                            <div class="detail-content">
+                                @if (!string.IsNullOrEmpty(spellImg))
+                                {
+                                    <img src="@spellImg" alt="@s.Name" class="detail-image" />
+                                }
+                                <div class="detail-info">
+                                    @if (!string.IsNullOrEmpty(s.Color))
+                                    {
+                                        <p class="detail-meta">Color: @s.Color</p>
+                                    }
+                                    @if (s.EffectsBasic?.Any() == true)
+                                    {
+                                        <p class="detail-label">Basic:</p>
+                                        <ul class="detail-list">
+                                            @foreach (var e in s.EffectsBasic)
+                                            {
+                                                <li>@(e.Description ?? $"{e.Type} {e.Value}")</li>
+                                            }
+                                        </ul>
+                                    }
+                                    @if (s.EffectsStrong?.Any() == true)
+                                    {
+                                        <p class="detail-label">Strong:</p>
+                                        <ul class="detail-list">
+                                            @foreach (var e in s.EffectsStrong)
+                                            {
+                                                <li>@(e.Description ?? $"{e.Type} {e.Value}")</li>
+                                            }
+                                        </ul>
+                                    }
+                                    @if (!string.IsNullOrEmpty(s.Note))
+                                    {
+                                        <p class="detail-notes">@s.Note</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 }
 
 <style>
     .game-board-container {
-        height: calc(100vh - 80px);
+        height: calc(100vh - 2rem);
         display: flex;
         flex-direction: column;
         margin: calc(-1 * var(--spacing-lg));
         padding: 0;
-    }
-
-    .game-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--spacing-md) var(--spacing-lg);
-        background: var(--color-bg-medium);
-        border-bottom: 1px solid var(--color-border);
-    }
-
-    .game-title h1 {
-        font-size: 1.25rem;
-        margin: 0;
-    }
-
-    .scenario-name {
-        font-size: 0.9rem;
-        color: var(--color-text-secondary);
-    }
-
-    .game-controls {
-        display: flex;
-        gap: var(--spacing-lg);
-        align-items: center;
-    }
-
-    .round-indicator,
-    .time-indicator {
-        font-family: 'Cinzel', serif;
-        font-size: 0.9rem;
-        color: var(--color-gold);
     }
 
     .game-layout {
@@ -540,7 +597,47 @@ else
         gap: var(--spacing-sm);
         padding: var(--spacing-sm);
         overflow: hidden;
-        min-height: 0; /* Important for flex children */
+        min-height: 0;
+    }
+
+    /* Game info box - left sidebar top (replaces header) */
+    .game-info-box {
+        padding: var(--spacing-sm) var(--spacing-md) !important;
+        flex-shrink: 0;
+    }
+
+    .game-info-title {
+        font-size: 0.95rem;
+        margin: 0 0 2px 0;
+        font-weight: 700;
+        color: var(--color-text-primary);
+    }
+
+    .game-info-scenario {
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        display: block;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .game-info-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .game-info-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .game-info-controls .btn {
+        padding: 2px 6px;
+        font-size: 0.7rem;
     }
 
     .player-sidebar,
@@ -571,12 +668,7 @@ else
     }
 
     .action-sidebar {
-        /* Ensure card hand is at the bottom */
         justify-content: flex-start;
-    }
-
-    .action-sidebar > :last-child {
-        margin-top: auto; /* Push card hand to bottom */
     }
 
     .player-sidebar .card,
@@ -690,16 +782,37 @@ else
         border: 1px solid var(--color-border);
         border-radius: var(--radius-lg);
         display: flex;
-        align-items: center;
-        justify-content: center;
+        flex-direction: column;
         overflow: hidden;
         min-height: 0;
         position: relative;
     }
 
-    .game-board > :first-child {
-        width: 100%;
-        height: 100%;
+    .game-board-map-area {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .game-board-map-area .tile-map-container {
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    .game-board-hand-area {
+        flex-shrink: 0;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-bg-dark);
+        padding: var(--spacing-xs);
+    }
+
+    /* When only one child (e.g. CombatPanel), let it fill */
+    .game-board > *:only-child {
+        flex: 1;
+        min-height: 0;
     }
 
     .action-buttons {
@@ -820,6 +933,95 @@ else
         justify-content: center;
         align-items: center;
         z-index: 1000;
+    }
+
+    .detail-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+    }
+
+    .detail-modal {
+        max-width: 480px;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-md);
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .detail-modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .detail-modal-body {
+        padding: var(--spacing-md);
+        overflow-y: auto;
+    }
+
+    .detail-content {
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: flex-start;
+    }
+
+    .detail-image {
+        width: 140px;
+        height: auto;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-border);
+        flex-shrink: 0;
+    }
+
+    .detail-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .detail-meta {
+        margin: 0 0 var(--spacing-sm);
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+    }
+
+    .detail-label {
+        margin: var(--spacing-xs) 0 2px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--color-gold);
+    }
+
+    .detail-list {
+        margin: 0;
+        padding-left: 1.2rem;
+        font-size: 0.85rem;
+        color: var(--color-text-primary);
+    }
+
+    .detail-list li {
+        margin-bottom: 2px;
+    }
+
+    .detail-notes {
+        margin: var(--spacing-sm) 0 0;
+        font-size: 0.8rem;
+        color: var(--color-text-secondary);
+        font-style: italic;
     }
 
     .game-log {
@@ -1152,6 +1354,15 @@ else
         border-color: var(--color-gold);
     }
 
+    .offer-item-clickable {
+        cursor: pointer;
+    }
+
+    .offer-item-clickable:hover {
+        background: var(--color-bg-medium);
+        border-color: var(--color-gold);
+    }
+
     .offer-name {
         flex: 1;
         color: var(--color-text-primary);
@@ -1393,6 +1604,8 @@ else
     // UI state
     private bool _showLog = false;
     private bool _showCoordinates = true;
+    private UnitDefinition? _detailUnit;
+    private CardDefinition? _detailSpell;
     private bool _canUndo = false;
     private List<HexGrid.HexData> _hexes = new();
     private HexGrid.HexData? _selectedHex;
@@ -2139,6 +2352,31 @@ else
 
     private void ToggleLog() => _showLog = !_showLog;
     private void ToggleChat() => _showChat = !_showChat;
+
+    private void ShowUnitDetail(UnitDefinition? unit)
+    {
+        _detailUnit = unit;
+        _detailSpell = null;
+    }
+
+    private void ShowSpellDetail(CardDefinition? spell)
+    {
+        _detailSpell = spell;
+        _detailUnit = null;
+    }
+
+    private void CloseDetailModal()
+    {
+        _detailUnit = null;
+        _detailSpell = null;
+    }
+
+    private static string? GetDefinitionImageUrl(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath)) return null;
+        var path = imagePath.TrimStart('/');
+        return string.IsNullOrEmpty(path) ? null : "/" + path;
+    }
 
     private async Task EndGame()
     {

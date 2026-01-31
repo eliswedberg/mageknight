@@ -259,22 +259,17 @@ public class GameStateInitializer
         var startingTileDef = (await _definitions.GetMapTilesAsync())
             .FirstOrDefault(t => t.Id == "tile_01_start" || t.IsStartingTile);
 
-        // Position mapping: tile position index -> axial coordinates (Q, R)
-        // Based on tile images orientation:
-        // Position 1 (Kl 12/Top) maps to East (1,0) in game coordinates
-        // Position 4 (Kl 6/Bottom) maps to West (-1,0) in game coordinates
-        //        (2)   (3)
-        //     (4)  (0)  (1)
-        //        (5)   (6)
-        var positionToCoord = new (int q, int r)[]
+        // Position mapping: compass (map_tiles.json.desc) -> axial coordinates (Q, R)
+        // C=center, NE, NW, E, SE, SW, W
+        var positionToCoord = new Dictionary<string, (int q, int r)>(StringComparer.OrdinalIgnoreCase)
         {
-            (0, 0),    // Position 0: Center
-            (1, 0),    // Position 1: Top (Kl 12) → East
-            (0, -1),   // Position 2: Top-Right (Kl 2) → NW
-            (1, -1),   // Position 3: Bottom-Right (Kl 4) → NE
-            (-1, 0),   // Position 4: Bottom (Kl 6) → West
-            (0, 1),    // Position 5: Bottom-Left (Kl 8) → SE
-            (-1, 1)    // Position 6: Top-Left (Kl 10) → SW
+            ["C"] = (0, 0),
+            ["NE"] = (1, -1),
+            ["NW"] = (0, -1),
+            ["E"] = (1, 0),
+            ["SE"] = (0, 1),
+            ["SW"] = (-1, 1),
+            ["W"] = (-1, 0)
         };
 
         // Add starting tile
@@ -292,7 +287,9 @@ public class GameStateInitializer
         {
             foreach (var hexDef in startingTileDef.Hexes)
             {
-                var (q, r) = positionToCoord[hexDef.Position];
+                var pos = hexDef.Position ?? "C";
+                if (!positionToCoord.TryGetValue(pos, out var coord)) continue;
+                var (q, r) = coord;
                 var key = $"{q},{r}";
                 map.RevealedHexes.Add(key);
                 map.HexData[key] = new HexState
@@ -306,16 +303,16 @@ public class GameStateInitializer
         }
         else
         {
-            // Fallback: hardcoded values matching tile_01_start in JSON
+            // Fallback: hardcoded values matching tile_01_start (C, NW, NE, E, SE, SW, W)
             var startingTileHexes = new (int q, int r, string terrain, string? site)[]
             {
-                (0, 0, "Plains", "Portal"),      // Position 0: Center - Portal
-                (-1, 0, "Plains", null),         // Position 1: West - Plains
-                (0, -1, "Forest", null),         // Position 2: North - Forest
-                (1, -1, "Plains", null),         // Position 3: NE - Plains
-                (1, 0, "Water", null),           // Position 4: East - Water
-                (0, 1, "Water", null),           // Position 5: South - Water
-                (-1, 1, "Water", null),          // Position 6: SW - Water
+                (0, 0, "Plains", "Portal"),   // C - Portal
+                (0, -1, "Plains", null),      // NW
+                (1, -1, "Forest", null),      // NE
+                (1, 0, "Plains", null),       // E
+                (0, 1, "Water", null),        // SE
+                (-1, 1, "Water", null),       // SW
+                (-1, 0, "Water", null),       // W
             };
 
             foreach (var (q, r, terrain, site) in startingTileHexes)

@@ -2,7 +2,7 @@
 @using System.Globalization
 
 <div class="tile-map-container" style="width: @(Width)px; height: @(Height)px;">
-    <svg class="tile-map" viewBox="@ViewBox" preserveAspectRatio="xMidYMid meet">
+    <svg class="tile-map" viewBox="@ViewBox" width="@(ContentWidth)px" height="@(ContentHeight)px" preserveAspectRatio="xMinYMin meet">
         <defs>
             <!-- Clip path for hexagonal tiles -->
             <clipPath id="tileClip">
@@ -154,8 +154,7 @@
     }
 
     .tile-map {
-        width: 100%;
-        height: 100%;
+        display: block;
     }
 
     .map-tile {
@@ -234,7 +233,26 @@
     // For hex overlay polygons - use slightly smaller to account for hex borders in image
     private double HexOverlaySize => HexSize * 0.92;
 
-    private string ViewBox => $"{F(-Width/2)} {F(-Height/2)} {Width} {Height}";
+    // Content bounds for scrollable map (padding in px)
+    private const double ContentPadding = 80;
+    private (double minX, double minY, double maxX, double maxY) ContentBounds
+    {
+        get
+        {
+            var allCoords = Tiles.Select(t => TileToPixel(t.Q, t.R))
+                .Concat(Hexes.Select(h => HexToPixel(h.Q, h.R))).ToList();
+            if (allCoords.Count == 0)
+                return (-Width/2, -Height/2, Width/2, Height/2);
+            var minX = allCoords.Min(c => c.X) - ContentPadding;
+            var minY = allCoords.Min(c => c.Y) - ContentPadding;
+            var maxX = allCoords.Max(c => c.X) + ContentPadding;
+            var maxY = allCoords.Max(c => c.Y) + ContentPadding;
+            return (minX, minY, maxX, maxY);
+        }
+    }
+    private double ContentWidth => Math.Max(Width, ContentBounds.maxX - ContentBounds.minX);
+    private double ContentHeight => Math.Max(Height, ContentBounds.maxY - ContentBounds.minY);
+    private string ViewBox => $"{F(ContentBounds.minX)} {F(ContentBounds.minY)} {F(ContentWidth)} {F(ContentHeight)}";
     
     // Debug info
     private string DebugInfo => $"Tiles: {Tiles.Count}, Scale: {Scale}, HexSize: {HexSize:F0}, TileW: {TileImageWidth:F0}";
