@@ -795,11 +795,15 @@ else
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;
     }
 
     .game-board-map-area .tile-map-container {
         max-width: 100%;
         max-height: 100%;
+        pointer-events: auto;
     }
 
     .game-board-hand-area {
@@ -807,6 +811,8 @@ else
         border-top: 1px solid var(--color-border);
         background: var(--color-bg-dark);
         padding: var(--spacing-xs);
+        position: relative;
+        z-index: 0;
     }
 
     /* When only one child (e.g. CombatPanel), let it fill */
@@ -932,7 +938,7 @@ else
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 10000;
     }
 
     .detail-overlay {
@@ -945,7 +951,7 @@ else
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1001;
+        z-index: 10000;
     }
 
     .detail-modal {
@@ -1084,7 +1090,7 @@ else
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1000;
+        z-index: 10000;
     }
 
     .chat-panel {
@@ -1399,7 +1405,7 @@ else
         display: flex;
         justify-content: center;
         align-items: center;
-        z-index: 1100;
+        z-index: 10000;
         animation: fadeIn 0.2s ease;
     }
 
@@ -1757,12 +1763,13 @@ else
             });
         });
 
-        // Handle turn started
+        // Handle turn started - reload so movement/explorable hexes update
         _hubConnection.On<string>("TurnStarted", (playerName) =>
         {
-            InvokeAsync(() =>
+            InvokeAsync(async () =>
             {
-                // Could show a notification
+                await LoadGame();
+                await UpdateValidTileMoves();
                 StateHasChanged();
             });
         });
@@ -2182,7 +2189,7 @@ else
                 await NotifyGameStateChanged("Player moved");
             }
         }
-        else if (!hex.IsRevealed && hex.IsExplorable)
+        else if (!hex.IsRevealed && (hex.IsExplorable || IsHexAdjacentToPlayer(hex.Q, hex.R)))
         {
             // Clicked on an unexplored hex adjacent to player - explore!
             if (_myPlayerState.MovementRemaining >= 1)
@@ -2212,6 +2219,15 @@ else
     private void OnTileHexHovered(TileMap.HexData hex)
     {
         // Could show terrain info tooltip
+    }
+
+    private bool IsHexAdjacentToPlayer(int q, int r)
+    {
+        if (_myPlayerState == null) return false;
+        var pq = _myPlayerState.Position.Q;
+        var pr = _myPlayerState.Position.R;
+        var directions = new[] { (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1) };
+        return directions.Any(d => pq + d.Item1 == q && pr + d.Item2 == r);
     }
 
     private void AddUnrevealedNeighbors()

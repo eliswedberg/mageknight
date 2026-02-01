@@ -216,9 +216,25 @@
       "rules": [
         "Contains (number of players + 2) dice",
         "At least half must show basic colors (Red, Blue, White, Green)",
-        "Each player may use ONE die from Source per turn",
+        "Each player may use ONE die from Source per turn (only non-depleted dice)",
         "Used die gives temporary mana of that color",
         "Die is rerolled at end of turn"
+      ]
+    },
+    "dice_usage": {
+      "description": "To use a mana die, the die color must match the card you want to play or power, OR use the wild color for the current time of day.",
+      "rules": [
+        "Match: Die color must match the card's required color (for Advanced Actions/Spells).",
+        "Day wild: Gold can substitute for any basic color during Day.",
+        "Night wild: Black can substitute for any basic color during Night."
+      ]
+    },
+    "depleted_dice": {
+      "description": "Dice showing the wrong special color for the time of day are set aside and depleted; they cannot be used until the round switches.",
+      "rules": [
+        "During Day: Dice showing Black are set aside and depleted for the rest of the round.",
+        "During Night: Dice showing Gold are set aside and depleted for the rest of the round.",
+        "At Round Start: When Day/Night is flipped, all Source dice are rerolled (including set-aside dice), so depleted dice re-enter the pool."
       ]
     },
     "crystals": {
@@ -233,17 +249,17 @@
     "colors": {
       "basic": ["Red", "Blue", "White", "Green"],
       "special": {
-        "Gold": "Available during Day only. Can substitute for any basic color.",
-        "Black": "Available during Night only. Can substitute for any basic color."
+        "Gold": "Wild during Day. Can substitute for any basic color. During Night, Gold dice in Source are depleted (set aside).",
+        "Black": "Wild during Night. Can substitute for any basic color. During Day, Black dice in Source are depleted (set aside)."
       }
     },
     "powered_effects": {
       "description": "Many cards have stronger 'Powered' effects that require mana.",
       "rules": [
         "Basic Actions: Can be powered by any mana color",
-        "Advanced Actions/Spells: May require specific mana color",
+        "Advanced Actions/Spells: May require specific mana color — use matching die or current wild (Gold on Day, Black on Night)",
         "Spell Strong Effect: Requires mana matching the spell's color",
-        "Gold mana can substitute for any required color"
+        "Gold mana (Day) and Black mana (Night) can substitute for any required color"
       ]
     }
   },

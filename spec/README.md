@@ -144,20 +144,23 @@ Combat follows strict phase order from the [Mage Knight Rulebook](Mage-Knight-Bo
 | **Crystals** | Personal storage. Use unlimited. Persist between turns. |
 | **Mana Tokens** | Temporary mana. Disappear at end of turn. |
 
-### Mana Colors
+### Mana Colors and Dice Usage
 
-| Color | Availability | Special |
-|-------|--------------|---------|
-| Red, Blue, White, Green | Always | Basic colors |
-| Gold | Day only | Substitutes any color |
-| Black | Night only | Substitutes any color |
+| Color | Day | Night |
+|-------|-----|-------|
+| Red, Blue, White, Green | Always usable | Always usable |
+| Gold | Wild (substitutes any) | **Depleted** — set aside, not used until next round |
+| Black | **Depleted** — set aside, not used until next round | Wild (substitutes any) |
+
+- **Using a die**: Die color must match the card, or use the current wild (Gold on Day, Black on Night).
+- **Depleted dice**: During Day, Black dice in the Source are set aside; during Night, Gold dice are set aside. At Round Start (Day↔Night flip), all Source dice are rerolled and depleted dice re-enter the pool.
 
 ### Powered Effects
 
 - **Basic Actions**: Any mana powers them
-- **Advanced Actions**: May require specific color
+- **Advanced Actions**: May require specific color — use matching die or current wild
 - **Spells**: Require matching color for Strong effect
-- **Gold/Black**: Can substitute for any required color
+- **Gold (Day) / Black (Night)**: Can substitute for any required color
 
 ---
 

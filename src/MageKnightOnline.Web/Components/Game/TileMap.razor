@@ -1,8 +1,14 @@
 @namespace MageKnightOnline.Web.Components.Game
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
 
-<div class="tile-map-container" style="width: @(Width)px; height: @(Height)px;">
-    <svg class="tile-map" viewBox="@ViewBox" width="@(ContentWidth)px" height="@(ContentHeight)px" preserveAspectRatio="xMinYMin meet">
+<div class="tile-map-container @(_isPanning ? "panning" : "")"
+     style="width: @(Width)px; height: @(Height)px; cursor: @(_isPanning ? "grabbing" : "grab");"
+     @onmousedown="StartPan"
+     @onmousemove="OnPanMove"
+     @onmouseup="EndPan"
+     @onmouseleave="EndPan">
+    <svg class="tile-map" viewBox="@ViewBox" width="@(Width)px" height="@(Height)px" preserveAspectRatio="xMinYMin meet">
         <defs>
             <!-- Clip path for hexagonal tiles -->
             <clipPath id="tileClip">
@@ -147,10 +153,14 @@
 <style>
     .tile-map-container {
         position: relative;
-        overflow: auto;
+        overflow: hidden;
         background: #0a0a0f;
         border-radius: var(--radius-lg);
         border: 2px solid #2a2a3a;
+    }
+
+    .tile-map-container.panning {
+        user-select: none;
     }
 
     .tile-map {
@@ -252,7 +262,33 @@
     }
     private double ContentWidth => Math.Max(Width, ContentBounds.maxX - ContentBounds.minX);
     private double ContentHeight => Math.Max(Height, ContentBounds.maxY - ContentBounds.minY);
-    private string ViewBox => $"{F(ContentBounds.minX)} {F(ContentBounds.minY)} {F(ContentWidth)} {F(ContentHeight)}";
+    // Fixed viewport: same scale always; pan to see more when map grows
+    private string ViewBox => $"{F(ClampPanX(_panX))} {F(ClampPanY(_panY))} {Width} {Height}";
+
+    // Pan state (content coordinates)
+    private double _panX;
+    private double _panY;
+    private bool _isPanning;
+    private bool _didPan;
+    private double _panStartClientX;
+    private double _panStartClientY;
+    private double _panStartOffsetX;
+    private double _panStartOffsetY;
+    private bool _panInitialized;
+    private const double PanThresholdPx = 5;
+
+    private double ClampPanX(double x)
+    {
+        var (minX, _, maxX, _) = ContentBounds;
+        var maxPanX = Math.Max(minX, maxX - Width);
+        return Math.Clamp(x, minX, maxPanX);
+    }
+    private double ClampPanY(double y)
+    {
+        var (_, minY, _, maxY) = ContentBounds;
+        var maxPanY = Math.Max(minY, maxY - Height);
+        return Math.Clamp(y, minY, maxPanY);
+    }
     
     // Debug info
     private string DebugInfo => $"Tiles: {Tiles.Count}, Scale: {Scale}, HexSize: {HexSize:F0}, TileW: {TileImageWidth:F0}";
@@ -313,12 +349,47 @@
 
     private string F(double value) => value.ToString("F2", CultureInfo.InvariantCulture);
 
+    private void StartPan(MouseEventArgs e)
+    {
+        _isPanning = true;
+        _didPan = false;
+        _panStartClientX = e.ClientX;
+        _panStartClientY = e.ClientY;
+        _panStartOffsetX = _panX;
+        _panStartOffsetY = _panY;
+    }
+
+    private void OnPanMove(MouseEventArgs e)
+    {
+        if (!_isPanning) return;
+        var dx = e.ClientX - _panStartClientX;
+        var dy = e.ClientY - _panStartClientY;
+        if (Math.Abs(dx) > PanThresholdPx || Math.Abs(dy) > PanThresholdPx)
+            _didPan = true;
+        _panX = ClampPanX(_panStartOffsetX - dx);
+        _panY = ClampPanY(_panStartOffsetY - dy);
+        StateHasChanged();
+    }
+
+    private void EndPan()
+    {
+        _isPanning = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!_panInitialized)
+        {
+            _panX = ContentBounds.minX;
+            _panY = ContentBounds.minY;
+            _panInitialized = true;
+        }
+    }
+
     private async Task OnHexClick(HexData hex)
     {
-        if (OnHexClicked.HasDelegate)
-        {
-            await OnHexClicked.InvokeAsync(hex);
-        }
+        if (_didPan || !OnHexClicked.HasDelegate) return;
+        await OnHexClicked.InvokeAsync(hex);
     }
 
     private async Task OnHexHover(HexData hex)

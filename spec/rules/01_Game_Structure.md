@@ -11,7 +11,7 @@ The game is played over several **Rounds**, alternating between **Day** and **Ni
 1. **Flip Day/Night Board**: Day → Night or Night → Day.
 2. **Swap Tactics Cards**: Day Tactics ↔ Night Tactics.
 3. **Reroll Source Dice**: 
-   * Roll all mana dice in the Source.
+   * Roll all mana dice in the Source (including any that were set aside as depleted in the previous round).
    * At least half must show basic colors (Red, Blue, White, Green).
    * If not, reroll all Gold/Black dice until condition met.
 4. **Tactics Selection**:
@@ -67,13 +67,14 @@ Instead of a regular turn, you may Rest:
 | Desert | 5 | 3 |
 | Others | Same | Same |
 
-### Mana Differences
-| Time | Available | Unavailable |
-|------|-----------|-------------|
-| Day | Gold (wild) | Black |
-| Night | Black (wild) | Gold |
+### Mana Differences (Source Dice)
+| Time | Wild color | Depleted (set aside) |
+|------|------------|----------------------|
+| Day | Gold | Black — dice showing Black are set aside and **depleted**; they cannot be used until the round switches to Night. |
+| Night | Black | Gold — dice showing Gold are set aside and **depleted**; they cannot be used until the round switches to Day. |
 
-* Gold and Black mana can substitute for any basic color.
+* **Using a mana die**: The die color must match the card you want to play (or power), **or** you may use the current wild color (Gold during Day, Black during Night) as a substitute for any basic color.
+* **Depleted dice**: During Day, any die in the Source that shows Black is set aside and is depleted for the rest of that round. During Night, any die showing Gold is set aside and depleted. At **Round Start**, when Day/Night is flipped, all Source dice are rerolled (including previously set-aside dice), so depleted dice re-enter the pool.
 * Adventure sites (Dungeons, Tombs) always use Night rules regardless of actual time.
 
 ## End of Round
