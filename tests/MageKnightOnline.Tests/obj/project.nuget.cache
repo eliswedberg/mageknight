@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "slx7lB/GoW0=",
+  "dgSpecHash": "++LliFf4MVs=",
   "success": true,
-  "projectFilePath": "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
+  "projectFilePath": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\eliwe\\.nuget\\packages\\coverlet.collector\\6.0.4\\coverlet.collector.6.0.4.nupkg.sha512",
     "C:\\Users\\eliwe\\.nuget\\packages\\microsoft.codecoverage\\17.14.1\\microsoft.codecoverage.17.14.1.nupkg.sha512",
