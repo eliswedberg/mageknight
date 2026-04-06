@@ -1,9 +1,65 @@
 # User Story: Wounds and Healing Logic
 
-**User Story:** As a player, I want to manage and heal my wounds so that my hand size and units are not permanently crippled.
+**User story:** As a player, I want **Wounds** in hand and on **Units** handled with correct **restrictions**, **Rest**, and **healing** so hand size and armies recover per Ultimate Edition.
 
-**Tasks for AI Agent:**
-* **Investigate the codebase:** Implement logic for Wound card assignment, limitations, and removal.
-* **Damage Assignment:** If an attack is unblocked, calculate damage against the player's Armor and insert Wound cards into the player's hand, or allow the player to assign the damage/Wound to a Ready Unit (wounding it).
-* **Rest Action:** Implement the "Rest" action, allowing a player to skip a normal turn to discard one non-Wound card and one Wound card from their hand.
-* **Healing Effects:** Implement specific Healing effects (e.g., spending Influence at Villages/Monasteries, or using Healing Spells) to remove Wounds from the hand or from Wounded Units. Wounds removed this way are returned to the Wound deck.
+**Rules authority:** [`spec/definitions/game_rules.json`](spec/definitions/game_rules.json) (`player_turn.rest_turn`, `cards.wounds`, `combat` assign damage); PDF [`spec/Mage-Knight-Board-Game-Ultimate-Edition-Rule-Book-September-2018.pdf`](spec/Mage-Knight-Board-Game-Ultimate-Edition-Rule-Book-September-2018.pdf).
+
+---
+
+## Wound cards (hero hand)
+
+- **Cannot** be played for an effect.
+- **Cannot** be discarded **except** via **Rest** (below), **healing** effects, or **explicit** card/site rules.
+- **Count** against **hand limit**.
+
+---
+
+## Damage to the hero
+
+- Unblocked damage after blocking assigns to **Hero**: each **Wound** card taken reduces remaining damage by **Hero Armor** (PDF sequence — match [`game_rules.json`](spec/definitions/game_rules.json) Assign Damage rules).
+- **Poison / Paralyze** interactions modify wounds to hand or discards per [`combat_abilities.json`](spec/definitions/combat_abilities.json) (story 08).
+
+---
+
+## Damage to units
+
+- Assign to **Ready** Units first per rulebook; Unit gains **Wound** markers; at **2 Wounds** Unit is **destroyed** (story 07).
+
+---
+
+## Rest turn (full turn — not a partial action)
+
+Per [`game_rules.json`](spec/definitions/game_rules.json) `player_turn.rest_turn`:
+
+1. **Standard Rest:** Discard **exactly one non-Wound** card from hand **and** **any number of Wound** cards from hand (minimum zero Wounds if you only need to shed one non-Wound — confirm “any number” includes zero Wounds with one non-Wound in PDF).
+2. **Slow Recovery:** **Only** if **every** card in hand is a **Wound**: discard **one Wound** from hand.
+
+Rest replaces a normal turn structure for that turn (movement/action as per PDF).
+
+---
+
+## Healing from sites and effects
+
+- **Village / Monastery / Magical Glade** etc.: pay **Influence** or use site action to heal — costs in [`sites.json`](spec/definitions/sites.json) (story 06).
+- **Spells / artifacts:** Remove Wounds from hand or heal Units per card text.
+- Wounds removed return to the **Wound deck** (supply), not the discard pile.
+
+---
+
+## Implementation pointers
+
+| Area | Location |
+|------|----------|
+| Wound card ids | Card definitions + `GameEngine` deck/hand |
+| Rest | `GameEngine` rest / `HasRested` on `PlayerState` |
+| Healing | Site interactions + heal effects in `GameEngine` |
+
+---
+
+## Acceptance criteria
+
+- [ ] Wounds cannot be played or arbitrarily discarded.
+- [ ] Standard Rest and Slow Recovery conditions enforced.
+- [ ] Hero damage produces correct Wound draws accounting for Armor.
+- [ ] Healing returns Wounds to wound supply and clears Unit wounds per effect.
+- [ ] Poison/Paralyze wound side effects interact with hand discard rules.
