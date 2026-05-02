@@ -81,7 +81,7 @@ spec/
 
 ### Rest Turn
 
-- **Standard Rest**: Discard 1 non-Wound + any Wounds
+- **Standard Rest**: Discard 1 non-Wound + all Wounds
 - **Slow Recovery**: Discard 1 Wound (only if hand is all Wounds)
 
 ---

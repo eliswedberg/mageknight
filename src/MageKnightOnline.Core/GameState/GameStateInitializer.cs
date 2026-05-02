@@ -27,7 +27,9 @@ public class GameStateInitializer
             Round = 1,
             IsDay = true,
             Phase = GamePhase.TacticsSelection, // Start with tactics selection
-            CurrentPlayerIndex = 0
+            CurrentPlayerIndex = 0,
+            ScenarioId = scenario.Id,
+            TotalCities = scenario.CityLevels.Count
         };
 
         // Initialize available tactics for first round (day tactics)
@@ -44,12 +46,14 @@ public class GameStateInitializer
 
         // Initialize decks
         state.Decks = await CreateDeckStateAsync(scenario);
+        state.Offers = CreateInitialOffers(state.Decks);
 
         // Initialize map with starting tile
         state.Map = await CreateInitialMapAsync(scenario, state.Players.Count);
 
         // Roll initial mana pool
-        state.ManaPool = RollManaPool(state.Players.Count);
+        state.ManaSource = RollManaSource(state.Players.Count, state.IsDay);
+        state.ManaPool = state.ManaSource.Select(d => d.Color).ToList();
 
         // Add game start log
         state.GameLog.Add(new GameLogEntry
@@ -360,17 +364,65 @@ public class GameStateInitializer
 
     private List<ManaColor> RollManaPool(int playerCount)
     {
-        var diceCount = playerCount + 2; // Base rule: players + 2 dice
-        var pool = new List<ManaColor>();
-        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White, ManaColor.Black, ManaColor.Gold };
+        return RollManaSource(playerCount, isDay: true).Select(d => d.Color).ToList();
+    }
 
-        for (int i = 0; i < diceCount; i++)
+    private List<ManaDieState> RollManaSource(int playerCount, bool isDay)
+    {
+        var diceCount = playerCount + 2; // Base rule: players + 2 dice
+        var source = new List<ManaDieState>();
+
+        do
         {
-            // Each die has equal chance of each color
-            pool.Add(colors[_random.Next(colors.Length)]);
+            source.Clear();
+            for (int i = 0; i < diceCount; i++)
+            {
+                source.Add(new ManaDieState { Color = RollManaDie(), IsDepleted = false });
+            }
+        }
+        while (source.Count(d => IsBasicMana(d.Color)) < Math.Ceiling(diceCount / 2.0));
+
+        foreach (var die in source)
+        {
+            die.IsDepleted = IsDepletedForTime(die.Color, isDay);
         }
 
-        return pool;
+        return source;
+    }
+
+    private ManaColor RollManaDie()
+    {
+        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White, ManaColor.Black, ManaColor.Gold };
+        return colors[_random.Next(colors.Length)];
+    }
+
+    private static bool IsBasicMana(ManaColor color)
+    {
+        return color is ManaColor.Red or ManaColor.Blue or ManaColor.Green or ManaColor.White;
+    }
+
+    private static bool IsDepletedForTime(ManaColor color, bool isDay)
+    {
+        return (isDay && color == ManaColor.Black) || (!isDay && color == ManaColor.Gold);
+    }
+
+    private OfferState CreateInitialOffers(DeckState decks)
+    {
+        var offers = new OfferState();
+        DrawOffer(decks.AdvancedActions, offers.AdvancedActions, 3);
+        DrawOffer(decks.Spells, offers.Spells, 3);
+        DrawOffer(decks.RegularUnits, offers.RegularUnits, 3);
+        DrawOffer(decks.EliteUnits, offers.EliteUnits, 2);
+        return offers;
+    }
+
+    private static void DrawOffer(List<string> deck, List<string> offer, int targetSize)
+    {
+        while (offer.Count < targetSize && deck.Count > 0)
+        {
+            offer.Add(deck[0]);
+            deck.RemoveAt(0);
+        }
     }
 
     private void Shuffle<T>(List<T> list)

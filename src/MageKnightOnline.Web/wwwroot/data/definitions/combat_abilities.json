@@ -1,0 +1,134 @@
+{
+  "enemy_offensive_abilities": [
+    {
+      "id": "swift",
+      "name": "Swift",
+      "description": "To block this enemy, you need twice as much Block as its Attack value.",
+      "effect": { "block_multiplier": 2 }
+    },
+    {
+      "id": "brutal",
+      "name": "Brutal",
+      "description": "If unblocked, it deals twice as much damage as its Attack value.",
+      "effect": { "damage_multiplier_if_unblocked": 2 }
+    },
+    {
+      "id": "poison",
+      "name": "Poison",
+      "description": "If a Unit gets Wounded because of an attack from an enemy with Poison, it is given two Wound cards instead of one. For each Wound a Hero takes into their hand from a Poisonous attack, they also put one Wound into their discard pile.",
+      "effect": { "extra_wounds_to_unit": 1, "wounds_to_discard_pile": true }
+    },
+    {
+      "id": "paralyze",
+      "name": "Paralyze",
+      "description": "If a Unit gets Wounded because of an attack from an enemy with Paralyze, it is immediately destroyed. If a Hero takes Wounds into their hand from a Paralyzing attack, they must discard all non-Wound cards from hand.",
+      "effect": { "destroys_wounded_units": true, "hero_discards_non_wounds": true }
+    },
+    {
+      "id": "assassination",
+      "name": "Assassination",
+      "description": "Damage from this attack cannot be assigned to Units.",
+      "effect": { "cannot_assign_to_units": true }
+    },
+    {
+      "id": "summon",
+      "name": "Summon",
+      "description": "At the start of the Block phase, draw a random enemy token of the specified color. It replaces the summoner in the Block and Assign Damage phases.",
+      "effect": { "summons_enemy": true }
+    },
+    {
+      "id": "fire_attack",
+      "name": "Fire Attack",
+      "description": "Only Ice and Cold Fire Blocks are efficient when blocking this attack.",
+      "element": "Fire",
+      "effect": { "requires_element_block": ["Ice", "ColdFire"] }
+    },
+    {
+      "id": "ice_attack",
+      "name": "Ice Attack",
+      "description": "Only Fire and Cold Fire Blocks are efficient when blocking this attack.",
+      "element": "Ice",
+      "effect": { "requires_element_block": ["Fire", "ColdFire"] }
+    },
+    {
+      "id": "coldfire_attack",
+      "name": "Cold Fire Attack",
+      "description": "Only Cold Fire Blocks are efficient when blocking this attack.",
+      "element": "ColdFire",
+      "effect": { "requires_element_block": ["ColdFire"] }
+    },
+    {
+      "id": "cumbersome",
+      "name": "Cumbersome",
+      "description": "In the Block phase, you may spend Move points to reduce this enemy's Attack value.",
+      "effect": { "can_reduce_with_move": true }
+    },
+    {
+      "id": "vampiric",
+      "name": "Vampiric",
+      "description": "Armor is increased by 1 for each Unit wounded and each Wound added to a Hero's hand by this enemy.",
+      "effect": { "armor_increase_per_wound": 1 }
+    }
+  ],
+  "enemy_defensive_abilities": [
+    {
+      "id": "fortified",
+      "name": "Fortified",
+      "description": "Only Siege Attacks can be used against this enemy in the Ranged and Siege Attacks phase.",
+      "effect": { "requires_siege_in_ranged_phase": true }
+    },
+    {
+      "id": "physical_resistance",
+      "name": "Physical Resistance",
+      "description": "Physical attacks are inefficient.",
+      "resistance": "Physical",
+      "effect": { "halves_physical_attacks": true }
+    },
+    {
+      "id": "fire_resistance",
+      "name": "Fire Resistance",
+      "description": "Fire attacks are inefficient.",
+      "resistance": "Fire",
+      "effect": { "halves_fire_attacks": true }
+    },
+    {
+      "id": "ice_resistance",
+      "name": "Ice Resistance",
+      "description": "Ice attacks are inefficient.",
+      "resistance": "Ice",
+      "effect": { "halves_ice_attacks": true }
+    },
+    {
+      "id": "elusive",
+      "name": "Elusive",
+      "description": "Use the lower Armor value only if all enemy attacks are successfully blocked.",
+      "effect": { "has_two_armor_values": true, "lower_armor_if_all_blocked": true }
+    },
+    {
+      "id": "unfortified",
+      "name": "Unfortified",
+      "description": "Ignores site fortification.",
+      "effect": { "ignores_site_fortification": true }
+    },
+    {
+      "id": "arcane_immunity",
+      "name": "Arcane Immunity",
+      "description": "Immune to non-Attack/Block effects.",
+      "effect": { "immune_to_non_combat_effects": true }
+    },
+    {
+      "id": "defend",
+      "name": "Defend",
+      "description": "Enemies with Defend must be targeted before enemies without Defend.",
+      "effect": { "must_be_targeted_first": true }
+    }
+  ],
+  "block_efficiency": {
+    "rules": [
+      { "attack_type": "Fire", "efficient_blocks": ["Ice", "ColdFire"], "inefficient_blocks": ["Physical", "Fire"] },
+      { "attack_type": "Ice", "efficient_blocks": ["Fire", "ColdFire"], "inefficient_blocks": ["Physical", "Ice"] },
+      { "attack_type": "ColdFire", "efficient_blocks": ["ColdFire"], "inefficient_blocks": ["Physical", "Fire", "Ice"] },
+      { "attack_type": "Physical", "efficient_blocks": ["Physical", "Fire", "Ice", "ColdFire"], "inefficient_blocks": [] }
+    ]
+  }
+}

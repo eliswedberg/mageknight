@@ -34,7 +34,7 @@ Per [`game_rules.json`](spec/definitions/game_rules.json):
 - **Remove all mana tokens** from play (**crystals** stay in inventory).
 - Then apply **Round Start** steps for the new round (flip Day/Night, tactics, reroll Source, refresh offers as in your engine — see below).
 
-**Rest turn (not the same as End of Round):** A player may take a **Rest** turn during the round; **Standard Rest** = discard **one non-Wound** and **any number of Wounds** from hand; **Slow Recovery** = only if hand contains **only** Wounds, discard **one Wound**. See story 09.
+**Rest turn (not the same as End of Round):** A player may take a **Rest** turn during the round; **Standard Rest** = discard **one non-Wound** and **all Wounds** from hand; **Slow Recovery** = only if hand contains **only** Wounds, discard **one Wound**. See story 09.
 
 ---
 

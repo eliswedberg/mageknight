@@ -102,6 +102,11 @@ public interface IGameEngine
     GameActionResult EndTurn();
 
     /// <summary>
+    /// Announces end of round when the current player's Deed deck is empty.
+    /// </summary>
+    GameActionResult AnnounceEndOfRound();
+
+    /// <summary>
     /// Current player chooses to rest.
     /// </summary>
     GameActionResult Rest();
@@ -179,6 +184,11 @@ public interface IGameEngine
     /// Blocks an enemy's attack.
     /// </summary>
     GameActionResult BlockEnemy(int enemyIndex, int blockValue);
+
+    /// <summary>
+    /// Spends Move points to reduce a Cumbersome enemy's attack during the Block phase.
+    /// </summary>
+    GameActionResult ReduceCumbersomeAttack(int enemyIndex, int movePoints);
 
     /// <summary>
     /// Attacks an enemy in melee.

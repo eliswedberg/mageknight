@@ -1,0 +1,189 @@
+{
+  "game_flow": {
+    "description": "The game is played over alternating Day and Night Rounds.",
+    "phases": [
+      {
+        "name": "Round Start",
+        "steps": [
+          "Flip the Day/Night board",
+          "Swap Day/Night Tactics cards",
+          "Reroll all Source dice",
+          "Ensure at least half of Source dice show basic colors"
+        ]
+      },
+      {
+        "name": "Tactics Selection",
+        "steps": [
+          "Lowest Fame chooses first",
+          "Each player selects one Tactics card",
+          "Tactics cards determine turn order"
+        ]
+      },
+      {
+        "name": "Player Turns",
+        "steps": [
+          "Players take turns in Tactics order",
+          "Continue until End of Round is announced"
+        ]
+      },
+      {
+        "name": "End of Round",
+        "conditions": [
+          "A player with empty Deed deck may announce End of Round instead of taking a turn",
+          "If hand and Deed deck are empty, End of Round must be announced",
+          "Each other player gets one final turn"
+        ],
+        "cleanup": [
+          "Shuffle discards into Deed decks",
+          "Ready all Units",
+          "Remove all mana tokens",
+          "Start the next Round"
+        ]
+      }
+    ]
+  },
+  "player_turn": {
+    "types": {
+      "regular_turn": {
+        "description": "A normal turn with optional movement followed by one action.",
+        "phases": [
+          {
+            "name": "Movement Phase",
+            "rules": [
+              "Generate Move points",
+              "Move through adjacent accessible spaces",
+              "Explore new tiles from edge spaces",
+              "Movement may provoke rampaging enemies"
+            ]
+          },
+          {
+            "name": "Action Phase",
+            "action_types": [
+              "Combat",
+              "Interaction",
+              "Player vs Player combat"
+            ],
+            "notes": [
+              "Only one action type may be performed per turn"
+            ]
+          }
+        ]
+      },
+      "rest_turn": {
+        "description": "A turn focused on recovery instead of action.",
+        "options": [
+          {
+            "name": "Standard Rest",
+            "description": "Discard one non-Wound card and all Wound cards from hand."
+          },
+          {
+            "name": "Slow Recovery",
+            "condition": "Only if you have only Wound cards in hand",
+            "description": "Discard one Wound card from hand."
+          }
+        ]
+      }
+    },
+    "end_of_turn": {
+      "steps": [
+        "Return and reroll any Source die used",
+        "Perform Forced Withdrawal if not on a safe space",
+        "Discard played cards",
+        "Return all mana tokens",
+        "Process rewards and level ups",
+        "Discard optional cards",
+        "Draw up to Hand limit"
+      ]
+    }
+  },
+  "combat": {
+    "description": "Combat follows a strict phase order.",
+    "phases": [
+      {
+        "order": 1,
+        "name": "Ranged and Siege Attack Phase",
+        "rules": [
+          "Use Ranged and Siege Attacks before enemies strike",
+          "Fortified enemies require Siege in this phase",
+          "Attack total must equal or exceed enemy Armor"
+        ]
+      },
+      {
+        "order": 2,
+        "name": "Block Phase",
+        "rules": [
+          "Each surviving enemy attacks separately",
+          "Block must equal or exceed enemy Attack",
+          "Swift doubles the Block requirement",
+          "Inefficient elemental Blocks are halved and rounded down",
+          "Insufficient Block does not reduce damage"
+        ]
+      },
+      {
+        "order": 3,
+        "name": "Assign Damage Phase",
+        "rules": [
+          "Assign damage from unblocked enemies",
+          "Units may absorb damage unless Assassination applies",
+          "Hero Armor determines how many Wounds are taken",
+          "Poison, Paralyze, Brutal and Vampiric apply here"
+        ]
+      },
+      {
+        "order": 4,
+        "name": "Attack Phase",
+        "rules": [
+          "Use any Attack type against surviving enemies",
+          "Enemy resistances make matching attacks inefficient",
+          "Gain Fame for defeated enemies"
+        ]
+      }
+    ],
+    "fleeing": {
+      "rules": [
+        "Fleeing lets all unblocked enemies hit",
+        "No rewards are gained"
+      ]
+    }
+  },
+  "movement": {
+    "exploration": {
+      "rules": [
+        "Must be on an edge hex",
+        "Costs 2 Move points",
+        "Draw and place the top tile from the correct tile deck"
+      ]
+    },
+    "provoking_enemies": {
+      "rules": [
+        "Moving between two spaces adjacent to a rampaging enemy provokes it",
+        "Safe Movement avoids provoking"
+      ]
+    }
+  },
+  "mana": {
+    "source": {
+      "rules": [
+        "Contains player count plus 2 dice",
+        "Each player may use one Source die per turn",
+        "Used die gives pure mana of its shown color",
+        "Used die is rerolled at end of turn",
+        "Black is depleted during Day and Gold is depleted during Night"
+      ]
+    },
+    "crystals": {
+      "rules": [
+        "Only basic colors can be stored as crystals",
+        "Crystals persist",
+        "A crystal can be converted to pure mana during the turn"
+      ]
+    },
+    "colors": {
+      "basic": ["Red", "Blue", "White", "Green"],
+      "special": {
+        "Gold": "Day only, substitutes for any basic color.",
+        "Black": "Night only, used for black/night effects."
+      }
+    }
+  }
+}

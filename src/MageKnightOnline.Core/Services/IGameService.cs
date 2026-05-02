@@ -31,6 +31,7 @@ public interface IGameService
     Task<GameResult> UseCrystalAsync(Guid gameId, Guid userId, string color);
     Task<GameResult> UseManaTokenAsync(Guid gameId, Guid userId, string color);
     Task<GameResult> EndTurnAsync(Guid gameId, Guid userId);
+    Task<GameResult> AnnounceEndOfRoundAsync(Guid gameId, Guid userId);
     Task<GameResult> RestAsync(Guid gameId, Guid userId);
     Task<GameResult> SelectTacticAsync(Guid gameId, Guid userId, string tacticId);
     
@@ -45,6 +46,7 @@ public interface IGameService
     Task<GameResult> InitiateCombatAsync(Guid gameId, Guid userId);
     Task<GameResult> RangedAttackAsync(Guid gameId, Guid userId, int enemyIndex, int attackValue);
     Task<GameResult> BlockEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int blockValue);
+    Task<GameResult> ReduceCumbersomeAttackAsync(Guid gameId, Guid userId, int enemyIndex, int movePoints);
     Task<GameResult> AttackEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int attackValue);
     Task<GameResult> AssignDamageAsync(Guid gameId, Guid userId, int damage);
     Task<GameResult> EndCombatPhaseAsync(Guid gameId, Guid userId);

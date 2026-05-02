@@ -864,7 +864,6 @@ C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\865h426h87-{0}-vzgcw3twzu-vzgcw3twzu.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\juicail3i0-{0}-vr9zsajeji-vr9zsajeji.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\qbpgsooeht-{0}-5dvswpm1x8-5dvswpm1x8.gz
-C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\asmrvtlnzh-{0}-qgcgqund6m-qgcgqund6m.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\b7ap1b63uq-{0}-lnr3rbqmge-lnr3rbqmge.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kl832s6f3j-{0}-33dm25h62e-33dm25h62e.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\u5h4sb88fa-{0}-16a9ezen1h-16a9ezen1h.gz
@@ -921,8 +920,6 @@ C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\ihjfldduc5-{0}-4d85u1mtcx-4d85u1mtcx.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\hs2b4pqrqt-{0}-0j3bgjxly4-0j3bgjxly4.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\9oigg7aiur-{0}-abdmv1u4y3-abdmv1u4y3.gz
-C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kzykohbthg-{0}-b9228eflpl-b9228eflpl.gz
-C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\m0ra281q8m-{0}-2tj1sjhksk-2tj1sjhksk.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\lg88qm22yt-{0}-as8cjyprqn-as8cjyprqn.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\ce90dupbpz-{0}-as8cjyprqn-as8cjyprqn.gz
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\staticwebassets.build.json
@@ -936,3 +933,8 @@ C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\MageKnightOnline.Web.pdb
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\MageKnightOnline.Web.genruntimeconfig.cache
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\ref\MageKnightOnline.Web.dll
+C:\Users\eliwe\Source\Repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\kzykohbthg-{0}-hwaxidwiwj-hwaxidwiwj.gz
+C:\Users\eliwe\Source\Repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\m0ra281q8m-{0}-xbbil6v7co-xbbil6v7co.gz
+C:\Users\eliwe\Source\Repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\t5mlga0c1o-{0}-ywpi2jmm4y-ywpi2jmm4y.gz
+C:\Users\eliwe\Source\Repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\4m22hvpgxu-{0}-m9zmuyq68h-m9zmuyq68h.gz
+C:\Users\eliwe\Source\Repos\mageknight\src\MageKnightOnline.Web\obj\Debug\net10.0\compressed\asmrvtlnzh-{0}-o88dq1zcs4-o88dq1zcs4.gz

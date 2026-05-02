@@ -115,6 +115,66 @@ public class GameEngineTests
         Assert.NotEmpty(validMoves);
     }
 
+    [Fact]
+    public void MovePlayer_UsesNightTerrainCostFromDefinitions()
+    {
+        SetupBasicGameState();
+        _engine.State.IsDay = false;
+        var player = _engine.GetCurrentPlayer()!;
+        player.MovementRemaining = 5;
+
+        var result = _engine.MovePlayer(new HexPosition { Q = -1, R = 0 });
+
+        Assert.True(result.Success);
+        Assert.Equal(0, player.MovementRemaining);
+    }
+
+    [Fact]
+    public void MovePlayer_WaterAliasUsesLakeImpassableCost()
+    {
+        SetupBasicGameState();
+        _engine.State.Map.HexData["1,0"].Terrain = "Water";
+        var player = _engine.GetCurrentPlayer()!;
+        player.MovementRemaining = 10;
+
+        var result = _engine.MovePlayer(new HexPosition { Q = 1, R = 0 });
+
+        Assert.False(result.Success);
+        Assert.Contains("impassable", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void ExploreTile_CostsTwoMovementAndRevealsTarget()
+    {
+        SetupBasicGameState();
+        var player = _engine.GetCurrentPlayer()!;
+        player.Position = new HexPosition { Q = 1, R = 0 };
+        player.MovementRemaining = 2;
+        _engine.State.Decks.CountrysideTiles = new List<string> { "test_tile" };
+
+        var target = new HexPosition { Q = 2, R = 0 };
+        var result = _engine.ExploreTile(target);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, player.MovementRemaining);
+        Assert.Contains("2,0", _engine.State.Map.RevealedHexes);
+    }
+
+    [Fact]
+    public void MovePlayer_BetweenAdjacentRampagingEnemyHexes_ProvokesCombat()
+    {
+        SetupBasicGameState();
+        _engine.State.Map.HexData["1,-1"].Enemies = new List<string> { "enemy_orc" };
+        var player = _engine.GetCurrentPlayer()!;
+        player.MovementRemaining = 2;
+
+        var result = _engine.MovePlayer(new HexPosition { Q = 1, R = 0 });
+
+        Assert.True(result.Success);
+        Assert.NotNull(_engine.State.Combat);
+        Assert.Equal(GamePhase.Combat, _engine.State.Phase);
+    }
+
     #endregion
 
     #region Card Playing Tests
@@ -227,7 +287,7 @@ public class GameEngineTests
     }
 
     [Fact]
-    public void SwiftEnemy_AttacksBeforeBlockPhase()
+    public void SwiftEnemy_StartsInRangedPhase_WithDoubledBlockRequirement()
     {
         // Arrange
         SetupBasicGameState();
@@ -238,7 +298,8 @@ public class GameEngineTests
 
         // Assert
         Assert.True(result.Success);
-        Assert.Equal(CombatPhase.SwiftAttack, _engine.State.Combat!.Phase);
+        Assert.Equal(CombatPhase.RangedAttack, _engine.State.Combat!.Phase);
+        Assert.Equal(6, _engine.State.Combat.Enemies[0].GetBlockRequirement());
     }
 
     #endregion
@@ -246,11 +307,16 @@ public class GameEngineTests
     #region Mana System Tests
 
     [Fact]
-    public void UseMana_RemovesDieFromPool()
+    public void UseMana_MarksSourceDieForCurrentTurn()
     {
         // Arrange
         SetupBasicGameState();
         _engine.State.ManaPool = new List<ManaColor> { ManaColor.Red, ManaColor.Blue };
+        _engine.State.ManaSource = new List<ManaDieState>
+        {
+            new() { Color = ManaColor.Red },
+            new() { Color = ManaColor.Blue }
+        };
         var initialCount = _engine.State.ManaPool.Count;
 
         // Act
@@ -258,7 +324,9 @@ public class GameEngineTests
 
         // Assert
         Assert.True(result.Success);
-        Assert.Equal(initialCount - 1, _engine.State.ManaPool.Count);
+        Assert.Equal(initialCount, _engine.State.ManaPool.Count);
+        Assert.Equal(ManaColor.Red, _engine.State.Players[0].TemporaryMana);
+        Assert.Equal(0, _engine.State.TurnState.UsedSourceDieIndex);
     }
 
     [Fact]
@@ -275,6 +343,132 @@ public class GameEngineTests
         // Assert
         Assert.True(result.Success);
         Assert.Equal(1, player.Crystals.Red);
+    }
+
+    [Fact]
+    public void UseMana_DepletedBlackDuringDay_Fails()
+    {
+        SetupBasicGameState();
+        _engine.State.IsDay = true;
+        _engine.State.ManaSource = new List<ManaDieState>
+        {
+            new() { Color = ManaColor.Black, IsDepleted = true }
+        };
+        _engine.State.ManaPool = new List<ManaColor> { ManaColor.Black };
+
+        var result = _engine.UseMana(0);
+
+        Assert.False(result.Success);
+        Assert.Contains("depleted", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void UseCrystal_BlackOrGoldCannotBeUsedAsCrystal()
+    {
+        SetupBasicGameState();
+
+        var blackResult = _engine.UseCrystal(ManaColor.Black);
+        var goldResult = _engine.UseCrystal(ManaColor.Gold);
+
+        Assert.False(blackResult.Success);
+        Assert.False(goldResult.Success);
+    }
+
+    [Fact]
+    public void EndTurn_ReturnsSourceDieAndClearsPureMana()
+    {
+        SetupBasicGameState();
+        _engine.State.ManaSource = new List<ManaDieState>
+        {
+            new() { Color = ManaColor.Red }
+        };
+        _engine.State.ManaPool = new List<ManaColor> { ManaColor.Red };
+
+        var player = _engine.GetCurrentPlayer()!;
+        var manaResult = _engine.UseMana(0);
+        Assert.True(manaResult.Success);
+
+        player.ManaTokens.Blue = 1;
+        var result = _engine.EndTurn();
+
+        Assert.True(result.Success);
+        Assert.Null(player.TemporaryMana);
+        Assert.Null(player.UsedManaDieIndex);
+        Assert.Null(_engine.State.TurnState.UsedSourceDieIndex);
+        Assert.Null(_engine.State.ManaSource[0].UsedByPlayerIndex);
+        Assert.Equal(0, player.ManaTokens.Blue);
+    }
+
+    [Fact]
+    public void Rest_WithNonWound_DiscardsOneNonWoundAndAllWounds()
+    {
+        SetupBasicGameState();
+        var player = _engine.GetCurrentPlayer()!;
+        player.Hand = new List<string> { "basic_move", "wound", "wound_poison" };
+        player.Deck.Clear();
+        player.DeedDeck.Clear();
+
+        var result = _engine.Rest();
+
+        Assert.True(result.Success);
+        Assert.Empty(player.Hand);
+        Assert.Contains("basic_move", player.DiscardPile);
+        Assert.Equal(2, player.DiscardPile.Count(IsWound));
+    }
+
+    [Fact]
+    public void Rest_WithOnlyWounds_DiscardsOneWound()
+    {
+        SetupBasicGameState();
+        var player = _engine.GetCurrentPlayer()!;
+        player.Hand = new List<string> { "wound", "wound_poison" };
+        player.Deck.Clear();
+        player.DeedDeck.Clear();
+
+        var result = _engine.Rest();
+
+        Assert.True(result.Success);
+        Assert.Single(player.Hand);
+        Assert.Single(player.DiscardPile);
+    }
+
+    [Fact]
+    public void AnnounceEndOfRound_GivesOtherPlayersFinalTurnThenEndsRound()
+    {
+        SetupBasicGameState();
+        var firstPlayer = _engine.State.Players[0];
+        firstPlayer.DeedDeck.Clear();
+        firstPlayer.Hand.Clear();
+
+        _engine.State.Players.Add(new PlayerState
+        {
+            UserId = Guid.NewGuid(),
+            HeroId = "norigow",
+            Position = new HexPosition { Q = 0, R = 0 },
+            Armor = 2,
+            HandLimit = 5,
+            Hand = new List<string>(),
+            DeedDeck = new List<string>(),
+            DiscardPile = new List<string> { "basic_move" },
+            Crystals = new CrystalInventory(),
+            ManaTokens = new ManaTokenInventory(),
+            CommandTokens = 1
+        });
+        _engine.State.TurnOrder = new List<int> { 0, 1 };
+        _engine.State.CurrentPlayerIndex = 0;
+
+        var announce = _engine.AnnounceEndOfRound();
+
+        Assert.True(announce.Success);
+        Assert.True(_engine.State.TurnState.EndRoundAnnounced);
+        Assert.Equal(1, _engine.State.CurrentPlayerIndex);
+
+        var finalTurn = _engine.EndTurn();
+
+        Assert.True(finalTurn.Success);
+        Assert.Equal(2, _engine.State.Round);
+        Assert.Equal(GamePhase.TacticsSelection, _engine.State.Phase);
+        Assert.False(_engine.State.TurnState.EndRoundAnnounced);
     }
 
     [Fact]
@@ -319,7 +513,7 @@ public class GameEngineTests
     }
 
     [Fact]
-    public void LevelUp_IncreasesLevel()
+    public void LevelUp_WithMissingChoices_CreatesPendingLevelUp()
     {
         // Arrange
         SetupBasicGameState();
@@ -331,8 +525,48 @@ public class GameEngineTests
         var result = _engine.LevelUp(null, null);
 
         // Assert
+        Assert.False(result.Success);
+        Assert.NotNull(_engine.State.PendingLevelUp);
+        Assert.Equal(2, _engine.State.PendingLevelUp!.TargetLevel);
+    }
+
+    [Fact]
+    public void GetAvailableAdvancedActions_RefillsOfferFromDeck()
+    {
+        SetupBasicGameState();
+        _engine.State.Decks.AdvancedActions = new List<string> { "aa_swiftness", "aa_concentration", "aa_march" };
+
+        var offer = _engine.GetAvailableAdvancedActions().ToList();
+
+        Assert.Equal(3, offer.Count);
+        Assert.Equal(new[] { "aa_swiftness", "aa_concentration", "aa_march" }, offer);
+        Assert.Empty(_engine.State.Decks.AdvancedActions);
+    }
+
+    [Fact]
+    public void LevelUp_WithOfferChoices_AddsAdvancedActionAndSkill()
+    {
+        SetupBasicGameState();
+        var player = _engine.GetCurrentPlayer()!;
+        player.Level = 1;
+        player.Fame = 3;
+        _engine.State.Decks.AdvancedActions = new List<string>
+        {
+            "aa_swiftness",
+            "aa_concentration",
+            "aa_march",
+            "aa_crystalize"
+        };
+
+        var result = _engine.LevelUp("aa_swiftness", "skill_tovak_focus");
+
         Assert.True(result.Success);
-        Assert.True(player.Level > 1);
+        Assert.Equal(2, player.Level);
+        Assert.Equal(1, player.CommandTokens);
+        Assert.Contains("aa_swiftness", player.DiscardPile);
+        Assert.Contains("skill_tovak_focus", player.Skills);
+        Assert.DoesNotContain("aa_swiftness", _engine.State.Offers.AdvancedActions);
+        Assert.Equal(3, _engine.State.Offers.AdvancedActions.Count);
     }
 
     #endregion
@@ -357,6 +591,23 @@ public class GameEngineTests
     }
 
     [Fact]
+    public void InteractWithSite_Combat_StartsCombatForEnemySite()
+    {
+        SetupBasicGameState();
+        var hexState = _engine.State.Map.HexData["0,0"];
+        hexState.SiteType = "Keep";
+        hexState.Enemies = new List<string> { "enemy_orc" };
+
+        var interactions = _engine.GetAvailableSiteInteractions().ToList();
+        var result = _engine.InteractWithSite("Combat");
+
+        Assert.Contains(interactions, i => i.Type == "Combat");
+        Assert.True(result.Success);
+        Assert.NotNull(_engine.State.Combat);
+        Assert.Equal(GamePhase.Combat, _engine.State.Phase);
+    }
+
+    [Fact]
     public void Plunder_DrawsCardsAndLosesReputation()
     {
         // Arrange
@@ -374,6 +625,40 @@ public class GameEngineTests
         Assert.True(result.Success);
         Assert.Equal(initialRep - 1, player.Reputation);
         Assert.True(player.Hand.Count > initialHandCount);
+    }
+
+    [Fact]
+    public void RecruitUnit_UsesCurrentOfferAndRefills()
+    {
+        SetupBasicGameState();
+        var player = _engine.GetCurrentPlayer()!;
+        player.InfluencePool = 5;
+        player.CommandTokens = 1;
+        _engine.State.Decks.RegularUnits = new List<string> { "unit_peasants", "unit_herbalists", "unit_swordsmen", "unit_guardsmen" };
+
+        var result = _engine.RecruitUnit("unit_peasants");
+
+        Assert.True(result.Success);
+        Assert.Single(player.Units);
+        Assert.Equal("unit_peasants", player.Units[0].UnitId);
+        Assert.DoesNotContain("unit_peasants", _engine.State.Offers.RegularUnits);
+        Assert.Equal(3, _engine.State.Offers.RegularUnits.Count);
+    }
+
+    [Fact]
+    public void CheckVictoryConditions_CityConquestScenario_EndsGame()
+    {
+        SetupBasicGameState();
+        _engine.State.ScenarioId = "full_conquest";
+        _engine.State.TotalCities = 1;
+        _engine.State.CitiesConquered = 1;
+
+        var result = _engine.CheckVictoryConditions();
+
+        Assert.True(result);
+        Assert.NotNull(_engine.State.Victory);
+        Assert.True(_engine.State.Victory!.IsGameOver);
+        Assert.Equal(VictoryType.CityConquest, _engine.State.Victory.VictoryType);
     }
 
     #endregion
@@ -511,6 +796,8 @@ public class GameEngineTests
         _engine.LoadState(System.Text.Json.JsonSerializer.Serialize(state));
     }
 
+    private static bool IsWound(string cardId) => cardId.StartsWith("wound", StringComparison.OrdinalIgnoreCase);
+
     private void SetupCombatScenario()
     {
         var hexState = _engine.State.Map.HexData["0,0"];
@@ -555,12 +842,23 @@ public class MockGameDefinitionService : IGameDefinitionService
 
     public Task<IReadOnlyList<ScenarioDefinition>> GetScenariosAsync()
     {
-        return Task.FromResult<IReadOnlyList<ScenarioDefinition>>(new List<ScenarioDefinition>().AsReadOnly());
+        var scenarios = new List<ScenarioDefinition>
+        {
+            new()
+            {
+                Id = "full_conquest",
+                Name = "Full Conquest",
+                Rounds = 6,
+                Goal = "Conquer all cities",
+                CityLevels = new List<int> { 5 }
+            }
+        };
+        return Task.FromResult<IReadOnlyList<ScenarioDefinition>>(scenarios.AsReadOnly());
     }
 
     public Task<ScenarioDefinition?> GetScenarioAsync(string scenarioId)
     {
-        return Task.FromResult<ScenarioDefinition?>(null);
+        return Task.FromResult<ScenarioDefinition?>(GetScenariosAsync().Result.FirstOrDefault(s => s.Id == scenarioId));
     }
 
     public Task<IReadOnlyList<CardDefinition>> GetBasicActionsAsync()
@@ -585,7 +883,14 @@ public class MockGameDefinitionService : IGameDefinitionService
 
     public Task<IReadOnlyList<CardDefinition>> GetAdvancedActionsAsync()
     {
-        return Task.FromResult<IReadOnlyList<CardDefinition>>(new List<CardDefinition>().AsReadOnly());
+        var cards = new List<CardDefinition>
+        {
+            new() { Id = "aa_swiftness", Name = "Swiftness" },
+            new() { Id = "aa_concentration", Name = "Concentration" },
+            new() { Id = "aa_march", Name = "March" },
+            new() { Id = "aa_crystalize", Name = "Crystalize" }
+        };
+        return Task.FromResult<IReadOnlyList<CardDefinition>>(cards.AsReadOnly());
     }
 
     public Task<IReadOnlyList<CardDefinition>> GetSpellsAsync()
@@ -600,7 +905,12 @@ public class MockGameDefinitionService : IGameDefinitionService
 
     public Task<IReadOnlyList<SkillDefinition>> GetSkillsAsync()
     {
-        return Task.FromResult<IReadOnlyList<SkillDefinition>>(new List<SkillDefinition>().AsReadOnly());
+        var skills = new List<SkillDefinition>
+        {
+            new() { Id = "skill_tovak_focus", Name = "Focus", Hero = "tovak" },
+            new() { Id = "skill_common", Name = "Common Skill", Hero = "" }
+        };
+        return Task.FromResult<IReadOnlyList<SkillDefinition>>(skills.AsReadOnly());
     }
 
     public Task<IReadOnlyList<SkillDefinition>> GetSkillsForHeroAsync(string heroName)
@@ -610,12 +920,19 @@ public class MockGameDefinitionService : IGameDefinitionService
 
     public Task<IReadOnlyList<UnitDefinition>> GetUnitsAsync()
     {
-        return Task.FromResult<IReadOnlyList<UnitDefinition>>(new List<UnitDefinition>().AsReadOnly());
+        var units = new List<UnitDefinition>
+        {
+            new() { Id = "unit_peasants", Name = "Peasants", Rank = "Regular", RecruitCost = 3, Armor = 2 },
+            new() { Id = "unit_herbalists", Name = "Herbalists", Rank = "Regular", RecruitCost = 4, Armor = 2 },
+            new() { Id = "unit_swordsmen", Name = "Swordsmen", Rank = "Regular", RecruitCost = 5, Armor = 3 },
+            new() { Id = "unit_guardsmen", Name = "Guardsmen", Rank = "Regular", RecruitCost = 4, Armor = 3 }
+        };
+        return Task.FromResult<IReadOnlyList<UnitDefinition>>(units.AsReadOnly());
     }
 
     public Task<IReadOnlyList<UnitDefinition>> GetRegularUnitsAsync()
     {
-        return Task.FromResult<IReadOnlyList<UnitDefinition>>(new List<UnitDefinition>().AsReadOnly());
+        return Task.FromResult<IReadOnlyList<UnitDefinition>>(GetUnitsAsync().Result.Where(u => u.IsRegular).ToList().AsReadOnly());
     }
 
     public Task<IReadOnlyList<UnitDefinition>> GetEliteUnitsAsync()
@@ -683,7 +1000,19 @@ public class MockGameDefinitionService : IGameDefinitionService
 
     public Task<IReadOnlyList<MapTileDefinition>> GetMapTilesAsync()
     {
-        return Task.FromResult<IReadOnlyList<MapTileDefinition>>(new List<MapTileDefinition>().AsReadOnly());
+        var tiles = new List<MapTileDefinition>
+        {
+            new()
+            {
+                Id = "test_tile",
+                Name = "Test Tile",
+                BackType = "Countryside",
+                Hexes = Enumerable.Range(0, 7)
+                    .Select(position => new TileHexDefinition { Position = position, Terrain = "Plains" })
+                    .ToList()
+            }
+        };
+        return Task.FromResult<IReadOnlyList<MapTileDefinition>>(tiles.AsReadOnly());
     }
 
     public Task<IReadOnlyList<RuinsDefinition>> GetRuinsTokensAsync()

@@ -1,0 +1,26 @@
+# Mage Knight Rules Verification Matrix
+
+This matrix tracks the implementation status of core Mage Knight rules against the local specs and the official Ultimate Edition rulebook. When local summaries conflict with the rulebook, the rulebook is treated as authoritative unless a house rule is explicitly chosen.
+
+| Area | Source | Implementation | Tests | Status | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Round start and tactics | `spec/rules/01_Game_Structure.md`, `spec/definitions/tactics.json` | `src/MageKnightOnline.Core/GameEngine/GameEngine.cs`, `src/MageKnightOnline.Core/GameState/GameStateInitializer.cs` | `tests/MageKnightOnline.Tests/GameEngineTests.cs` | Gap | Tactics selection exists, but selection order and effects need definition-driven behavior. |
+| End of round | `spec/rules/01_Game_Structure.md`, official rulebook | `GameEngine.AnnounceEndOfRound`, `GameEngine.EndTurn`, `GameEngine.EndRound` | `GameEngineTests` | Implemented | Announce/final-turn flow is covered. |
+| End of turn | `spec/definitions/game_rules.json`, official rulebook | `GameEngine.EndTurn`, `GameEngine.ResetPlayerTurnState` | `GameEngineTests` | Partial | Mana dice/tokens and turn pools are covered; forced withdrawal needs a dedicated scenario test. |
+| Rest turn | `spec/rules/01_Game_Structure.md` | `GameEngine.Rest` | `GameEngineTests` | Implemented | Standard rest and slow recovery are separately covered. |
+| Source mana | `spec/rules/02_Player_Mechanics.md`, official rulebook | `GameEngine.UseMana`, `GameEngine.EndTurn`, `GameStateModel` | `GameEngineTests` | Implemented | Source die use, depleted Black/Gold handling, and end-turn return are covered. |
+| Crystals and pure mana | `spec/rules/02_Player_Mechanics.md`, official rulebook | `PlayerState.Crystals`, `PlayerState.ManaTokens`, `GameEngine.UseCrystal` | `GameEngineTests` | Implemented | Gold/Black crystal rejection and turn-scoped pure mana are covered. |
+| Movement terrain costs | `spec/rules/03_Movement_and_Exploration.md`, `spec/definitions/terrain_costs.json` | `GameEngine.GetTerrainCost`, definition data fallback | `GameEngineTests` | Implemented | Engine uses definition data and handles Lake/Water aliases consistently. |
+| Exploration cost and placement | Official rulebook, `spec/rules/03_Movement_and_Exploration.md`, `spec/rules/06_Tile_Placement_Logic.md` | `GameEngine.ExploreTile`, `MapPlacementManager` | `GameEngineTests`, `MapPlacementTests` partial | Implemented | Exploration costs 2 Move and reveals the target connection. |
+| Rampaging enemy provocation | `spec/rules/03_Movement_and_Exploration.md`, official rulebook | `GameEngine.MovePlayer`, `GetRampagingEnemyHexes` | `GameEngineTests` | Implemented | Moving between spaces adjacent to the same rampaging enemy triggers combat. |
+| Combat phases | `spec/rules/04_Combat.md`, official rulebook | `GameEngine.InitiateCombat`, `EndCombatPhase` | `CombatTests` partial | Implemented | Swift is modeled as doubled block requirement, not a separate pre-ranged phase. |
+| Blocking | Official rulebook | `GameEngine.BlockEnemy` | `CombatTests` partial | Implemented | Blocks resolve per enemy; insufficient block has no partial damage reduction. |
+| Elemental block efficiency | Official rulebook | `GameEngine.BlockEnemy` | `CombatTests` | Implemented | Inefficient blocks are halved and rounded down. |
+| Damage assignment | `spec/definitions/game_rules.json`, official rulebook | `GameEngine.AssignDamage`, `AssignDamageToUnit` | `CombatTests` partial | Partial | Hero/unit wounds, Poison, Paralyze, Assassination, and Vampiric are covered; multi-enemy ordered assignment can still be broadened. |
+| Enemy abilities | `spec/rules/04_Combat.md`, `spec/definitions/combat_abilities.json`, official rulebook | `CombatEnemy`, `GameEngine` combat methods | `CombatTests` | Implemented | Swift, Brutal, Poison, Paralyze, Summon, Vampiric, Assassination, Cumbersome, Elusive, Arcane Immunity recognition, and Defend are covered. |
+| Offers | `spec/README.md`, `spec/definitions/*.json` | `DeckState`, `GameEngine.GetAvailableAdvancedActions`, site methods | `GameEngineTests` | Implemented | Advanced action and unit offers are stateful and refilled from decks; spell offer behavior follows the same refill path. |
+| Site interactions | `spec/rules/05_Scenarios.md`, `spec/definitions/sites.json` | `GameEngine.GetAvailableSiteInteractions`, `InteractWithSite` | `GameEngineTests` partial | Partial | Current implementation is mostly hardcoded string matching. |
+| Leveling | `spec/definitions/leveling.json`, `spec/rules/02_Player_Mechanics.md` | `GameEngine.LevelUp` | `GameEngineTests` | Implemented | Thresholds, command-token capacity, pending choices, and offer-based rewards are covered. |
+| Scenarios and victory | `spec/definitions/scenarios.json`, `spec/rules/05_Scenarios.md` | `GameStateInitializer`, `GameEngine.CheckVictoryConditions` | `GameEngineTests` partial | Partial | City conquest victory is covered; additional scenario-specific scoring variants can be broadened. |
+| Definition parity | `spec/definitions`, `src/MageKnightOnline.Web/wwwroot/data/definitions` | `GameDefinitionService` | `DefinitionParityTests` | Implemented | Runtime/spec definition filenames and JSON validity are checked automatically. |
+

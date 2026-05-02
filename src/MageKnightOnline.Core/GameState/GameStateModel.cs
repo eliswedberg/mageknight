@@ -32,6 +32,15 @@ public class GameStateModel
     [JsonPropertyName("mana_pool")]
     public List<ManaColor> ManaPool { get; set; } = new();
 
+    [JsonPropertyName("mana_source")]
+    public List<ManaDieState> ManaSource { get; set; } = new();
+
+    [JsonPropertyName("turn_state")]
+    public TurnState TurnState { get; set; } = new();
+
+    [JsonPropertyName("offers")]
+    public OfferState Offers { get; set; } = new();
+
     [JsonPropertyName("turn_order")]
     public List<int> TurnOrder { get; set; } = new();
 
@@ -80,6 +89,94 @@ public class GameStateModel
     // Pending choice - when a card effect requires user input
     [JsonPropertyName("pending_choice")]
     public PendingChoice? PendingChoice { get; set; }
+
+    [JsonPropertyName("pending_level_up")]
+    public PendingLevelUp? PendingLevelUp { get; set; }
+}
+
+/// <summary>
+/// Represents one die in the Source, including whether it is depleted for the current Day/Night side.
+/// </summary>
+public class ManaDieState
+{
+    [JsonPropertyName("color")]
+    public ManaColor Color { get; set; }
+
+    [JsonPropertyName("is_depleted")]
+    public bool IsDepleted { get; set; }
+
+    [JsonPropertyName("used_by_player_index")]
+    public int? UsedByPlayerIndex { get; set; }
+}
+
+/// <summary>
+/// State that only applies to the active turn.
+/// </summary>
+public class TurnState
+{
+    [JsonPropertyName("played_cards")]
+    public List<string> PlayedCards { get; set; } = new();
+
+    [JsonPropertyName("used_source_die_index")]
+    public int? UsedSourceDieIndex { get; set; }
+
+    [JsonPropertyName("active_action_type")]
+    public TurnActionType ActiveActionType { get; set; } = TurnActionType.None;
+
+    [JsonPropertyName("end_round_announced")]
+    public bool EndRoundAnnounced { get; set; }
+
+    [JsonPropertyName("end_round_announcer_index")]
+    public int? EndRoundAnnouncerIndex { get; set; }
+
+    [JsonPropertyName("final_turns_remaining")]
+    public HashSet<int> FinalTurnsRemaining { get; set; } = new();
+}
+
+public enum TurnActionType
+{
+    None,
+    Movement,
+    Interaction,
+    Combat,
+    Rest,
+    PlayerVsPlayer
+}
+
+/// <summary>
+/// Shared offers visible to all players.
+/// </summary>
+public class OfferState
+{
+    [JsonPropertyName("advanced_actions")]
+    public List<string> AdvancedActions { get; set; } = new();
+
+    [JsonPropertyName("spells")]
+    public List<string> Spells { get; set; } = new();
+
+    [JsonPropertyName("regular_units")]
+    public List<string> RegularUnits { get; set; } = new();
+
+    [JsonPropertyName("elite_units")]
+    public List<string> EliteUnits { get; set; } = new();
+
+    [JsonPropertyName("common_skills")]
+    public List<string> CommonSkills { get; set; } = new();
+}
+
+public class PendingLevelUp
+{
+    [JsonPropertyName("player_index")]
+    public int PlayerIndex { get; set; }
+
+    [JsonPropertyName("target_level")]
+    public int TargetLevel { get; set; }
+
+    [JsonPropertyName("requires_advanced_action")]
+    public bool RequiresAdvancedAction { get; set; }
+
+    [JsonPropertyName("requires_skill")]
+    public bool RequiresSkill { get; set; }
 }
 
 /// <summary>
@@ -231,7 +328,7 @@ public class CombatState
 
 public enum CombatPhase
 {
-    SwiftAttack,    // Swift enemies attack first (before ranged)
+    SwiftAttack,    // Legacy serialized value; Swift is now a doubled block requirement.
     RangedAttack,   // Player can use ranged attacks (and siege vs fortified)
     Block,          // Player must block enemy attacks
     AssignDamage,   // Player assigns unblocked damage as wounds
@@ -341,7 +438,13 @@ public class CombatEnemy
     public bool IsArcaneImmune => Abilities.Contains("arcane_immunity", StringComparer.OrdinalIgnoreCase);
     public bool IsAssassination => Abilities.Contains("assassination", StringComparer.OrdinalIgnoreCase);
     public bool IsCumbersome => Abilities.Contains("cumbersome", StringComparer.OrdinalIgnoreCase);
-    public bool CanSummon => Abilities.Contains("summon", StringComparer.OrdinalIgnoreCase);
+    public bool IsDefender => Abilities.Contains("defend", StringComparer.OrdinalIgnoreCase);
+    public bool IsElusive => Abilities.Any(a => a.Equals("elusive", StringComparison.OrdinalIgnoreCase) ||
+                                                a.StartsWith("elusive_", StringComparison.OrdinalIgnoreCase) ||
+                                                a.StartsWith("elusive ", StringComparison.OrdinalIgnoreCase));
+    public bool CanSummon => Abilities.Any(a => a.Equals("summon", StringComparison.OrdinalIgnoreCase) ||
+                                                a.StartsWith("summon_", StringComparison.OrdinalIgnoreCase) ||
+                                                a.StartsWith("summon ", StringComparison.OrdinalIgnoreCase));
 
     // Computed properties for resistances
     public bool HasPhysicalResistance => Resistances.Contains("Physical", StringComparer.OrdinalIgnoreCase);
@@ -358,6 +461,24 @@ public class CombatEnemy
     /// Get the effective armor (base + vampiric bonus).
     /// </summary>
     public int EffectiveArmor => Armor + VampiricArmorBonus;
+
+    public int GetArmorForAttack(bool allAttacksBlocked)
+    {
+        if (!IsElusive || !allAttacksBlocked)
+            return EffectiveArmor;
+
+        var lowerArmor = Abilities
+            .Select(ParseAbilityValue)
+            .FirstOrDefault(value => value > 0);
+
+        return (lowerArmor > 0 ? lowerArmor : Math.Max(1, Armor / 2)) + VampiricArmorBonus;
+    }
+
+    private static int ParseAbilityValue(string ability)
+    {
+        var parts = ability.Split(new[] { '_', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 1 && int.TryParse(parts[^1], out var value) ? value : 0;
+    }
 
     /// <summary>
     /// Get the block requirement (doubled for Swift enemies).
@@ -472,6 +593,9 @@ public class PlayerState
     [JsonPropertyName("block_pool")]
     public int BlockPool { get; set; } = 0;
 
+    [JsonPropertyName("block_elements")]
+    public List<string> BlockElements { get; set; } = new(); // "Physical", "Fire", "Ice", "ColdFire"
+
     [JsonPropertyName("influence_pool")]
     public int InfluencePool { get; set; } = 0;
 
@@ -531,6 +655,9 @@ public class UnitState
 
     [JsonPropertyName("is_wounded")]
     public bool IsWounded { get; set; } = false;
+
+    [JsonPropertyName("wound_count")]
+    public int WoundCount { get; set; } = 0;
 
     [JsonPropertyName("is_ready")]
     public bool IsReady { get; set; } = true;

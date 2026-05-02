@@ -50,7 +50,7 @@ The game is played over several **Rounds**, alternating between **Day** and **Ni
 
 ### Rest Turn
 Instead of a regular turn, you may Rest:
-* **Standard Rest**: Discard 1 non-Wound card + any number of Wound cards.
+* **Standard Rest**: Discard 1 non-Wound card + all Wound cards from hand.
 * **Slow Recovery**: Discard 1 Wound card (only if hand is ALL Wounds).
 
 ## Player Order

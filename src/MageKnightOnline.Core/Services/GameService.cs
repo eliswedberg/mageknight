@@ -364,6 +364,14 @@ public class GameService : IGameService
         });
     }
 
+    public async Task<GameResult> AnnounceEndOfRoundAsync(Guid gameId, Guid userId)
+    {
+        return await ExecuteGameAction(gameId, userId, engine =>
+        {
+            return engine.AnnounceEndOfRound();
+        });
+    }
+
     public async Task<GameResult> RestAsync(Guid gameId, Guid userId)
     {
         return await ExecuteGameAction(gameId, userId, engine =>
@@ -441,6 +449,11 @@ public class GameService : IGameService
     public async Task<GameResult> BlockEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int blockValue)
     {
         return await ExecuteGameAction(gameId, userId, engine => engine.BlockEnemy(enemyIndex, blockValue));
+    }
+
+    public async Task<GameResult> ReduceCumbersomeAttackAsync(Guid gameId, Guid userId, int enemyIndex, int movePoints)
+    {
+        return await ExecuteGameAction(gameId, userId, engine => engine.ReduceCumbersomeAttack(enemyIndex, movePoints));
     }
 
     public async Task<GameResult> AttackEnemyAsync(Guid gameId, Guid userId, int enemyIndex, int attackValue)

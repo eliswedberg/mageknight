@@ -31,7 +31,7 @@
 
 Per [`game_rules.json`](spec/definitions/game_rules.json) `player_turn.rest_turn`:
 
-1. **Standard Rest:** Discard **exactly one non-Wound** card from hand **and** **any number of Wound** cards from hand (minimum zero Wounds if you only need to shed one non-Wound — confirm “any number” includes zero Wounds with one non-Wound in PDF).
+1. **Standard Rest:** Discard **exactly one non-Wound** card from hand **and all Wound** cards from hand.
 2. **Slow Recovery:** **Only** if **every** card in hand is a **Wound**: discard **one Wound** from hand.
 
 Rest replaces a normal turn structure for that turn (movement/action as per PDF).

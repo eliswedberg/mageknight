@@ -2972,11 +2972,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
+      "projectUniqueName": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
       "projectName": "MageKnightOnline.Data",
-      "projectPath": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
+      "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
       "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Data\\obj\\",
+      "outputPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Data\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -2991,8 +2991,8 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
-              "projectPath": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
+            "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+              "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
             }
           }
         }
@@ -3040,7 +3040,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

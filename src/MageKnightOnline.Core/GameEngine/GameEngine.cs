@@ -58,6 +58,7 @@ public class GameEngine : IGameEngine
         }
 
         _state = JsonSerializer.Deserialize<GameStateModel>(gameStateJson) ?? new GameStateModel();
+        EnsureRuntimeState();
     }
 
     public string SaveState()
@@ -152,6 +153,10 @@ public class GameEngine : IGameEngine
         if (_state.Phase != GamePhase.Movement)
             return GameActionResult.Fail("Can only move during movement phase");
 
+        var actionResult = TryStartTurnAction(TurnActionType.Movement);
+        if (actionResult != null)
+            return actionResult;
+
         var terrain = GetTerrainAt(destination);
         if (terrain == null)
             return GameActionResult.Fail("Cannot move to unrevealed hex");
@@ -172,14 +177,23 @@ public class GameEngine : IGameEngine
 
         // Move the player
         var oldPosition = player.Position;
+        var provokedEnemyHex = GetProvokedRampagingEnemy(oldPosition, destination);
         player.Position = destination;
         player.MovementRemaining -= cost;
+
+        if (provokedEnemyHex != null)
+        {
+            var rampager = GetHexStateAt(provokedEnemyHex);
+            StartCombatWithEnemyIds(rampager?.Enemies ?? new List<string>(), destination, rampager?.SiteType ?? "RampagingEnemy");
+            AddLogEntry("Combat", $"Provoked rampaging enemy at ({provokedEnemyHex.Q}, {provokedEnemyHex.R}) while moving.");
+            return GameActionResult.Ok("Moved and provoked a rampaging enemy!");
+        }
 
         // Check for enemies at destination
         var hexState = GetHexStateAt(destination);
         if (hexState?.Enemies.Any() == true)
         {
-            _state.Phase = GamePhase.Combat;
+            StartCombatWithEnemyIds(hexState.Enemies, destination, hexState.SiteType);
             AddLogEntry("Combat", $"Encountered {hexState.Enemies.Count} enemies at ({destination.Q}, {destination.R})!");
             return GameActionResult.Ok($"Moved to ({destination.Q}, {destination.R}) - Combat initiated!");
         }
@@ -252,6 +266,10 @@ public class GameEngine : IGameEngine
         if (_state.Phase != GamePhase.Movement)
             return GameActionResult.Fail("Can only move during movement phase");
 
+        var actionResult = TryStartTurnAction(TurnActionType.Movement);
+        if (actionResult != null)
+            return actionResult;
+
         var terrain = GetTerrainAt(destination);
         if (terrain == null)
             return GameActionResult.Fail("Cannot fly to unrevealed hex");
@@ -295,6 +313,10 @@ public class GameEngine : IGameEngine
 
         if (_state.Phase != GamePhase.Movement)
             return GameActionResult.Fail("Can only move during movement phase");
+
+        var actionResult = TryStartTurnAction(TurnActionType.Movement);
+        if (actionResult != null)
+            return actionResult;
 
         var terrain = GetTerrainAt(destination);
         if (terrain == null)
@@ -355,6 +377,43 @@ public class GameEngine : IGameEngine
         }
     }
 
+    private HexPosition? GetProvokedRampagingEnemy(HexPosition from, HexPosition to)
+    {
+        foreach (var key in _state.Map.RevealedHexes)
+        {
+            var parts = key.Split(',');
+            var pos = new HexPosition { Q = int.Parse(parts[0]), R = int.Parse(parts[1]) };
+            var hex = GetHexStateAt(pos);
+            if (hex?.Enemies.Any() != true || hex.IsConquered)
+                continue;
+
+            if (IsAdjacent(pos, from) && IsAdjacent(pos, to))
+                return pos;
+        }
+
+        return null;
+    }
+
+    private void StartCombatWithEnemyIds(List<string> enemyIds, HexPosition position, string? siteType)
+    {
+        var combat = new CombatState
+        {
+            Position = position,
+            SiteType = siteType,
+            Phase = CombatPhase.RangedAttack
+        };
+
+        foreach (var enemyId in enemyIds)
+        {
+            var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
+            if (enemyDef != null)
+                combat.Enemies.Add(CreateCombatEnemy(enemyDef));
+        }
+
+        _state.Combat = combat;
+        _state.Phase = GamePhase.Combat;
+    }
+
     /// <summary>
     /// Gets hexes at the edge of the revealed map where exploration is possible.
     /// </summary>
@@ -393,6 +452,10 @@ public class GameEngine : IGameEngine
         if (_state.Phase != GamePhase.Movement)
             return GameActionResult.Fail("Can only explore during movement phase");
 
+        var actionResult = TryStartTurnAction(TurnActionType.Movement);
+        if (actionResult != null)
+            return actionResult;
+
         // Check if target hex is unrevealed
         var targetKey = PosKey(targetHex);
         if (_state.Map.RevealedHexes.Contains(targetKey))
@@ -418,16 +481,16 @@ public class GameEngine : IGameEngine
         if (!isAdjacent)
             return GameActionResult.Fail("You must be adjacent to the hex you want to explore");
 
-        // Exploration costs 1 movement point
-        if (player.MovementRemaining < 1)
-            return GameActionResult.Fail("Not enough movement points to explore (need 1)");
+        const int explorationCost = 2;
+        if (player.MovementRemaining < explorationCost)
+            return GameActionResult.Fail($"Not enough movement points to explore (need {explorationCost})");
 
         // Draw tile and place it edge-to-edge
         // playerPos is the player's current position, targetHex is the direction they're exploring
         var result = PlaceNewTileAtEdge(playerPos, targetHex, edgePosition);
         if (result.Success)
         {
-            player.MovementRemaining -= 1;
+            player.MovementRemaining -= explorationCost;
             AddLogEntry("Explore", $"Explored new tile towards ({targetHex.Q}, {targetHex.R})");
         }
 
@@ -1079,7 +1142,7 @@ public class GameEngine : IGameEngine
             if (player.TemporaryMana.HasValue)
             {
                 var tempMana = player.TemporaryMana.Value;
-                if (requiredColor == null || tempMana == requiredColor || tempMana == ManaColor.Gold)
+                if (CanUseManaAs(tempMana, requiredColor))
                 {
                     manaToUse = tempMana;
                     usingTemporaryMana = true;
@@ -1092,8 +1155,8 @@ public class GameEngine : IGameEngine
                 // Check if we have a matching mana token (or any if no color requirement)
                 if (requiredColor.HasValue)
                 {
-                    // Need specific color - check gold first, then the required color
-                    if (player.ManaTokens.Gold > 0)
+                    // Need specific color - check wild Gold first during Day, then the required color.
+                    if (_state.IsDay && IsBasicMana(requiredColor.Value) && player.ManaTokens.Gold > 0)
                     {
                         manaToUse = ManaColor.Gold;
                         usingManaToken = true;
@@ -1111,8 +1174,8 @@ public class GameEngine : IGameEngine
                     else if (player.ManaTokens.Blue > 0) { manaToUse = ManaColor.Blue; usingManaToken = true; }
                     else if (player.ManaTokens.Green > 0) { manaToUse = ManaColor.Green; usingManaToken = true; }
                     else if (player.ManaTokens.White > 0) { manaToUse = ManaColor.White; usingManaToken = true; }
-                    else if (player.ManaTokens.Black > 0) { manaToUse = ManaColor.Black; usingManaToken = true; }
-                    else if (player.ManaTokens.Gold > 0) { manaToUse = ManaColor.Gold; usingManaToken = true; }
+                    else if (!_state.IsDay && player.ManaTokens.Black > 0) { manaToUse = ManaColor.Black; usingManaToken = true; }
+                    else if (_state.IsDay && player.ManaTokens.Gold > 0) { manaToUse = ManaColor.Gold; usingManaToken = true; }
                 }
             }
             
@@ -1258,6 +1321,7 @@ public class GameEngine : IGameEngine
                         return GameActionResult.Ok($"Played {card.Name} - choose Block or Attack");
                     }
                     player.BlockPool += value;
+                    AddBlockElement(player, effect.Attributes);
                     effectDescriptions.Add($"+{value} Block");
                     break;
                     
@@ -1531,6 +1595,9 @@ public class GameEngine : IGameEngine
 
         if (!HasManaToken(player, color))
             return GameActionResult.Fail($"You don't have any {color} mana tokens.");
+
+        if (IsManaDepletedForCurrentRound(color))
+            return GameActionResult.Fail($"{color} mana cannot be used during {(_state.IsDay ? "Day" : "Night")} rounds.");
 
         SaveStateForUndo();
         
@@ -1822,6 +1889,9 @@ public class GameEngine : IGameEngine
         if (_state.Phase == GamePhase.TacticsSelection)
             return GameActionResult.Fail("Cannot end turn during tactics selection. Select a tactic first.");
 
+        ReturnSourceDieAtEndOfTurn(player);
+        ClearPureMana(player);
+
         // Reset all player pools and state for next turn
         ResetPlayerTurnState(player);
 
@@ -1837,30 +1907,82 @@ public class GameEngine : IGameEngine
             return GameActionResult.Ok($"Game Over! {_state.Victory?.EndReason}");
         }
 
-        // Move to next player in turn order
-        _state.CurrentPlayerIndex++;
-        if (_state.CurrentPlayerIndex >= _state.TurnOrder.Count)
-        {
-            // End of round
-            _state.CurrentPlayerIndex = 0;
-            EndRound();
+        var endedPlayerIndex = _state.TurnOrder.Count > 0
+            ? _state.TurnOrder[_state.CurrentPlayerIndex]
+            : _state.CurrentPlayerIndex;
 
-            // Check again after round ends
-            if (CheckVictoryConditions())
+        if (_state.TurnState.EndRoundAnnounced)
+        {
+            _state.TurnState.FinalTurnsRemaining.Remove(endedPlayerIndex);
+            if (_state.TurnState.FinalTurnsRemaining.Count == 0)
             {
-                AddLogEntry("Victory", _state.Victory?.EndReason ?? "Game over!");
-                return GameActionResult.Ok($"Game Over! {_state.Victory?.EndReason}");
+                EndRound();
+                if (CheckVictoryConditions())
+                {
+                    AddLogEntry("Victory", _state.Victory?.EndReason ?? "Game over!");
+                    return GameActionResult.Ok($"Game Over! {_state.Victory?.EndReason}");
+                }
+
+                return GameActionResult.Ok("Round ended");
             }
         }
-        else
-        {
-            // Draw cards for next player
-            var nextPlayerIndex = _state.TurnOrder[_state.CurrentPlayerIndex];
-            var nextPlayer = _state.Players[nextPlayerIndex];
-            DrawCardsToHandLimit(nextPlayer);
-        }
+
+        AdvanceToNextPlayer();
 
         return GameActionResult.Ok("Turn ended");
+    }
+
+    public GameActionResult AnnounceEndOfRound()
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        if (_state.TurnState.EndRoundAnnounced)
+            return GameActionResult.Fail("End of round has already been announced");
+
+        if (player.DeedDeck.Count > 0)
+            return GameActionResult.Fail("You can only announce end of round when your Deed deck is empty.");
+
+        var announcerIndex = _state.TurnOrder.Count > 0
+            ? _state.TurnOrder[_state.CurrentPlayerIndex]
+            : _state.CurrentPlayerIndex;
+
+        _state.TurnState.EndRoundAnnounced = true;
+        _state.TurnState.EndRoundAnnouncerIndex = announcerIndex;
+        _state.TurnState.FinalTurnsRemaining = _state.TurnOrder
+            .Where(i => i != announcerIndex)
+            .ToHashSet();
+
+        AddLogEntry("EndRoundAnnounced", "End of round announced. Other players get one final turn.");
+
+        if (_state.TurnState.FinalTurnsRemaining.Count == 0)
+        {
+            EndRound();
+            return GameActionResult.Ok("End of round announced. Round ended.");
+        }
+
+        AdvanceToNextPlayer();
+        return GameActionResult.Ok("End of round announced.");
+    }
+
+    private void AdvanceToNextPlayer()
+    {
+        if (_state.TurnOrder.Count == 0)
+            return;
+
+        do
+        {
+            _state.CurrentPlayerIndex = (_state.CurrentPlayerIndex + 1) % _state.TurnOrder.Count;
+        }
+        while (_state.TurnState.EndRoundAnnounced &&
+               _state.TurnState.FinalTurnsRemaining.Count > 0 &&
+               !_state.TurnState.FinalTurnsRemaining.Contains(_state.TurnOrder[_state.CurrentPlayerIndex]));
+
+        var nextPlayerIndex = _state.TurnOrder[_state.CurrentPlayerIndex];
+        var nextPlayer = _state.Players[nextPlayerIndex];
+        DrawCardsToHandLimit(nextPlayer);
+        _state.Phase = GamePhase.Movement;
     }
 
     private void ResetPlayerTurnState(PlayerState player)
@@ -1870,6 +1992,7 @@ public class GameEngine : IGameEngine
         player.SafeMovementRemaining = 0;
         player.AttackPool = 0;
         player.BlockPool = 0;
+        player.BlockElements.Clear();
         player.InfluencePool = 0;
         player.HealPool = 0;
         player.RangedAttack = 0;
@@ -1878,6 +2001,33 @@ public class GameEngine : IGameEngine
         player.HasRested = false;
         player.UsedSiteInteractions.Clear(); // Reset site interactions for new turn
         player.TurnStartPosition = null;
+        _state.TurnState.PlayedCards.Clear();
+        _state.TurnState.UsedSourceDieIndex = null;
+        _state.TurnState.ActiveActionType = TurnActionType.None;
+    }
+
+    private void ReturnSourceDieAtEndOfTurn(PlayerState player)
+    {
+        EnsureRuntimeState();
+
+        var dieIndex = _state.TurnState.UsedSourceDieIndex ?? player.UsedManaDieIndex;
+        if (!dieIndex.HasValue || dieIndex.Value < 0 || dieIndex.Value >= _state.ManaSource.Count)
+            return;
+
+        var die = _state.ManaSource[dieIndex.Value];
+        var oldColor = die.Color;
+        die.Color = RollManaDie();
+        die.IsDepleted = IsManaDepletedForCurrentRound(die.Color);
+        die.UsedByPlayerIndex = null;
+        player.UsedManaDieIndex = null;
+        AddLogEntry("EndTurn", $"Returned Source die: {oldColor} rerolled to {die.Color}");
+        SyncLegacyManaPool();
+    }
+
+    private static void ClearPureMana(PlayerState player)
+    {
+        player.TemporaryMana = null;
+        player.ManaTokens = new ManaTokenInventory();
     }
 
     public GameActionResult Rest()
@@ -1886,24 +2036,84 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
+        if (_state.TurnState.ActiveActionType != TurnActionType.None)
+            return GameActionResult.Fail("Rest must be chosen instead of taking a regular turn.");
+
         if (player.HasRested)
             return GameActionResult.Fail("Already rested this turn");
 
-        // Discard any non-wound cards from hand
-        var nonWoundCards = player.Hand.Where(c => !c.StartsWith("wound")).ToList();
-        foreach (var card in nonWoundCards)
+        SaveStateForUndo();
+
+        var woundCards = player.Hand.Where(IsWoundCard).ToList();
+        var nonWoundCards = player.Hand.Where(c => !IsWoundCard(c)).ToList();
+
+        if (nonWoundCards.Any())
         {
+            var card = nonWoundCards[0];
             player.Hand.Remove(card);
             player.DiscardPile.Add(card);
+
+            foreach (var wound in woundCards)
+            {
+                player.Hand.Remove(wound);
+                player.DiscardPile.Add(wound);
+            }
+        }
+        else if (woundCards.Any())
+        {
+            var wound = woundCards[0];
+            player.Hand.Remove(wound);
+            player.DiscardPile.Add(wound);
+        }
+        else
+        {
+            return GameActionResult.Fail("No cards available to rest with.");
         }
 
         // Draw up to hand limit
         DrawCardsToHandLimit(player);
 
         player.HasRested = true;
+        _state.TurnState.ActiveActionType = TurnActionType.Rest;
         AddLogEntry("Rest", "Player chose to rest");
 
         return GameActionResult.Ok("Rested and drew new cards");
+    }
+
+    private static bool IsWoundCard(string cardId)
+    {
+        return cardId.StartsWith("wound", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void AddBlockElement(PlayerState player, List<string>? attributes)
+    {
+        var element = "Physical";
+        if (attributes?.Contains("ColdFire") == true)
+            element = "ColdFire";
+        else if (attributes?.Contains("Fire") == true)
+            element = "Fire";
+        else if (attributes?.Contains("Ice") == true)
+            element = "Ice";
+
+        player.BlockElements.Add(element);
+    }
+
+    private GameActionResult? TryStartTurnAction(TurnActionType actionType)
+    {
+        var current = _state.TurnState.ActiveActionType;
+        if (current == TurnActionType.None || current == actionType)
+        {
+            _state.TurnState.ActiveActionType = actionType;
+            return null;
+        }
+
+        if (current == TurnActionType.Movement && actionType is TurnActionType.Interaction or TurnActionType.Combat or TurnActionType.PlayerVsPlayer)
+        {
+            _state.TurnState.ActiveActionType = actionType;
+            return null;
+        }
+
+        return GameActionResult.Fail($"Cannot start {actionType}; this turn already used {current}.");
     }
 
     public GameActionResult UseMana(int dieIndex)
@@ -1912,23 +2122,35 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
-        if (dieIndex < 0 || dieIndex >= _state.ManaPool.Count)
+        EnsureRuntimeState();
+
+        if (dieIndex < 0 || dieIndex >= _state.ManaSource.Count)
             return GameActionResult.Fail("Invalid mana die index");
 
         // Check if player already has temporary mana (can only take one)
         if (player.TemporaryMana.HasValue)
-            return GameActionResult.Fail("You can only take one mana die per round. You already have temporary mana.");
+            return GameActionResult.Fail("You can only have one pure mana active. Use it first or let it expire.");
+
+        if (_state.TurnState.UsedSourceDieIndex.HasValue)
+            return GameActionResult.Fail("You can only use one mana die from the Source per turn.");
+
+        var die = _state.ManaSource[dieIndex];
+        if (die.IsDepleted)
+            return GameActionResult.Fail($"{die.Color} mana is depleted during {(_state.IsDay ? "Day" : "Night")} rounds.");
+
+        if (die.UsedByPlayerIndex.HasValue)
+            return GameActionResult.Fail("This mana die is already being used.");
 
         // Save state for undo before taking mana
         SaveStateForUndo();
 
-        var color = _state.ManaPool[dieIndex];
-        
-        // Give player temporary mana (don't remove from pool yet - it stays until end of round)
+        var color = die.Color;
         player.TemporaryMana = color;
         player.UsedManaDieIndex = dieIndex;
+        die.UsedByPlayerIndex = _state.CurrentPlayerIndex;
+        _state.TurnState.UsedSourceDieIndex = dieIndex;
 
-        AddLogEntry("UseMana", $"Took {color} mana from Source (temporary until end of round)");
+        AddLogEntry("UseMana", $"Took {color} mana from Source (must be used this turn)");
         return GameActionResult.Ok($"Took {color} mana from Source");
     }
 
@@ -1938,14 +2160,22 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
+        if (!IsBasicMana(color))
+            return GameActionResult.Fail("Only red, blue, green, and white mana can be stored as crystals.");
+
+        if (player.TemporaryMana.HasValue)
+            return GameActionResult.Fail($"You already have {player.TemporaryMana.Value} mana active. Use it first or undo.");
+
         var count = GetCrystalCount(player.Crystals, color);
         if (count <= 0)
             return GameActionResult.Fail($"No {color} crystals available");
 
+        SaveStateForUndo();
         DecrementCrystal(player.Crystals, color);
+        player.TemporaryMana = color;
 
-        AddLogEntry("UseCrystal", $"Used {color} crystal");
-        return GameActionResult.Ok($"Used {color} crystal");
+        AddLogEntry("UseCrystal", $"Converted {color} crystal to pure mana");
+        return GameActionResult.Ok($"Converted {color} crystal to pure mana");
     }
 
     private int GetCrystalCount(CrystalInventory crystals, ManaColor color)
@@ -1956,7 +2186,6 @@ public class GameEngine : IGameEngine
             ManaColor.Blue => crystals.Blue,
             ManaColor.Green => crystals.Green,
             ManaColor.White => crystals.White,
-            ManaColor.Gold => crystals.Gold,
             _ => 0
         };
     }
@@ -1969,7 +2198,6 @@ public class GameEngine : IGameEngine
             case ManaColor.Blue: crystals.Blue--; break;
             case ManaColor.Green: crystals.Green--; break;
             case ManaColor.White: crystals.White--; break;
-            case ManaColor.Gold: crystals.Gold--; break;
         }
     }
 
@@ -1984,7 +2212,14 @@ public class GameEngine : IGameEngine
 
         var color = player.TemporaryMana.Value;
         player.TemporaryMana = null;
+        if (player.UsedManaDieIndex.HasValue &&
+            player.UsedManaDieIndex.Value >= 0 &&
+            player.UsedManaDieIndex.Value < _state.ManaSource.Count)
+        {
+            _state.ManaSource[player.UsedManaDieIndex.Value].UsedByPlayerIndex = null;
+        }
         player.UsedManaDieIndex = null;
+        _state.TurnState.UsedSourceDieIndex = null;
 
         AddLogEntry("UndoMana", $"Returned {color} mana - die selection undone");
         return GameActionResult.Ok($"Returned {color} mana to Source");
@@ -2151,18 +2386,7 @@ public class GameEngine : IGameEngine
         // Shuffle discard into deed deck for all players
         foreach (var player in _state.Players)
         {
-            // Return used mana die to pool and reroll it
-            if (player.UsedManaDieIndex.HasValue && player.UsedManaDieIndex.Value >= 0 && player.UsedManaDieIndex.Value < _state.ManaPool.Count)
-            {
-                // Reroll the die that was used
-                var oldColor = _state.ManaPool[player.UsedManaDieIndex.Value];
-                var newColor = RollManaDie();
-                _state.ManaPool[player.UsedManaDieIndex.Value] = newColor;
-                AddLogEntry("EndRound", $"Rerolled {oldColor} mana die to {newColor}");
-            }
-            
-            // Clear temporary mana (it's consumed or expires at end of round)
-            player.TemporaryMana = null;
+            ClearPureMana(player);
             player.UsedManaDieIndex = null;
             
             // Put hand cards (except wounds) into discard first
@@ -2191,6 +2415,9 @@ public class GameEngine : IGameEngine
 
         // Reroll mana pool (for any unused dice)
         RollManaPool();
+        _state.TurnState.EndRoundAnnounced = false;
+        _state.TurnState.EndRoundAnnouncerIndex = null;
+        _state.TurnState.FinalTurnsRemaining.Clear();
         
         // Reset to tactics selection for new round
         _state.Phase = GamePhase.TacticsSelection;
@@ -2213,39 +2440,102 @@ public class GameEngine : IGameEngine
     
     private void RefillUnitOffers()
     {
-        // Ensure there are enough units in the offer
-        // Regular units: 3 in offer
-        // Elite units: 2 in offer (or based on player count)
-        
-        // This is a simplified version - in full game, would use actual offer mechanics
+        DrawOffer(_state.Decks.RegularUnits, _state.Offers.RegularUnits, 3);
+        DrawOffer(_state.Decks.EliteUnits, _state.Offers.EliteUnits, 2);
     }
     
     private void RefillCardOffers()
     {
-        // Ensure spell and advanced action offers are full
-        // Simplified version - full game would have specific offer mechanics
+        DrawOffer(_state.Decks.AdvancedActions, _state.Offers.AdvancedActions, 3);
+        DrawOffer(_state.Decks.Spells, _state.Offers.Spells, 3);
+    }
+
+    private static void DrawOffer(List<string> deck, List<string> offer, int targetSize)
+    {
+        while (offer.Count < targetSize && deck.Count > 0)
+        {
+            offer.Add(deck[0]);
+            deck.RemoveAt(0);
+        }
+    }
+
+    private void EnsureRuntimeState()
+    {
+        if (_state.TurnState == null)
+            _state.TurnState = new TurnState();
+
+        if (_state.Offers == null)
+            _state.Offers = new OfferState();
+
+        if (_state.ManaSource.Count == 0 && _state.ManaPool.Count > 0)
+        {
+            _state.ManaSource = _state.ManaPool
+                .Select(color => new ManaDieState
+                {
+                    Color = color,
+                    IsDepleted = IsManaDepletedForCurrentRound(color)
+                })
+                .ToList();
+        }
+
+        SyncLegacyManaPool();
+    }
+
+    private void SyncLegacyManaPool()
+    {
+        _state.ManaPool = _state.ManaSource.Select(d => d.Color).ToList();
+    }
+
+    private static bool IsBasicMana(ManaColor color)
+    {
+        return color is ManaColor.Red or ManaColor.Blue or ManaColor.Green or ManaColor.White;
+    }
+
+    private bool IsManaDepletedForCurrentRound(ManaColor color)
+    {
+        return (_state.IsDay && color == ManaColor.Black) || (!_state.IsDay && color == ManaColor.Gold);
+    }
+
+    private bool CanUseManaAs(ManaColor available, ManaColor? required)
+    {
+        if (IsManaDepletedForCurrentRound(available))
+            return false;
+
+        if (required == null)
+            return true;
+
+        if (available == required.Value)
+            return true;
+
+        return _state.IsDay && available == ManaColor.Gold && IsBasicMana(required.Value);
     }
 
     private ManaColor RollManaDie()
     {
-        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White };
-        // Gold has 1/6 chance, each color has equal remaining chance
-        if (_random.Next(6) == 0)
-            return ManaColor.Gold;
-        else
-            return colors[_random.Next(colors.Length)];
+        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White, ManaColor.Black, ManaColor.Gold };
+        return colors[_random.Next(colors.Length)];
     }
 
     private void RollManaPool()
     {
-        var colors = new[] { ManaColor.Red, ManaColor.Blue, ManaColor.Green, ManaColor.White };
         var diceCount = _state.Players.Count + 2; // Base dice count
 
-        _state.ManaPool.Clear();
-        for (int i = 0; i < diceCount; i++)
+        do
         {
-            _state.ManaPool.Add(RollManaDie());
+            _state.ManaSource.Clear();
+            for (int i = 0; i < diceCount; i++)
+            {
+                var color = RollManaDie();
+                _state.ManaSource.Add(new ManaDieState
+                {
+                    Color = color,
+                    IsDepleted = IsManaDepletedForCurrentRound(color)
+                });
+            }
         }
+        while (_state.ManaSource.Count(d => IsBasicMana(d.Color)) < Math.Ceiling(diceCount / 2.0));
+
+        SyncLegacyManaPool();
     }
 
     private void ShuffleList<T>(List<T> list)
@@ -2275,6 +2565,11 @@ public class GameEngine : IGameEngine
 
     private int GetTerrainCost(string terrain)
     {
+        var normalizedTerrain = terrain.Equals("Water", StringComparison.OrdinalIgnoreCase) ? "Lake" : terrain;
+        var terrainDef = _definitions.GetTerrainAsync(normalizedTerrain).Result;
+        if (terrainDef != null)
+            return terrainDef.GetCost(_state.IsDay);
+
         if (TerrainCosts.TryGetValue(terrain, out var costs))
             return _state.IsDay ? costs.Day : costs.Night;
         return 2; // Default plains cost
@@ -2323,6 +2618,10 @@ public class GameEngine : IGameEngine
         if (hexState == null || !hexState.Enemies.Any())
             return GameActionResult.Fail("No enemies at current position");
 
+        var actionResult = TryStartTurnAction(TurnActionType.Combat);
+        if (actionResult != null)
+            return actionResult;
+
         // Check if site uses night rules (dungeons, tombs)
         var siteType = hexState.SiteType?.ToLower() ?? "";
         var isNightRules = siteType.Contains("dungeon") || siteType.Contains("tomb");
@@ -2337,7 +2636,6 @@ public class GameEngine : IGameEngine
         };
 
         // Load enemy definitions
-        var hasSwiftEnemies = false;
         foreach (var enemyId in hexState.Enemies)
         {
             var enemyDef = _definitions.GetEnemiesAsync().Result.FirstOrDefault(e => e.Id == enemyId);
@@ -2355,33 +2653,16 @@ public class GameEngine : IGameEngine
                 }
 
                 combat.Enemies.Add(combatEnemy);
-                
-                if (combatEnemy.IsSwift)
-                    hasSwiftEnemies = true;
-                
-                // Handle Summon ability - add summoned enemies
-                if (combatEnemy.CanSummon)
-                {
-                    var summonedEnemies = ProcessSummonAbility(combatEnemy, combat);
-                    foreach (var summoned in summonedEnemies)
-                    {
-                        combat.Enemies.Add(summoned);
-                        combat.SummonedEnemies.Add(summoned.EnemyId);
-                        if (summoned.IsSwift)
-                            hasSwiftEnemies = true;
-                    }
-                }
             }
         }
 
-        // If there are swift enemies, start with swift attack phase
-        combat.Phase = hasSwiftEnemies ? CombatPhase.SwiftAttack : CombatPhase.RangedAttack;
+        combat.Phase = CombatPhase.RangedAttack;
 
         _state.Combat = combat;
         _state.Phase = GamePhase.Combat;
 
-        var summonMsg = combat.SummonedEnemies.Any() ? $" (+{combat.SummonedEnemies.Count} summoned)" : "";
-        var phaseMsg = hasSwiftEnemies ? "Swift enemies attack first!" : "Ranged attack phase";
+        var summonMsg = combat.Enemies.Any(e => e.CanSummon) ? " (summoners will summon during Block phase)" : "";
+        var phaseMsg = "Ranged attack phase";
         AddLogEntry("Combat", $"Combat initiated with {combat.Enemies.Count} enemies{summonMsg}. {phaseMsg}");
         return GameActionResult.Ok($"Combat started with {combat.Enemies.Count} enemies{summonMsg}. {phaseMsg}");
     }
@@ -2424,6 +2705,22 @@ public class GameEngine : IGameEngine
         return summonedEnemies;
     }
 
+    private void ProcessSummonsForBlockPhase()
+    {
+        if (_state.Combat == null || _state.Combat.SummonedEnemies.Any())
+            return;
+
+        foreach (var summoner in _state.Combat.Enemies.Where(e => !e.IsDefeated && e.CanSummon).ToList())
+        {
+            var summonedEnemies = ProcessSummonAbility(summoner, _state.Combat);
+            foreach (var summoned in summonedEnemies)
+            {
+                _state.Combat.Enemies.Add(summoned);
+                _state.Combat.SummonedEnemies.Add(summoned.EnemyId);
+            }
+        }
+    }
+
     public GameActionResult RangedAttack(int enemyIndex, int attackValue)
     {
         if (_state.Combat == null)
@@ -2438,6 +2735,10 @@ public class GameEngine : IGameEngine
         var enemy = _state.Combat.Enemies[enemyIndex];
         if (enemy.IsDefeated)
             return GameActionResult.Fail("Enemy already defeated");
+
+        var defendCheck = ValidateDefenderTarget(enemy);
+        if (defendCheck != null)
+            return defendCheck;
 
         var player = GetCurrentPlayer();
         if (player == null || player.RangedAttack < attackValue)
@@ -2488,6 +2789,10 @@ public class GameEngine : IGameEngine
         if (enemy.IsDefeated)
             return GameActionResult.Fail("Enemy already defeated");
 
+        var defendCheck = ValidateDefenderTarget(enemy);
+        if (defendCheck != null)
+            return defendCheck;
+
         var player = GetCurrentPlayer();
         if (player == null || player.SiegeAttack < attackValue)
             return GameActionResult.Fail("Not enough siege attack");
@@ -2517,7 +2822,7 @@ public class GameEngine : IGameEngine
         if (_state.Combat == null)
             return GameActionResult.Fail("Not in combat");
 
-        if (_state.Combat.Phase != CombatPhase.Block && _state.Combat.Phase != CombatPhase.SwiftAttack)
+        if (_state.Combat.Phase != CombatPhase.Block)
             return GameActionResult.Fail("Not in block phase");
 
         if (enemyIndex < 0 || enemyIndex >= _state.Combat.Enemies.Count)
@@ -2527,33 +2832,66 @@ public class GameEngine : IGameEngine
         if (enemy.IsDefeated || enemy.IsBlocked)
             return GameActionResult.Fail("Enemy already defeated or blocked");
 
-        // In swift phase, can only block swift enemies
-        if (_state.Combat.Phase == CombatPhase.SwiftAttack && !enemy.IsSwift)
-            return GameActionResult.Fail("Can only block Swift enemies in this phase");
-
         var player = GetCurrentPlayer();
         if (player == null || player.BlockPool < blockValue)
             return GameActionResult.Fail("Not enough block");
 
-        // Determine required block type based on attack type
-        var requiredBlock = GetRequiredBlockForAttack(enemy.AttackType);
-        
+        var effectiveBlock = CalculateEffectiveBlock(enemy.AttackType, blockValue, player.BlockElements);
+        var requiredBlock = enemy.GetBlockRequirement();
+
         // Check if block is sufficient
-        if (blockValue >= enemy.Attack)
+        if (effectiveBlock >= requiredBlock)
         {
             enemy.IsBlocked = true;
             player.BlockPool -= blockValue;
-            AddLogEntry("Combat", $"Fully blocked {enemy.Name}'s {enemy.AttackType} attack ({blockValue} vs {enemy.Attack})");
+            AddLogEntry("Combat", $"Fully blocked {enemy.Name}'s {enemy.AttackType} attack ({effectiveBlock} effective block vs {requiredBlock})");
             return GameActionResult.Ok($"Blocked {enemy.Name}'s attack");
         }
         else
         {
             player.BlockPool -= blockValue;
-            var remainingDamage = enemy.Attack - blockValue;
-            _state.Combat.TotalUnblockedDamage += remainingDamage;
-            AddLogEntry("Combat", $"Partially blocked {enemy.Name}'s attack - {remainingDamage} damage unblocked");
-            return GameActionResult.Ok($"Partial block - {remainingDamage} damage unblocked");
+            AddLogEntry("Combat", $"Block against {enemy.Name} was insufficient ({effectiveBlock} effective block vs {requiredBlock}); attack remains fully unblocked");
+            return GameActionResult.Ok("Block was insufficient; attack remains fully unblocked");
         }
+    }
+
+    public GameActionResult ReduceCumbersomeAttack(int enemyIndex, int movePoints)
+    {
+        if (_state.Combat == null)
+            return GameActionResult.Fail("Not in combat");
+
+        if (_state.Combat.Phase != CombatPhase.Block)
+            return GameActionResult.Fail("Can only reduce Cumbersome attacks during block phase");
+
+        if (enemyIndex < 0 || enemyIndex >= _state.Combat.Enemies.Count)
+            return GameActionResult.Fail("Invalid enemy index");
+
+        var enemy = _state.Combat.Enemies[enemyIndex];
+        if (!enemy.IsCumbersome)
+            return GameActionResult.Fail("Enemy is not Cumbersome");
+
+        if (enemy.IsDefeated || enemy.IsBlocked)
+            return GameActionResult.Fail("Enemy already defeated or blocked");
+
+        var player = GetCurrentPlayer();
+        if (player == null || player.MovementRemaining < movePoints)
+            return GameActionResult.Fail("Not enough Move points");
+
+        if (movePoints <= 0)
+            return GameActionResult.Fail("Move points must be positive");
+
+        player.MovementRemaining -= movePoints;
+        enemy.Attack = Math.Max(0, enemy.Attack - movePoints);
+
+        if (enemy.Attack == 0)
+        {
+            enemy.IsBlocked = true;
+            AddLogEntry("Combat", $"Reduced {enemy.Name}'s Cumbersome attack to 0; attack is blocked");
+            return GameActionResult.Ok($"{enemy.Name}'s attack was reduced to 0 and blocked");
+        }
+
+        AddLogEntry("Combat", $"Reduced {enemy.Name}'s Cumbersome attack by {movePoints}");
+        return GameActionResult.Ok($"Reduced {enemy.Name}'s attack to {enemy.Attack}");
     }
 
     public GameActionResult AttackEnemy(int enemyIndex, int attackValue)
@@ -2575,6 +2913,10 @@ public class GameEngine : IGameEngine
         var enemy = _state.Combat.Enemies[enemyIndex];
         if (enemy.IsDefeated)
             return GameActionResult.Fail("Enemy already defeated");
+
+        var defendCheck = ValidateDefenderTarget(enemy);
+        if (defendCheck != null)
+            return defendCheck;
 
         var player = GetCurrentPlayer();
         if (player == null || player.AttackPool < attackValue)
@@ -2606,31 +2948,47 @@ public class GameEngine : IGameEngine
 
     private int CalculateEffectiveArmor(CombatEnemy enemy, string attackElement, bool isMelee)
     {
-        var baseArmor = enemy.Armor;
-        
-        // Check resistances
-        if (enemy.Resistances.Contains(attackElement))
+        var baseArmor = enemy.GetArmorForAttack(AreAllEnemyAttacksBlocked());
+        if (enemy.Resistances.Contains(attackElement, StringComparer.OrdinalIgnoreCase))
         {
-            // Resistant: armor is doubled
             baseArmor *= 2;
         }
-        
-        // Ice attack: halve armor (rounded up), but not if Ice resistant
-        if (attackElement == "Ice" && !enemy.Resistances.Contains("Ice"))
-        {
-            baseArmor = (baseArmor + 1) / 2;
-        }
-        
-        // ColdFire: combines Ice and Fire effects
-        if (attackElement == "ColdFire")
-        {
-            if (!enemy.Resistances.Contains("Ice") && !enemy.Resistances.Contains("Fire"))
-            {
-                baseArmor = (baseArmor + 1) / 2; // Ice effect
-            }
-        }
-        
+
         return baseArmor;
+    }
+
+    private GameActionResult? ValidateDefenderTarget(CombatEnemy target)
+    {
+        if (_state.Combat == null || target.IsDefender)
+            return null;
+
+        return _state.Combat.Enemies.Any(e => !e.IsDefeated && e.IsDefender)
+            ? GameActionResult.Fail("Enemies with Defend must be targeted first")
+            : null;
+    }
+
+    private bool AreAllEnemyAttacksBlocked()
+    {
+        return _state.Combat?.Enemies
+            .Where(e => !e.IsDefeated)
+            .All(e => e.IsBlocked) == true;
+    }
+
+    private static int CalculateEffectiveBlock(string attackElement, int blockValue, List<string> blockElements)
+    {
+        var element = blockElements.LastOrDefault() ?? "Physical";
+        return IsEfficientBlock(attackElement, element) ? blockValue : blockValue / 2;
+    }
+
+    private static bool IsEfficientBlock(string attackElement, string blockElement)
+    {
+        return attackElement switch
+        {
+            "Fire" => blockElement is "Ice" or "ColdFire",
+            "Ice" => blockElement is "Fire" or "ColdFire",
+            "ColdFire" => blockElement == "ColdFire",
+            _ => true
+        };
     }
 
     private void DefeatEnemy(CombatEnemy enemy, PlayerState player, string attackType)
@@ -2717,14 +3075,14 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
-        // Add wound cards to hand
-        for (int i = 0; i < damage; i++)
+        var wounds = Math.Max(1, (int)Math.Ceiling(damage / (double)Math.Max(1, player.Armor)));
+        for (int i = 0; i < wounds; i++)
         {
             player.Hand.Add("wound");
         }
 
-        AddLogEntry("Combat", $"Took {damage} wounds");
-        return GameActionResult.Ok($"Took {damage} wounds");
+        AddLogEntry("Combat", $"Took {wounds} wound(s) from {damage} damage");
+        return GameActionResult.Ok($"Took {wounds} wound(s)");
     }
 
     public GameActionResult EndCombatPhase()
@@ -2738,49 +3096,17 @@ public class GameEngine : IGameEngine
 
         switch (_state.Combat.Phase)
         {
-            case CombatPhase.SwiftAttack:
-                // Swift enemies have attacked, now player can do ranged
-                _state.Combat.Phase = CombatPhase.RangedAttack;
-                AddLogEntry("Combat", "Ranged/Siege attack phase begins");
-                return GameActionResult.Ok("Ranged attack phase begins");
-
             case CombatPhase.RangedAttack:
-                // Check if there are swift enemies that need to attack
-                var hasSwiftEnemies = _state.Combat.Enemies.Any(e => !e.IsDefeated && e.IsSwift);
-                if (hasSwiftEnemies && !_state.Combat.SwiftEnemiesAttacked)
-                {
-                    // Swift enemies attack before block phase
-                    _state.Combat.SwiftEnemiesAttacked = true;
-                    var swiftDamage = CalculateSwiftDamage();
-                    if (swiftDamage > 0)
-                    {
-                        _state.Combat.TotalUnblockedDamage = swiftDamage;
-                        _state.Combat.Phase = CombatPhase.Block;
-                        AddLogEntry("Combat", $"Swift enemies attack! Block {swiftDamage} damage or take wounds");
-                        return GameActionResult.Ok($"Swift enemies attack for {swiftDamage} damage!");
-                    }
-                }
-                
+                ProcessSummonsForBlockPhase();
                 _state.Combat.Phase = CombatPhase.Block;
-                _state.Combat.TotalUnblockedDamage = 0; // Reset for regular block phase
+                _state.Combat.TotalUnblockedDamage = 0;
                 AddLogEntry("Combat", "Block phase begins");
                 return GameActionResult.Ok("Block phase begins");
 
             case CombatPhase.Block:
-                // Calculate unblocked damage from non-swift enemies
                 var unblockedDamage = _state.Combat.Enemies
-                    .Where(e => !e.IsDefeated && !e.IsBlocked && !e.IsSwift)
-                    .Sum(e => e.Attack);
-                
-                // Add any previously unblocked damage
-                unblockedDamage += _state.Combat.TotalUnblockedDamage;
-                
-                // Apply Brutal ability (double damage if not blocked at all)
-                foreach (var enemy in _state.Combat.Enemies.Where(e => !e.IsDefeated && !e.IsBlocked && e.IsBrutal))
-                {
-                    unblockedDamage += enemy.Attack; // Double the damage
-                    AddLogEntry("Combat", $"Brutal! {enemy.Name}'s damage is doubled!");
-                }
+                    .Where(e => !e.IsDefeated && !e.IsBlocked)
+                    .Sum(e => e.GetDamageDealt(isFullyBlocked: false));
                 
                 _state.Combat.TotalUnblockedDamage = unblockedDamage;
                 
@@ -2806,37 +3132,42 @@ public class GameEngine : IGameEngine
                     // Check for Poison - poison wounds go to discard, not hand
                     var poisonEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && e.IsPoison).ToList();
                     
-                    // Check for Vampiric enemies - they heal when dealing damage
                     var vampiricEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && !e.IsBlocked && e.IsVampiric).ToList();
-                    if (vampiricEnemies.Any())
-                    {
-                        // Vampiric enemies heal damage equal to the wounds they cause
-                        foreach (var vampEnemy in vampiricEnemies)
-                        {
-                            var healAmount = Math.Min(vampEnemy.Attack, vampEnemy.CurrentDamage);
-                            if (healAmount > 0)
-                            {
-                                vampEnemy.CurrentDamage -= healAmount;
-                                vampEnemy.VampiricArmorBonus += healAmount;
-                                AddLogEntry("Combat", $"Vampiric! {vampEnemy.Name} healed {healAmount} damage!");
-                            }
-                        }
-                    }
+                    var paralyzeEnemies = _state.Combat.Enemies.Where(e => !e.IsDefeated && !e.IsBlocked && e.IsParalyze).ToList();
                     
-                    for (int i = 0; i < damageToAssign; i++)
+                    var wounds = Math.Max(1, (int)Math.Ceiling(damageToAssign / (double)Math.Max(1, player.Armor)));
+                    for (int i = 0; i < wounds; i++)
                     {
-                        if (poisonEnemies.Any())
-                        {
-                            // Poison wounds are harder to heal
-                            player.DiscardPile.Add("wound_poison");
-                            AddLogEntry("Combat", "Poison wound! (Goes to discard pile)");
-                        }
-                        else
-                        {
-                            player.Hand.Add("wound");
-                        }
+                        player.Hand.Add("wound");
                     }
-                    AddLogEntry("Combat", $"Took {damageToAssign} wounds");
+
+                    if (poisonEnemies.Any())
+                    {
+                        for (int i = 0; i < wounds; i++)
+                        {
+                            player.DiscardPile.Add("wound_poison");
+                        }
+                        AddLogEntry("Combat", $"Poison! Added {wounds} extra wound(s) to discard pile");
+                    }
+
+                    if (paralyzeEnemies.Any())
+                    {
+                        var discarded = player.Hand.Where(c => !IsWoundCard(c)).ToList();
+                        foreach (var card in discarded)
+                        {
+                            player.Hand.Remove(card);
+                            player.DiscardPile.Add(card);
+                        }
+                        AddLogEntry("Combat", $"Paralyze! Discarded {discarded.Count} non-Wound card(s)");
+                    }
+
+                    foreach (var vampEnemy in vampiricEnemies)
+                    {
+                        vampEnemy.VampiricArmorBonus += wounds;
+                        AddLogEntry("Combat", $"Vampiric! {vampEnemy.Name}'s Armor increased by {wounds}");
+                    }
+
+                    AddLogEntry("Combat", $"Took {wounds} wound(s) from {damageToAssign} damage");
                 }
                 
                 _state.Combat.TotalUnblockedDamage = 0;
@@ -3235,15 +3566,14 @@ public class GameEngine : IGameEngine
         }
     }
 
-    private int GetRecruitCost()
+    private int GetRecruitCost(int baseCost = 5)
     {
         // Base cost modified by reputation
         var player = GetCurrentPlayer();
-        if (player == null) return 5;
+        if (player == null) return baseCost;
 
         // Reputation affects influence cost
         // Positive reputation = discount, negative = premium
-        var baseCost = 5;
         var modifier = player.Reputation switch
         {
             >= 5 => -2,
@@ -3276,8 +3606,16 @@ public class GameEngine : IGameEngine
         if (hexState == null || string.IsNullOrEmpty(hexState.SiteType))
             return GameActionResult.Fail("No site at current position");
 
+        var normalizedInteractionType = interactionType.ToLowerInvariant();
+        var turnActionType = normalizedInteractionType == "combat"
+            ? TurnActionType.Combat
+            : TurnActionType.Interaction;
+        var actionResult = TryStartTurnAction(turnActionType);
+        if (actionResult != null)
+            return actionResult;
+
         var hexKey = PosKey(player.Position);
-        var interactionKey = $"{hexKey}:{interactionType.ToLower()}";
+        var interactionKey = $"{hexKey}:{normalizedInteractionType}";
 
         // Check if this is a repeatable interaction
         var isRepeatable = IsRepeatableInteraction(interactionType, hexState.SiteType);
@@ -3290,8 +3628,11 @@ public class GameEngine : IGameEngine
 
         // Execute the interaction
         GameActionResult result;
-        switch (interactionType.ToLower())
+        switch (normalizedInteractionType)
         {
+            case "combat":
+                result = InitiateCombat();
+                break;
             case "heal":
                 result = HealAtSite(1);
                 break;
@@ -3369,18 +3710,22 @@ public class GameEngine : IGameEngine
         if (player == null)
             return GameActionResult.Fail("No current player");
 
-        var cost = GetRecruitCost();
+        RefillUnitOffers();
+        var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unitId);
+        if (unitDef == null)
+            return GameActionResult.Fail("Invalid unit");
+
+        var isInOffer = _state.Offers.RegularUnits.Contains(unitId) || _state.Offers.EliteUnits.Contains(unitId);
+        if (!isInOffer)
+            return GameActionResult.Fail("Unit is not available in the current offer");
+
+        var cost = GetRecruitCost(unitDef.RecruitCost);
         if (player.InfluencePool < cost)
             return GameActionResult.Fail($"Not enough influence (need {cost}, have {player.InfluencePool})");
 
         // Check unit limit
         if (player.Units.Count >= player.CommandTokens)
             return GameActionResult.Fail($"Unit limit reached ({player.CommandTokens})");
-
-        // Get unit definition
-        var unitDef = _definitions.GetUnitsAsync().Result.FirstOrDefault(u => u.Id == unitId);
-        if (unitDef == null)
-            return GameActionResult.Fail("Invalid unit");
 
         // Add unit to player
         player.Units.Add(new UnitState
@@ -3393,6 +3738,9 @@ public class GameEngine : IGameEngine
             UsedThisCombat = false
         });
         player.InfluencePool -= cost;
+        _state.Offers.RegularUnits.Remove(unitId);
+        _state.Offers.EliteUnits.Remove(unitId);
+        RefillUnitOffers();
 
         AddLogEntry("Recruit", $"Recruited {unitDef.Name} for {cost} influence");
         return GameActionResult.Ok($"Recruited {unitDef.Name}!");
@@ -3602,8 +3950,8 @@ public class GameEngine : IGameEngine
         if (player.InfluencePool < 6)
             return GameActionResult.Fail("Not enough influence (need 6)");
 
-        // Check if there are advanced actions available
-        if (!_state.Decks.AdvancedActions.Any())
+        RefillCardOffers();
+        if (!_state.Offers.AdvancedActions.Any())
             return GameActionResult.Fail("No Advanced Actions available");
 
         SaveStateForUndo();
@@ -3611,9 +3959,9 @@ public class GameEngine : IGameEngine
         // Mark as irreversible - drawing from shared deck reveals new information
         MarkIrreversibleAction();
 
-        // Draw top advanced action from deck
-        var cardId = _state.Decks.AdvancedActions[0];
-        _state.Decks.AdvancedActions.RemoveAt(0);
+        var cardId = _state.Offers.AdvancedActions[0];
+        _state.Offers.AdvancedActions.RemoveAt(0);
+        RefillCardOffers();
         player.DiscardPile.Add(cardId); // Goes to discard, will be shuffled in at end of round
         player.InfluencePool -= 6;
 
@@ -3668,7 +4016,8 @@ public class GameEngine : IGameEngine
         if (!hasMana)
             return GameActionResult.Fail("Learning a spell requires 1 mana (temporary or crystal)");
 
-        if (!_state.Decks.Spells.Any())
+        RefillCardOffers();
+        if (!_state.Offers.Spells.Any())
             return GameActionResult.Fail("No spells available");
 
         SaveStateForUndo();
@@ -3692,9 +4041,9 @@ public class GameEngine : IGameEngine
         // Mark as irreversible - drawing from shared deck reveals new information
         MarkIrreversibleAction();
 
-        // Draw top spell from deck
-        var spellId = _state.Decks.Spells[0];
-        _state.Decks.Spells.RemoveAt(0);
+        var spellId = _state.Offers.Spells[0];
+        _state.Offers.Spells.RemoveAt(0);
+        RefillCardOffers();
         player.Spells.Add(spellId);
         player.InfluencePool -= 7;
 
@@ -3819,7 +4168,7 @@ public class GameEngine : IGameEngine
         {
             Position = player!.Position,
             Enemies = combatEnemies,
-            Phase = combatEnemies.Any(e => e.IsSwift) ? CombatPhase.SwiftAttack : CombatPhase.RangedAttack,
+            Phase = CombatPhase.RangedAttack,
             SiteType = "Ruins",
             IsNightRules = false
         };
@@ -4112,7 +4461,7 @@ public class GameEngine : IGameEngine
 
     // Fame thresholds for each level (from leveling.json)
     private static readonly int[] LevelThresholds = { 0, 3, 8, 15, 24, 35, 48, 64, 82, 104 };
-    private static readonly int[] CommandTokensByLevel = { 2, 3, 3, 3, 4, 4, 4, 4, 5, 5 };
+    private static readonly int[] CommandTokensByLevel = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5 };
     private static readonly int[] ArmorByLevel = { 2, 2, 2, 3, 3, 3, 3, 4, 4, 4 };
     private static readonly int[] HandSizeByLevel = { 5, 5, 5, 5, 5, 5, 6, 6, 6, 6 };
 
@@ -4141,18 +4490,8 @@ public class GameEngine : IGameEngine
 
     public IEnumerable<string> GetAvailableAdvancedActions()
     {
-        // Get advanced actions from the offer (dummy deck)
-        // In a full implementation, this would be from the advanced action offer
-        var allActions = _definitions.GetAdvancedActionsAsync().Result;
-        var player = GetCurrentPlayer();
-        if (player == null) return Enumerable.Empty<string>();
-
-        // Return actions not already in player's deck
-        var playerCards = player.DeedDeck.Concat(player.Hand).Concat(player.DiscardPile).ToHashSet();
-        return allActions
-            .Where(a => !playerCards.Contains(a.Id))
-            .Take(3) // Offer 3 choices
-            .Select(a => a.Id);
+        RefillCardOffers();
+        return _state.Offers.AdvancedActions;
     }
 
     public IEnumerable<string> GetAvailableSkills()
@@ -4204,29 +4543,46 @@ public class GameEngine : IGameEngine
 
         if (rewardType == "AdvancedAction+Skill")
         {
-            // Add advanced action to deck
-            if (!string.IsNullOrEmpty(advancedActionId))
+            if (string.IsNullOrEmpty(advancedActionId) || string.IsNullOrEmpty(skillId))
             {
-                var actionDef = _definitions.GetAdvancedActionsAsync().Result
-                    .FirstOrDefault(a => a.Id == advancedActionId);
-                if (actionDef != null)
+                player.Level = oldLevel;
+                player.CommandTokens = CommandTokensByLevel[oldLevel - 1];
+                player.Armor = ArmorByLevel[oldLevel - 1];
+                player.HandLimit = HandSizeByLevel[oldLevel - 1];
+                _state.PendingLevelUp = new PendingLevelUp
                 {
-                    player.DeedDeck.Add(advancedActionId);
-                    rewardMessage += $"Gained {actionDef.Name}. ";
-                }
+                    PlayerIndex = _state.CurrentPlayerIndex,
+                    TargetLevel = newLevel,
+                    RequiresAdvancedAction = true,
+                    RequiresSkill = true
+                };
+                return GameActionResult.Fail("Level up requires choosing an Advanced Action and Skill.");
+            }
+
+            RefillCardOffers();
+            if (!_state.Offers.AdvancedActions.Contains(advancedActionId))
+                return GameActionResult.Fail("Advanced Action must be selected from the current offer.");
+
+            // Add advanced action to deck
+            var actionDef = _definitions.GetAdvancedActionsAsync().Result
+                .FirstOrDefault(a => a.Id == advancedActionId);
+            if (actionDef != null)
+            {
+                player.DiscardPile.Add(advancedActionId);
+                _state.Offers.AdvancedActions.Remove(advancedActionId);
+                RefillCardOffers();
+                rewardMessage += $"Gained {actionDef.Name}. ";
             }
 
             // Add skill
-            if (!string.IsNullOrEmpty(skillId))
+            var skillDef = _definitions.GetSkillsAsync().Result
+                .FirstOrDefault(s => s.Id == skillId);
+            if (skillDef != null)
             {
-                var skillDef = _definitions.GetSkillsAsync().Result
-                    .FirstOrDefault(s => s.Id == skillId);
-                if (skillDef != null)
-                {
-                    player.Skills.Add(skillId);
-                    rewardMessage += $"Learned {skillDef.Name}. ";
-                }
+                player.Skills.Add(skillId);
+                rewardMessage += $"Learned {skillDef.Name}. ";
             }
+            _state.PendingLevelUp = null;
         }
         else if (rewardType == "CommandToken")
         {
@@ -4455,7 +4811,7 @@ public class GameEngine : IGameEngine
         if (_state.Combat == null)
             return GameActionResult.Fail("Not in combat");
 
-        if (_state.Combat.Phase != CombatPhase.Block && _state.Combat.Phase != CombatPhase.SwiftAttack)
+        if (_state.Combat.Phase != CombatPhase.Block)
             return GameActionResult.Fail("Can only use block ability during block phase");
 
         if (abilities.Block <= 0)
@@ -4589,20 +4945,34 @@ public class GameEngine : IGameEngine
 
         var unit = player.Units[unitIndex];
 
-        if (!unit.IsWounded)
+        if (_state.Combat?.Enemies.Any(e => !e.IsDefeated && !e.IsBlocked && e.IsAssassination) == true)
+            return GameActionResult.Fail("Assassination damage cannot be assigned to units.");
+
+        if (_state.Combat?.Enemies.Any(e => !e.IsDefeated && !e.IsBlocked && e.IsParalyze) == true)
         {
-            // Unit takes 1 wound
-            unit.IsWounded = true;
-            AddLogEntry("Combat", $"{unit.Name} was wounded absorbing {damage} damage");
-            return GameActionResult.Ok($"{unit.Name} was wounded!");
-        }
-        else
-        {
-            // Already wounded unit is destroyed
             player.Units.Remove(unit);
-            AddLogEntry("Combat", $"{unit.Name} was destroyed absorbing {damage} damage");
+            AddLogEntry("Combat", $"Paralyze! {unit.Name} was destroyed");
+            return GameActionResult.Ok($"{unit.Name} was destroyed by Paralyze!");
+        }
+
+        var absorbed = Math.Min(damage, unit.Armor);
+        unit.WoundCount += _state.Combat?.Enemies.Any(e => !e.IsDefeated && !e.IsBlocked && e.IsPoison) == true ? 2 : 1;
+        unit.IsWounded = unit.WoundCount > 0;
+
+        foreach (var vampEnemy in _state.Combat?.Enemies.Where(e => !e.IsDefeated && !e.IsBlocked && e.IsVampiric) ?? Enumerable.Empty<CombatEnemy>())
+        {
+            vampEnemy.VampiricArmorBonus += 1;
+        }
+
+        if (unit.WoundCount >= 2)
+        {
+            player.Units.Remove(unit);
+            AddLogEntry("Combat", $"{unit.Name} was destroyed absorbing {absorbed} damage");
             return GameActionResult.Ok($"{unit.Name} was destroyed!");
         }
+
+        AddLogEntry("Combat", $"{unit.Name} was wounded absorbing {absorbed} damage");
+        return GameActionResult.Ok($"{unit.Name} was wounded!");
     }
 
     public IEnumerable<UnitCombatOption> GetAvailableUnitActions()

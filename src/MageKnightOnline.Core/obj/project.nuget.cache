@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "DZWn+nXjSaA=",
+  "dgSpecHash": "S8Yd6Q8xujM=",
   "success": true,
-  "projectFilePath": "C:\\Users\\eliwe\\Source\\repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+  "projectFilePath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\eliwe\\.nuget\\packages\\microsoft.entityframeworkcore\\9.0.0\\microsoft.entityframeworkcore.9.0.0.nupkg.sha512",
     "C:\\Users\\eliwe\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\9.0.0\\microsoft.entityframeworkcore.abstractions.9.0.0.nupkg.sha512",
