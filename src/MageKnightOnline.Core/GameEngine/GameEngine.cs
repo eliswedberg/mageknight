@@ -3633,6 +3633,9 @@ public class GameEngine : IGameEngine
             case "combat":
                 result = InitiateCombat();
                 break;
+            case "recruit":
+                result = RecruitFromCurrentOffer(parameters);
+                break;
             case "heal":
                 result = HealAtSite(1);
                 break;
@@ -3674,6 +3677,45 @@ public class GameEngine : IGameEngine
         }
 
         return result;
+    }
+
+    private GameActionResult RecruitFromCurrentOffer(Dictionary<string, object>? parameters)
+    {
+        var player = GetCurrentPlayer();
+        if (player == null)
+            return GameActionResult.Fail("No current player");
+
+        var requestedUnitId = TryGetStringParameter(parameters, "unitId")
+            ?? TryGetStringParameter(parameters, "unit_id");
+
+        if (!string.IsNullOrWhiteSpace(requestedUnitId))
+            return RecruitUnit(requestedUnitId);
+
+        RefillUnitOffers();
+        var units = _definitions.GetUnitsAsync().Result;
+        var candidate = _state.Offers.RegularUnits
+            .Concat(_state.Offers.EliteUnits)
+            .Select(unitId => units.FirstOrDefault(u => u.Id == unitId))
+            .Where(unit => unit != null)
+            .Cast<UnitDefinition>()
+            .FirstOrDefault(unit => player.InfluencePool >= GetRecruitCost(unit.RecruitCost));
+
+        return candidate == null
+            ? GameActionResult.Fail("No recruitable unit is available in the current offer.")
+            : RecruitUnit(candidate.Id);
+    }
+
+    private static string? TryGetStringParameter(Dictionary<string, object>? parameters, string key)
+    {
+        if (parameters == null || !parameters.TryGetValue(key, out var value))
+            return null;
+
+        return value switch
+        {
+            string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } json => json.GetString(),
+            _ => value.ToString()
+        };
     }
 
     /// <summary>

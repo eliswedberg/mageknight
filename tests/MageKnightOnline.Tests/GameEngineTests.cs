@@ -608,6 +608,91 @@ public class GameEngineTests
     }
 
     [Fact]
+    public void InteractWithSite_AllAdvertisedInteractionTypes_AreHandled()
+    {
+        var siteSetups = new Action<GameStateModel>[]
+        {
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "Keep";
+                hex.Enemies = new List<string> { "enemy_orc" };
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "Village";
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "Monastery";
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "MageTower";
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "MagicalGlade";
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "MagicalGlade";
+                hex.IsCorrupted = true;
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "GreenMine";
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "Keep";
+                hex.IsConquered = true;
+                hex.OwnerUserId = state.Players[0].UserId;
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "AncientRuins";
+                state.Decks.RuinsTokens = new List<string> { "ruins_test" };
+            },
+            state =>
+            {
+                var hex = state.Map.HexData["0,0"];
+                hex.SiteType = "City";
+                hex.IsConquered = true;
+            }
+        };
+
+        foreach (var setup in siteSetups)
+        {
+            SetupBasicGameState();
+            PrepareInteractionFixture(_engine.State);
+            setup(_engine.State);
+            var interactions = _engine.GetAvailableSiteInteractions().Select(i => i.Type).Distinct().ToList();
+
+            foreach (var interactionType in interactions)
+            {
+                SetupBasicGameState();
+                PrepareInteractionFixture(_engine.State);
+                setup(_engine.State);
+
+                var result = _engine.InteractWithSite(interactionType);
+
+                Assert.False(
+                    result.ErrorMessage?.StartsWith("Unknown interaction type", StringComparison.OrdinalIgnoreCase) == true,
+                    $"{interactionType} was advertised but not handled.");
+            }
+        }
+    }
+
+    [Fact]
     public void Plunder_DrawsCardsAndLosesReputation()
     {
         // Arrange
@@ -797,6 +882,23 @@ public class GameEngineTests
     }
 
     private static bool IsWound(string cardId) => cardId.StartsWith("wound", StringComparison.OrdinalIgnoreCase);
+
+    private static void PrepareInteractionFixture(GameStateModel state)
+    {
+        var player = state.Players[0];
+        player.InfluencePool = 10;
+        player.HealPool = 5;
+        player.Hand = new List<string> { "wound", "basic_move", "basic_attack" };
+        player.Deck = new List<string> { "basic_move", "basic_attack", "basic_move" };
+        player.CommandTokens = 2;
+        player.TemporaryMana = ManaColor.Red;
+        state.Decks.RegularUnits = new List<string> { "unit_peasants", "unit_herbalists", "unit_swordsmen", "unit_guardsmen" };
+        state.Decks.AdvancedActions = new List<string> { "aa_swiftness", "aa_concentration", "aa_march" };
+        state.Decks.Spells = new List<string> { "spell_test" };
+        state.Offers.RegularUnits.Clear();
+        state.Offers.AdvancedActions.Clear();
+        state.Offers.Spells.Clear();
+    }
 
     private void SetupCombatScenario()
     {
