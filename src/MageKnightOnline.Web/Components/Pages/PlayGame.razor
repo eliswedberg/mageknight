@@ -11,10 +11,18 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
+@rendermode InteractiveServer
 
 <PageTitle>Playing - Mage Knight Online</PageTitle>
 
-@if (!AuthService.IsAuthenticated)
+@if (!AuthService.IsInitialized)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Starting session...</p>
+    </div>
+}
+else if (!AuthService.IsAuthenticated)
 {
     <div class="alert alert-warning">
         Please <a href="/login">login</a> to play.
@@ -130,6 +138,7 @@ else
                           SelectedDieIndex="@GetSelectedManaDieIndex()"
                           CanUndo="@CanUndoMana"
                           OnDieSelected="SelectMana"
+                          OnCrystalSelected="SelectCrystal"
                           OnManaTokenSelected="SelectManaToken"
                           OnUndoClicked="UndoMana" />
                 
@@ -198,6 +207,7 @@ else
                                  SiegeAttack="@(_myPlayerState?.SiegeAttack ?? 0)"
                                  AttackPool="@(_myPlayerState?.AttackPool ?? 0)"
                                  BlockPool="@(_myPlayerState?.BlockPool ?? 0)"
+                                 PlayedCards="@GetPlayedCardNames()"
                                  Units="@GetUnitCombatOptions()"
                                  OnRangedAttack="HandleRangedAttack"
                                  OnBlock="HandleBlock"
@@ -345,6 +355,19 @@ else
                         <p class="text-muted text-sm">No units recruited yet</p>
                     }
                 </div>
+
+                @if (_gameState.Combat != null && _gameState.TurnState.PlayedCards.Any())
+                {
+                    <div class="card played-cards-card">
+                        <h3>Played Cards</h3>
+                        <div class="played-sidebar-list">
+                            @foreach (var cardName in GetPlayedCardNames())
+                            {
+                                <span class="played-sidebar-card">@cardName</span>
+                            }
+                        </div>
+                    </div>
+                }
 
                 <!-- Card Hand at bottom of sidebar -->
                 <CardHand Cards="@GetHandCards()"
@@ -1215,6 +1238,21 @@ else
     .choice-option-btn.draw { border-color: #f59e0b; }
     .choice-option-btn.draw:hover:not(:disabled) { box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
 
+    .played-sidebar-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .played-sidebar-card {
+        padding: 2px 8px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        background: var(--color-bg-dark);
+        color: var(--color-text-secondary);
+        font-size: 0.8rem;
+    }
+
     .cancel-choice-btn {
         width: 100%;
     }
@@ -1341,10 +1379,59 @@ else
         var mapTiles = await DefinitionService.GetMapTilesAsync();
         _tileDefinitions = mapTiles.ToDictionary(t => t.Id);
 
-        // Setup SignalR connection
+        // Setup SignalR connection (JoinGame runs after session is restored - see OnAfterRenderAsync)
         await SetupSignalR();
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await AuthService.InitializeAsync();
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadGame();
+            await JoinGameHubIfNeededAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void HandleAuthStateChanged()
+    {
+        _ = InvokeAsync(HandleAuthStateChangedAsync);
+    }
+
+    private async Task HandleAuthStateChangedAsync()
+    {
+        await AuthService.InitializeAsync();
+        if (!AuthService.IsAuthenticated)
+            return;
 
         await LoadGame();
+        await JoinGameHubIfNeededAsync();
+        StateHasChanged();
+    }
+
+    private async Task JoinGameHubIfNeededAsync()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected || AuthService.CurrentUser == null)
+            return;
+
+        try
+        {
+            await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
+            _connectedPlayers = await _hubConnection.InvokeAsync<List<string>>("GetConnectedPlayers", GameId.ToString());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"JoinGame hub error: {ex.Message}");
+        }
     }
 
     private async Task SetupSignalR()
@@ -1442,15 +1529,7 @@ else
         try
         {
             await _hubConnection.StartAsync();
-            
-            // Join the game room
-            if (AuthService.CurrentUser != null)
-            {
-                await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
-                
-                // Get list of connected players
-                _connectedPlayers = await _hubConnection.InvokeAsync<List<string>>("GetConnectedPlayers", GameId.ToString());
-            }
+            await JoinGameHubIfNeededAsync();
         }
         catch (Exception ex)
         {
@@ -1485,6 +1564,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
         if (_hubConnection != null)
         {
             await _hubConnection.SendAsync("LeaveGame", GameId.ToString());
@@ -1506,9 +1586,15 @@ else
 
     private async Task OnTacticSelected(string tacticId)
     {
+        if (AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You must be logged in to select a tactic.");
+            return;
+        }
+
         var previousPhase = _gameState?.Phase;
         
-        var result = await GameService.SelectTacticAsync(GameId, AuthService.CurrentUser!.Id, tacticId);
+        var result = await GameService.SelectTacticAsync(GameId, AuthService.CurrentUser.Id, tacticId);
         if (result.Success)
         {
             await LoadGame();
@@ -1519,6 +1605,10 @@ else
             {
                 await NotifyNextPlayerTurn();
             }
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not select tactic");
         }
     }
 
@@ -1765,14 +1855,14 @@ else
 
     private async Task UpdateValidTileMoves()
     {
-        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
+        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0 || AuthService.CurrentUser == null)
         {
             _highlightedTileHexes = null;
             StateHasChanged();
             return;
         }
 
-        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser!.Id);
+        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser.Id);
         _highlightedTileHexes = validMoves
             .Select(m => _tileHexes.FirstOrDefault(h => h.Q == m.Q && h.R == m.R))
             .Where(h => h != null)
@@ -1785,13 +1875,17 @@ else
     {
         _selectedTileHex = hex;
         
-        if (!IsMyTurn || _myPlayerState == null) return;
+        if (!IsMyTurn || _myPlayerState == null || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You cannot interact with the map right now.");
+            return;
+        }
 
         // Check if this is a valid move destination
         if (_highlightedTileHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) == true)
         {
             // This is a valid move - execute it
-            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser.Id, hex.Q, hex.R);
             if (result.Success)
             {
                 await LoadGame();
@@ -1814,18 +1908,26 @@ else
                 
                 await NotifyGameStateChanged("Player moved");
             }
+            else
+            {
+                await NotifyActionFailedAsync(result.ErrorMessage);
+            }
         }
         else if (!hex.IsRevealed && hex.IsExplorable)
         {
             // Clicked on an unexplored hex adjacent to player - explore!
             if (_myPlayerState.MovementRemaining >= 1)
             {
-                var result = await GameService.ExploreTileAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+                var result = await GameService.ExploreTileAsync(GameId, AuthService.CurrentUser.Id, hex.Q, hex.R);
                 if (result.Success)
                 {
                     await LoadGame();
                     await UpdateValidTileMoves();
                     await NotifyGameStateChanged("Explored new tile");
+                }
+                else
+                {
+                    await NotifyActionFailedAsync(result.ErrorMessage);
                 }
             }
         }
@@ -1928,8 +2030,7 @@ else
             { ManaPool.ManaColor.Red, crystals.Red },
             { ManaPool.ManaColor.Blue, crystals.Blue },
             { ManaPool.ManaColor.Green, crystals.Green },
-            { ManaPool.ManaColor.White, crystals.White },
-            { ManaPool.ManaColor.Gold, crystals.Gold }
+            { ManaPool.ManaColor.White, crystals.White }
         };
     }
 
@@ -1944,7 +2045,8 @@ else
             { ManaPool.ManaColor.Blue, tokens.Blue },
             { ManaPool.ManaColor.Green, tokens.Green },
             { ManaPool.ManaColor.White, tokens.White },
-            { ManaPool.ManaColor.Black, tokens.Black }
+            { ManaPool.ManaColor.Black, tokens.Black },
+            { ManaPool.ManaColor.Gold, tokens.Gold }
         };
     }
 
@@ -1973,6 +2075,13 @@ else
         }).ToList();
     }
 
+    private List<string> GetPlayedCardNames()
+    {
+        return _gameState.TurnState.PlayedCards
+            .Select(cardId => _cardDefinitions.FirstOrDefault(c => c.Id == cardId)?.Name ?? cardId)
+            .ToList();
+    }
+
     private string GetCurrentPlayerName()
     {
         if (_gameState.CurrentPlayerIndex < 0 || _gameState.CurrentPlayerIndex >= _gameState.Players.Count)
@@ -1986,9 +2095,25 @@ else
     private void ToggleLog() => _showLog = !_showLog;
     private void ToggleChat() => _showChat = !_showChat;
 
+    private Task NotifyActionFailedAsync(string? message) =>
+        JSRuntime.InvokeVoidAsync("alert", message ?? "Action failed").AsTask();
+
+    private async Task<bool> EnsureCurrentUserAsync(string action)
+    {
+        if (AuthService.CurrentUser != null)
+            return true;
+
+        await NotifyActionFailedAsync($"You must be logged in to {action}.");
+        return false;
+    }
+
     private async Task EndGame()
     {
-        if (_game == null || AuthService.CurrentUser == null) return;
+        if (_game == null || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("Game or user session is not ready.");
+            return;
+        }
         
         // Simple confirmation using browser confirm
         var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
@@ -2002,23 +2127,36 @@ else
             await NotifyGameStateChanged("Game ended by owner");
             Navigation.NavigateTo($"/game/{GameId}");
         }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not end game");
+        }
     }
 
     private async Task OnHexClicked(HexGrid.HexData hex)
     {
         _selectedHex = hex;
         
-        if (!IsMyTurn || _myPlayerState == null) return;
+        if (!IsMyTurn || _myPlayerState == null || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You cannot move right now.");
+            return;
+        }
 
         // Check if this is a valid move destination
         if (_highlightedHexes?.Any(h => h.Q == hex.Q && h.R == hex.R) == true)
         {
             // This is a valid move - execute it
-            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser!.Id, hex.Q, hex.R);
+            var result = await GameService.MovePlayerAsync(GameId, AuthService.CurrentUser.Id, hex.Q, hex.R);
             if (result.Success)
             {
                 await LoadGame(); // Reload game state
                 await UpdateValidMoves(); // Update highlighted hexes
+                await NotifyGameStateChanged("Player moved");
+            }
+            else
+            {
+                await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not move player");
             }
         }
         else if (hex.IsRevealed)
@@ -2035,14 +2173,14 @@ else
 
     private async Task UpdateValidMoves()
     {
-        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0)
+        if (!IsMyTurn || _myPlayerState == null || _myPlayerState.MovementRemaining <= 0 || AuthService.CurrentUser == null)
         {
             _highlightedHexes = null;
             StateHasChanged();
             return;
         }
 
-        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser!.Id);
+        var validMoves = await GameService.GetValidMovesAsync(GameId, AuthService.CurrentUser.Id);
         _highlightedHexes = validMoves
             .Select(m => _hexes.FirstOrDefault(h => h.Q == m.Q && h.R == m.R))
             .Where(h => h != null)
@@ -2058,10 +2196,14 @@ else
 
     private async Task PlayCard(int index)
     {
-        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        if (_myPlayerState == null || index < 0 || index >= _myPlayerState.Hand.Count || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("Cannot play card because the player state is not ready.");
+            return;
+        }
         
         var cardId = _myPlayerState.Hand[index];
-        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser!.Id, cardId, false);
+        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser.Id, cardId, false);
         
         if (result.Success)
         {
@@ -2071,22 +2213,25 @@ else
             await UpdateValidTileMoves();
             await NotifyGameStateChanged("Played card");
         }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not play card");
+        }
     }
 
     private async Task PlayCardPowered(int index)
     {
-        if (_myPlayerState == null || index >= _myPlayerState.Hand.Count) return;
+        if (_myPlayerState == null || index < 0 || index >= _myPlayerState.Hand.Count || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("Cannot play powered card because the player state is not ready.");
+            return;
+        }
         
         var cardId = _myPlayerState.Hand[index];
-        var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
         
         // Check if we have any mana available (TemporaryMana or ManaTokens)
-        var hasTemporaryMana = _myPlayerState.TemporaryMana.HasValue;
-        var tokens = _myPlayerState.ManaTokens;
-        var hasManaToken = tokens.Red > 0 || tokens.Blue > 0 || tokens.Green > 0 || 
-                          tokens.White > 0 || tokens.Black > 0 || tokens.Gold > 0;
-        
-        if (!hasTemporaryMana && !hasManaToken)
+        var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
+        if (card == null || !HasUsableManaForPoweredCard(card))
         {
             await JSRuntime.InvokeVoidAsync("alert", "No mana available! Take a mana die from Source, use a mana token, or play a card that gives mana first.");
             return;
@@ -2095,7 +2240,7 @@ else
         // Server-side will handle the mana consumption automatically
         // It will use TemporaryMana first, then check ManaTokens
         
-        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser!.Id, cardId, true, null);
+        var result = await GameService.PlayCardAsync(GameId, AuthService.CurrentUser.Id, cardId, true, null);
         
         if (result.Success)
         {
@@ -2107,16 +2252,20 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to play card");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to play card");
         }
     }
 
     private async Task UseSidewaysCard((int Index, string BonusType) data)
     {
-        if (_myPlayerState == null || data.Index >= _myPlayerState.Hand.Count) return;
+        if (_myPlayerState == null || data.Index < 0 || data.Index >= _myPlayerState.Hand.Count || AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("Cannot use card sideways because the player state is not ready.");
+            return;
+        }
         
         var cardId = _myPlayerState.Hand[data.Index];
-        var result = await GameService.UseCardSidewaysAsync(GameId, AuthService.CurrentUser!.Id, cardId, data.BonusType);
+        var result = await GameService.UseCardSidewaysAsync(GameId, AuthService.CurrentUser.Id, cardId, data.BonusType);
         
         if (result.Success)
         {
@@ -2126,10 +2275,20 @@ else
             await UpdateValidTileMoves();
             await NotifyGameStateChanged("Used card sideways");
         }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not use card sideways");
+        }
     }
 
     private async Task SelectMana(int index)
     {
+        if (AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You must be logged in to take mana.");
+            return;
+        }
+
         // If player already has temporary mana from this die, deselect (return it)
         if (_myPlayerState?.TemporaryMana.HasValue == true && _myPlayerState.UsedManaDieIndex == index)
         {
@@ -2139,7 +2298,7 @@ else
         }
 
         // Take mana die from Source (gives temporary mana)
-        var result = await GameService.UseManaAsync(GameId, AuthService.CurrentUser!.Id, index);
+        var result = await GameService.UseManaAsync(GameId, AuthService.CurrentUser.Id, index);
         if (result.Success)
         {
             await LoadGame(); // Reload to get updated temporary mana
@@ -2147,16 +2306,22 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to take mana die");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to take mana die");
         }
     }
 
     private async Task SelectManaToken(ManaPool.ManaColor color)
     {
+        if (AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You must be logged in to activate a mana token.");
+            return;
+        }
+
         // Convert ManaPool.ManaColor to string for the service call
         var colorString = color.ToString();
         
-        var result = await GameService.UseManaTokenAsync(GameId, AuthService.CurrentUser!.Id, colorString);
+        var result = await GameService.UseManaTokenAsync(GameId, AuthService.CurrentUser.Id, colorString);
         if (result.Success)
         {
             await LoadGame();
@@ -2164,7 +2329,27 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to activate mana token");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to activate mana token");
+        }
+    }
+
+    private async Task SelectCrystal(ManaPool.ManaColor color)
+    {
+        if (AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You must be logged in to use a crystal.");
+            return;
+        }
+
+        var result = await GameService.UseCrystalAsync(GameId, AuthService.CurrentUser.Id, color.ToString());
+        if (result.Success)
+        {
+            await LoadGame();
+            StateHasChanged();
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to use crystal");
         }
     }
 
@@ -2198,49 +2383,64 @@ else
             return false;
 
         var card = _cardDefinitions.FirstOrDefault(c => c.Id == cardId);
-        if (card == null)
+        return card != null && HasUsableManaForPoweredCard(card);
+    }
+
+    private bool HasUsableManaForPoweredCard(CardDefinition card)
+    {
+        if (_myPlayerState == null || card.EffectsPowered?.Any() != true)
             return false;
 
-        // Check if card has powered effect
-        if (card.EffectsPowered == null || !card.EffectsPowered.Any())
-            return false;
+        var requiredColor = !string.IsNullOrEmpty(card.ManaType)
+            ? ParseManaColor(card.ManaType)
+            : (ManaColor?)null;
 
-        // Check mana availability: TemporaryMana or ManaTokens
-        var hasTemporaryMana = _myPlayerState.TemporaryMana.HasValue;
-        var tokens = _myPlayerState.ManaTokens;
-        var hasManaToken = tokens.Red > 0 || tokens.Blue > 0 || tokens.Green > 0 || 
-                          tokens.White > 0 || tokens.Black > 0 || tokens.Gold > 0;
-
-        if (!hasTemporaryMana && !hasManaToken)
-            return false;
-
-        // If card has no specific mana color requirement, any mana can be used
-        if (string.IsNullOrEmpty(card.ManaType))
-            return true; // Basic actions can use any mana
-
-        var requiredColor = ParseManaColor(card.ManaType);
-        
-        // Check temporary mana first
-        if (hasTemporaryMana)
+        if (_myPlayerState.TemporaryMana.HasValue &&
+            CanUseManaAs(_myPlayerState.TemporaryMana.Value, requiredColor))
         {
-            var temporaryMana = _myPlayerState.TemporaryMana.Value;
-            if (temporaryMana == ManaColor.Gold || temporaryMana == requiredColor)
-                return true;
+            return true;
         }
-        
-        // Check mana tokens
-        if (tokens.Gold > 0)
-            return true; // Gold can be used for any color
-        
-        return requiredColor switch
+
+        var tokens = _myPlayerState.ManaTokens;
+        if (requiredColor.HasValue)
         {
-            ManaColor.Red => tokens.Red > 0,
-            ManaColor.Blue => tokens.Blue > 0,
-            ManaColor.Green => tokens.Green > 0,
-            ManaColor.White => tokens.White > 0,
-            ManaColor.Black => tokens.Black > 0,
-            _ => false
-        };
+            if (_gameState.IsDay && IsBasicMana(requiredColor.Value) && tokens.Gold > 0)
+                return true;
+
+            return requiredColor.Value switch
+            {
+                ManaColor.Red => tokens.Red > 0,
+                ManaColor.Blue => tokens.Blue > 0,
+                ManaColor.Green => tokens.Green > 0,
+                ManaColor.White => tokens.White > 0,
+                ManaColor.Black => !_gameState.IsDay && tokens.Black > 0,
+                ManaColor.Gold => _gameState.IsDay && tokens.Gold > 0,
+                _ => false
+            };
+        }
+
+        return tokens.Red > 0
+            || tokens.Blue > 0
+            || tokens.Green > 0
+            || tokens.White > 0
+            || (!_gameState.IsDay && tokens.Black > 0)
+            || (_gameState.IsDay && tokens.Gold > 0);
+    }
+
+    private bool CanUseManaAs(ManaColor available, ManaColor? required)
+    {
+        if (!required.HasValue)
+            return available != ManaColor.Black || !_gameState.IsDay;
+
+        if (available == required.Value)
+            return available != ManaColor.Black || !_gameState.IsDay;
+
+        return _gameState.IsDay && available == ManaColor.Gold && IsBasicMana(required.Value);
+    }
+
+    private static bool IsBasicMana(ManaColor color)
+    {
+        return color is ManaColor.Red or ManaColor.Blue or ManaColor.Green or ManaColor.White;
     }
 
     private ManaColor ParseManaColor(string manaType)
@@ -2269,31 +2469,45 @@ else
 
     private async Task UndoMana()
     {
-        var result = await GameService.UndoUseManaAsync(GameId, AuthService.CurrentUser!.Id);
+        if (AuthService.CurrentUser == null)
+        {
+            await NotifyActionFailedAsync("You must be logged in to undo mana.");
+            return;
+        }
+
+        var result = await GameService.UndoUseManaAsync(GameId, AuthService.CurrentUser.Id);
         if (result.Success)
         {
             _hasRevealedSomething = false; // Reset this on undo
             await LoadGame();
         }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not undo mana");
+        }
     }
 
     private async Task EndTurn()
     {
+        if (!await EnsureCurrentUserAsync("end your turn"))
+            return;
+        var user = AuthService.CurrentUser!;
+
         // Check if we're in combat - can't end turn during combat
         if (_gameState.Combat != null)
         {
-            await JSRuntime.InvokeVoidAsync("alert", "Cannot end turn during combat. Finish or flee from combat first.");
+            await NotifyActionFailedAsync("Cannot end turn during combat. Finish or flee from combat first.");
             return;
         }
 
         // Check if we're in tactics selection phase
         if (_gameState.Phase == GamePhase.TacticsSelection)
         {
-            await JSRuntime.InvokeVoidAsync("alert", "Cannot end turn during tactics selection. Select a tactic first.");
+            await NotifyActionFailedAsync("Cannot end turn during tactics selection. Select a tactic first.");
             return;
         }
 
-        var result = await GameService.EndTurnAsync(GameId, AuthService.CurrentUser!.Id);
+        var result = await GameService.EndTurnAsync(GameId, user.Id);
         if (result.Success)
         {
             _selectedCardIndex = null;
@@ -2306,7 +2520,7 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to end turn");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to end turn");
         }
     }
 
@@ -2339,7 +2553,11 @@ else
 
     private async Task UndoLastAction()
     {
-        var result = await GameService.UndoLastActionAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!await EnsureCurrentUserAsync("undo the last action"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.UndoLastActionAsync(GameId, user.Id);
         if (result.Success)
         {
             _selectedCardIndex = null;
@@ -2348,7 +2566,7 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Cannot undo");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Cannot undo");
         }
     }
 
@@ -2368,11 +2586,13 @@ else
 
     private async Task ResolveChoice(string choiceId)
     {
-        if (AuthService.CurrentUser == null) return;
+        if (!await EnsureCurrentUserAsync("resolve this choice"))
+            return;
+        var user = AuthService.CurrentUser!;
 
         var result = await GameService.ResolveChoiceAsync(
             GameId, 
-            AuthService.CurrentUser.Id, 
+            user.Id, 
             choiceId, 
             _selectedDiscardCard);
         
@@ -2386,19 +2606,25 @@ else
         }
         else
         {
-            await JSRuntime.InvokeVoidAsync("alert", result.ErrorMessage ?? "Failed to resolve choice");
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Failed to resolve choice");
         }
     }
 
     private async Task CancelChoice()
     {
-        if (AuthService.CurrentUser == null) return;
+        if (!await EnsureCurrentUserAsync("cancel this choice"))
+            return;
+        var user = AuthService.CurrentUser!;
 
-        var result = await GameService.CancelChoiceAsync(GameId, AuthService.CurrentUser.Id);
+        var result = await GameService.CancelChoiceAsync(GameId, user.Id);
         if (result.Success)
         {
             _selectedDiscardCard = null;
             await LoadGame();
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not cancel choice");
         }
     }
 
@@ -2429,64 +2655,127 @@ else
 
     private async Task HandleRangedAttack((int EnemyIndex, int Value) args)
     {
-        var result = await GameService.RangedAttackAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (!await EnsureCurrentUserAsync("make a ranged attack"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.RangedAttackAsync(GameId, user.Id, args.EnemyIndex, args.Value);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Ranged attack");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Ranged attack failed");
         }
     }
 
     private async Task HandleBlock((int EnemyIndex, int Value) args)
     {
-        var result = await GameService.BlockEnemyAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (!await EnsureCurrentUserAsync("block"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.BlockEnemyAsync(GameId, user.Id, args.EnemyIndex, args.Value);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Blocked enemy");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Block failed");
         }
     }
 
     private async Task HandleAttack((int EnemyIndex, int Value) args)
     {
-        var result = await GameService.AttackEnemyAsync(GameId, AuthService.CurrentUser!.Id, args.EnemyIndex, args.Value);
+        if (!await EnsureCurrentUserAsync("attack"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.AttackEnemyAsync(GameId, user.Id, args.EnemyIndex, args.Value);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Attacked enemy");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Attack failed");
         }
     }
 
     private async Task HandleAssignDamage(int damage)
     {
-        var result = await GameService.AssignDamageAsync(GameId, AuthService.CurrentUser!.Id, damage);
+        if (!await EnsureCurrentUserAsync("assign damage"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.AssignDamageAsync(GameId, user.Id, damage);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Assigned damage");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not assign damage");
         }
     }
 
     private async Task HandleEndCombatPhase()
     {
-        var result = await GameService.EndCombatPhaseAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!await EnsureCurrentUserAsync("advance combat"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.EndCombatPhaseAsync(GameId, user.Id);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Combat phase advanced");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not advance combat phase");
         }
     }
 
     private async Task HandleFlee()
     {
-        var result = await GameService.FleeCombatAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!await EnsureCurrentUserAsync("flee combat"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.FleeCombatAsync(GameId, user.Id);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Fled combat");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not flee combat");
         }
     }
 
     private async Task Rest()
     {
-        var result = await GameService.RestAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!await EnsureCurrentUserAsync("rest"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.RestAsync(GameId, user.Id);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Rested");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not rest");
         }
     }
 
@@ -2598,19 +2887,37 @@ else
 
     private async Task HandleAssignDamageToUnit(int unitIndex)
     {
-        var result = await GameService.AssignDamageToUnitAsync(GameId, AuthService.CurrentUser!.Id, unitIndex, 1);
+        if (!await EnsureCurrentUserAsync("assign damage to a unit"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.AssignDamageToUnitAsync(GameId, user.Id, unitIndex, 1);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Assigned unit damage");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not assign damage to unit");
         }
     }
 
     private async Task HandleUnitAbility((int UnitIndex, string AbilityType, int? EnemyIndex) args)
     {
-        var result = await GameService.ActivateUnitAsync(GameId, AuthService.CurrentUser!.Id, args.UnitIndex, args.AbilityType, args.EnemyIndex);
+        if (!await EnsureCurrentUserAsync("use a unit ability"))
+            return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.ActivateUnitAsync(GameId, user.Id, args.UnitIndex, args.AbilityType, args.EnemyIndex);
         if (result.Success)
         {
             await LoadGame();
+            await NotifyGameStateChanged("Used unit ability");
+        }
+        else
+        {
+            await NotifyActionFailedAsync(result.ErrorMessage ?? "Could not use unit ability");
         }
     }
 
@@ -2618,7 +2925,11 @@ else
 
     private async Task OpenSitePanel()
     {
-        if (_myPlayerState == null) return;
+        if (_myPlayerState == null)
+        {
+            await NotifyActionFailedAsync("Player state is not ready.");
+            return;
+        }
 
         var hexKey = $"{_myPlayerState.Position.Q},{_myPlayerState.Position.R}";
         if (_gameState.Map.HexData.TryGetValue(hexKey, out var hexState) && !string.IsNullOrEmpty(hexState.SiteType))
@@ -2670,16 +2981,21 @@ else
 
     private async Task HandleSiteInteraction(string interactionType)
     {
+        if (!await EnsureCurrentUserAsync("use this site"))
+            return;
+        var user = AuthService.CurrentUser!;
+
         _siteInteractionMessage = null;
         _siteInteractionIsError = false;
 
-        var result = await GameService.InteractWithSiteAsync(GameId, AuthService.CurrentUser!.Id, interactionType);
+        var result = await GameService.InteractWithSiteAsync(GameId, user.Id, interactionType);
         
         if (result.Success)
         {
             _siteInteractionMessage = $"{interactionType} successful!";
             _siteInteractionIsError = false;
             await LoadGame();
+            await NotifyGameStateChanged($"Used site interaction: {interactionType}");
             
             // Refresh interactions after successful action
             _siteInteractions = await GetSiteInteractionsAsync();

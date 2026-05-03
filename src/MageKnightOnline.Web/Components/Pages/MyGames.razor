@@ -7,7 +7,14 @@
 
 <PageTitle>My Games - Mage Knight Online</PageTitle>
 
-@if (!AuthService.IsAuthenticated)
+@if (!AuthService.IsInitialized)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Starting session...</p>
+    </div>
+}
+else if (!AuthService.IsAuthenticated)
 {
     <div class="alert alert-warning">
         Please <a href="/login">login</a> to view your games.
@@ -147,20 +154,32 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _scenarios = (await DefinitionService.GetScenariosAsync()).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await AuthService.InitializeAsync();
         if (!AuthService.IsAuthenticated)
         {
             Navigation.NavigateTo("/login");
             return;
         }
 
-        _scenarios = (await DefinitionService.GetScenariosAsync()).ToList();
         await LoadGames();
+        StateHasChanged();
     }
 
     private async Task LoadGames()
     {
+        if (AuthService.CurrentUser == null)
+            return;
+
         _isLoading = true;
-        _games = (await GameService.GetMyGamesAsync(AuthService.CurrentUser!.Id)).ToList();
+        _games = (await GameService.GetMyGamesAsync(AuthService.CurrentUser.Id)).ToList();
         _isLoading = false;
     }
 

@@ -9,7 +9,14 @@
 
 <PageTitle>Mage Knight Online - Lobby</PageTitle>
 
-@if (!AuthService.IsAuthenticated)
+@if (!AuthService.IsInitialized)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Starting session...</p>
+    </div>
+}
+else if (!AuthService.IsAuthenticated)
 {
     <div class="hero-section">
         <div class="hero-content text-center">
@@ -142,7 +149,7 @@ else
                                 </div>
                                 <div class="game-actions">
                                     <span class="badge badge-waiting">Waiting</span>
-                                    @if (!game.Players.Any(p => p.UserId == AuthService.CurrentUser!.Id))
+                                    @if (!game.Players.Any(p => p.UserId == AuthService.CurrentUser?.Id))
                                     {
                                         <button class="btn btn-primary btn-sm" @onclick="() => JoinGame(game.Id)">
                                             Join
@@ -430,11 +437,18 @@ else
     {
         AuthService.OnAuthStateChanged += OnAuthStateChanged;
         _scenarios = (await DefinitionService.GetScenariosAsync()).ToList();
-        
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await AuthService.InitializeAsync();
         if (AuthService.IsAuthenticated)
-        {
             await LoadGames();
-        }
+
+        StateHasChanged();
     }
 
     private async void OnAuthStateChanged()
@@ -453,14 +467,17 @@ else
 
     private async Task LoadGames()
     {
+        if (AuthService.CurrentUser == null)
+            return;
+
         _isLoading = true;
         
         // Load my games (includes both waiting and in-progress)
-        _myGames = (await GameService.GetMyGamesAsync(AuthService.CurrentUser!.Id)).ToList();
+        _myGames = (await GameService.GetMyGamesAsync(AuthService.CurrentUser.Id)).ToList();
         
         // Load available games (only waiting, excluding ones I'm already in)
         var allAvailable = (await GameService.GetAvailableGamesAsync()).ToList();
-        _availableGames = allAvailable.Where(g => !g.Players.Any(p => p.UserId == AuthService.CurrentUser!.Id)).ToList();
+        _availableGames = allAvailable.Where(g => !g.Players.Any(p => p.UserId == AuthService.CurrentUser.Id)).ToList();
         
         // Parse game states for in-progress games to check whose turn it is
         _gameStates.Clear();
@@ -510,10 +527,17 @@ else
 
     private async Task JoinGame(Guid gameId)
     {
-        var result = await GameService.JoinGameAsync(gameId, AuthService.CurrentUser!.Id);
+        if (AuthService.CurrentUser == null)
+            return;
+
+        var result = await GameService.JoinGameAsync(gameId, AuthService.CurrentUser.Id);
         if (result.Success)
         {
             Navigation.NavigateTo($"/game/{gameId}");
+        }
+        else
+        {
+            _createError = result.ErrorMessage;
         }
     }
 
@@ -521,6 +545,13 @@ else
     {
         _isCreating = true;
         _createError = null;
+
+        if (AuthService.CurrentUser == null)
+        {
+            _createError = "Your session is not ready. Please reload or log in again.";
+            _isCreating = false;
+            return;
+        }
 
         if (string.IsNullOrEmpty(_createModel.ScenarioId))
         {
@@ -536,7 +567,7 @@ else
             MaxPlayers = _createModel.MaxPlayers
         };
 
-        var result = await GameService.CreateGameAsync(AuthService.CurrentUser!.Id, request);
+        var result = await GameService.CreateGameAsync(AuthService.CurrentUser.Id, request);
 
         if (result.Success)
         {

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "moeaEE7aHnk=",
+  "dgSpecHash": "0coRD+drHf0=",
   "success": true,
-  "projectFilePath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
+  "projectFilePath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Web\\MageKnightOnline.Web.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\eliwe\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\eliwe\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.7\\microsoft.aspnetcore.app.internal.assets.10.0.7.nupkg.sha512",

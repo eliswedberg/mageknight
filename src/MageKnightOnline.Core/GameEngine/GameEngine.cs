@@ -1199,6 +1199,7 @@ public class GameEngine : IGameEngine
         // Remove card from hand, add to discard
         player.Hand.Remove(cardId);
         player.DiscardPile.Add(cardId);
+        _state.TurnState.PlayedCards.Add(cardId);
 
         // Get the effects to apply (basic or powered)
         var effects = powered ? (card.EffectsPowered ?? card.EffectsBasic) : card.EffectsBasic;
@@ -1630,6 +1631,7 @@ public class GameEngine : IGameEngine
         // Remove card from hand, add to discard
         player.Hand.Remove(cardId);
         player.DiscardPile.Add(cardId);
+        _state.TurnState.PlayedCards.Add(cardId);
 
         // Apply +1 based on player's choice
         var effectType = bonusType.ToLower() switch
@@ -2822,7 +2824,7 @@ public class GameEngine : IGameEngine
         if (_state.Combat == null)
             return GameActionResult.Fail("Not in combat");
 
-        if (_state.Combat.Phase != CombatPhase.Block)
+        if (_state.Combat.Phase != CombatPhase.Block && _state.Combat.Phase != CombatPhase.SwiftAttack)
             return GameActionResult.Fail("Not in block phase");
 
         if (enemyIndex < 0 || enemyIndex >= _state.Combat.Enemies.Count)
@@ -2831,6 +2833,9 @@ public class GameEngine : IGameEngine
         var enemy = _state.Combat.Enemies[enemyIndex];
         if (enemy.IsDefeated || enemy.IsBlocked)
             return GameActionResult.Fail("Enemy already defeated or blocked");
+
+        if (_state.Combat.Phase == CombatPhase.SwiftAttack && !enemy.IsSwift)
+            return GameActionResult.Fail("Can only block Swift enemies in this phase");
 
         var player = GetCurrentPlayer();
         if (player == null || player.BlockPool < blockValue)
@@ -2948,13 +2953,7 @@ public class GameEngine : IGameEngine
 
     private int CalculateEffectiveArmor(CombatEnemy enemy, string attackElement, bool isMelee)
     {
-        var baseArmor = enemy.GetArmorForAttack(AreAllEnemyAttacksBlocked());
-        if (enemy.Resistances.Contains(attackElement, StringComparer.OrdinalIgnoreCase))
-        {
-            baseArmor *= 2;
-        }
-
-        return baseArmor;
+        return enemy.GetAttackRequirement(AreAllEnemyAttacksBlocked(), attackElement);
     }
 
     private GameActionResult? ValidateDefenderTarget(CombatEnemy target)
@@ -3096,6 +3095,11 @@ public class GameEngine : IGameEngine
 
         switch (_state.Combat.Phase)
         {
+            case CombatPhase.SwiftAttack:
+                _state.Combat.Phase = CombatPhase.RangedAttack;
+                AddLogEntry("Combat", "Ranged attack phase begins");
+                return GameActionResult.Ok("Ranged attack phase begins");
+
             case CombatPhase.RangedAttack:
                 ProcessSummonsForBlockPhase();
                 _state.Combat.Phase = CombatPhase.Block;
@@ -4853,7 +4857,7 @@ public class GameEngine : IGameEngine
         if (_state.Combat == null)
             return GameActionResult.Fail("Not in combat");
 
-        if (_state.Combat.Phase != CombatPhase.Block)
+        if (_state.Combat.Phase != CombatPhase.Block && _state.Combat.Phase != CombatPhase.SwiftAttack)
             return GameActionResult.Fail("Can only use block ability during block phase");
 
         if (abilities.Block <= 0)

@@ -70,3 +70,7 @@ C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Data\obj\Debug\net10
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Data\obj\Debug\net10.0\MageKnightOnline.Data.pdb
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Data\obj\Debug\net10.0\MageKnightOnline.Data.genruntimeconfig.cache
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Data\obj\Debug\net10.0\ref\MageKnightOnline.Data.dll
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Data.deps.json
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Data.runtimeconfig.json
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Data.dll
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Data.pdb

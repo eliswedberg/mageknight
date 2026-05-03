@@ -50,3 +50,6 @@ C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Core\obj\Debug\net10
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Core\obj\Debug\net10.0\refint\MageKnightOnline.Core.dll
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Core\obj\Debug\net10.0\MageKnightOnline.Core.pdb
 C:\Users\eliwe\Source\repos\mageknight\src\MageKnightOnline.Core\obj\Debug\net10.0\ref\MageKnightOnline.Core.dll
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Core.deps.json
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Core.dll
+C:\Users\eliwe\AppData\Local\Temp\mageknight-web-verify\MageKnightOnline.Core.pdb

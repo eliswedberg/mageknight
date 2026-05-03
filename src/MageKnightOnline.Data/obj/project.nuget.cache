@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "VLP4Gods0zI=",
+  "dgSpecHash": "MaKqG+jOr7Y=",
   "success": true,
-  "projectFilePath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
+  "projectFilePath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Data\\MageKnightOnline.Data.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\eliwe\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\eliwe\\.nuget\\packages\\microsoft.build.framework\\18.0.2\\microsoft.build.framework.18.0.2.nupkg.sha512",

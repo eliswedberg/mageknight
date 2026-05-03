@@ -474,6 +474,14 @@ public class CombatEnemy
         return (lowerArmor > 0 ? lowerArmor : Math.Max(1, Armor / 2)) + VampiricArmorBonus;
     }
 
+    public int GetAttackRequirement(bool allAttacksBlocked, string attackElement = "Physical")
+    {
+        var requiredAttack = GetArmorForAttack(allAttacksBlocked);
+        return Resistances.Contains(attackElement, StringComparer.OrdinalIgnoreCase)
+            ? requiredAttack * 2
+            : requiredAttack;
+    }
+
     private static int ParseAbilityValue(string ability)
     {
         var parts = ability.Split(new[] { '_', ' ' }, StringSplitOptions.RemoveEmptyEntries);

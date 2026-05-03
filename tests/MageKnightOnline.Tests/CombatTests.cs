@@ -112,6 +112,22 @@ public class CombatTests
         }
     }
 
+    [Fact]
+    public void BlockEnemy_SwiftEnemyInBlockPhase_UsesDoubledRequirement()
+    {
+        SetupBasicGameStateWithEnemy("enemy_wolf_rider");
+        _engine.InitiateCombat();
+        _engine.State.Combat!.Phase = CombatPhase.Block;
+        var player = _engine.GetCurrentPlayer()!;
+        player.BlockPool = 6;
+
+        var result = _engine.BlockEnemy(0, 6);
+
+        Assert.True(result.Success);
+        Assert.True(_engine.State.Combat.Enemies[0].IsBlocked);
+        Assert.Equal(0, player.BlockPool);
+    }
+
     #endregion
 
     #region Attack Tests
@@ -360,6 +376,72 @@ public class CombatTests
 
         Assert.False(result.Success);
         Assert.False(enemy.IsDefeated);
+    }
+
+    [Fact]
+    public void PlayAttackCard_AddsAttackPoolAndTracksPlayedCard()
+    {
+        SetupBasicGameStateWithEnemy("enemy_orc");
+        var player = _engine.GetCurrentPlayer()!;
+        player.Hand = new List<string> { "basic_attack" };
+
+        var result = _engine.PlayCard("basic_attack");
+
+        Assert.True(result.Success);
+        Assert.Equal(2, player.AttackPool);
+        Assert.Contains("basic_attack", _engine.State.TurnState.PlayedCards);
+        Assert.DoesNotContain("basic_attack", player.Hand);
+    }
+
+    [Fact]
+    public void AttackEnemy_InWrongPhase_FailsWithoutSpendingAttack()
+    {
+        SetupBasicGameStateWithEnemy("enemy_orc");
+        _engine.InitiateCombat();
+        _engine.State.Combat!.Phase = CombatPhase.RangedAttack;
+        var player = _engine.GetCurrentPlayer()!;
+        player.AttackPool = 3;
+
+        var result = _engine.AttackEnemy(0, 3);
+
+        Assert.False(result.Success);
+        Assert.Equal(3, player.AttackPool);
+        Assert.False(_engine.State.Combat.Enemies[0].IsDefeated);
+    }
+
+    [Fact]
+    public void AttackEnemy_PhysicalResistanceRequiresDoubledAttack()
+    {
+        SetupBasicGameStateWithEnemy("enemy_orc");
+        _engine.InitiateCombat();
+        _engine.State.Combat!.Phase = CombatPhase.Attack;
+        var enemy = _engine.State.Combat.Enemies[0];
+        enemy.Resistances.Add("Physical");
+
+        var player = _engine.GetCurrentPlayer()!;
+        player.AttackPool = 6;
+
+        var weakResult = _engine.AttackEnemy(0, 3);
+        Assert.False(weakResult.Success);
+        Assert.False(enemy.IsDefeated);
+
+        player.AttackPool = 6;
+        var strongResult = _engine.AttackEnemy(0, 6);
+        Assert.True(strongResult.Success);
+        Assert.True(enemy.IsDefeated);
+    }
+
+    [Fact]
+    public void EndCombatPhase_LegacySwiftPhase_AdvancesToRangedPhase()
+    {
+        SetupBasicGameStateWithEnemy("enemy_wolf_rider");
+        _engine.InitiateCombat();
+        _engine.State.Combat!.Phase = CombatPhase.SwiftAttack;
+
+        var result = _engine.EndCombatPhase();
+
+        Assert.True(result.Success);
+        Assert.Equal(CombatPhase.RangedAttack, _engine.State.Combat.Phase);
     }
 
     [Fact]

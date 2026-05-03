@@ -543,11 +543,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+      "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
       "projectName": "MageKnightOnline.Core",
-      "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+      "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
       "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\obj\\",
+      "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"

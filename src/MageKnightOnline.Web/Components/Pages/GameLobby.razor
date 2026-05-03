@@ -9,7 +9,14 @@
 
 <PageTitle>@(_game?.Name ?? "Game") - Mage Knight Online</PageTitle>
 
-@if (!AuthService.IsAuthenticated)
+@if (!AuthService.IsInitialized)
+{
+    <div class="text-center mt-lg">
+        <div class="spinner"></div>
+        <p class="text-muted mt-md">Starting session...</p>
+    </div>
+}
+else if (!AuthService.IsAuthenticated)
 {
     <div class="alert alert-warning">
         Please <a href="/login">login</a> to view this game.
@@ -62,11 +69,6 @@ else
             <div class="alert alert-error">@_errorMessage</div>
         }
 
-        @if (!string.IsNullOrEmpty(_successMessage))
-        {
-            <div class="alert alert-success">@_successMessage</div>
-        }
-
         <div class="grid grid-2">
             <!-- Players Section -->
             <div class="card">
@@ -77,7 +79,7 @@ else
                     @foreach (var player in _game.Players.OrderBy(p => p.TurnOrder))
                     {
                         var hero = _heroes.FirstOrDefault(h => h.Id == player.HeroId);
-                        <div class="player-item @(player.UserId == AuthService.CurrentUser!.Id ? "current-player" : "")">
+                        <div class="player-item @(player.UserId == AuthService.CurrentUser?.Id ? "current-player" : "")">
                             <div class="player-info">
                                 @if (hero != null)
                                 {
@@ -121,7 +123,7 @@ else
                 <div class="hero-grid">
                     @foreach (var hero in _heroes)
                     {
-                        var isTaken = _game.Players.Any(p => p.HeroId == hero.Id && p.UserId != AuthService.CurrentUser!.Id);
+                        var isTaken = _game.Players.Any(p => p.HeroId == hero.Id && p.UserId != AuthService.CurrentUser?.Id);
                         var isSelected = _currentPlayer?.HeroId == hero.Id;
                         
                         <div class="hero-card @(isSelected ? "selected" : "") @(isTaken ? "taken" : "")"
@@ -394,7 +396,6 @@ else
     private List<HeroDefinition> _heroes = new();
     private bool _isLoading = true;
     private string? _errorMessage;
-    private string? _successMessage;
     private HubConnection? _hubConnection;
 
     private bool _isCreator => _game?.CreatedByUserId == AuthService.CurrentUser?.Id;
@@ -407,7 +408,49 @@ else
     protected override async Task OnInitializedAsync()
     {
         _heroes = (await DefinitionService.GetHeroesAsync()).ToList();
-        await LoadGame();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await AuthService.InitializeAsync();
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadGame();
+            await SetupSignalR();
+            StateHasChanged();
+        }
+        else
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool EnsureCurrentUser()
+    {
+        if (AuthService.CurrentUser != null)
+            return true;
+
+        _errorMessage = "Your session is not ready. Please reload or log in again.";
+        return false;
+    }
+
+    private async Task JoinGameHubIfNeededAsync()
+    {
+        if (_hubConnection?.State == HubConnectionState.Connected && AuthService.CurrentUser != null)
+        {
+            await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
+        }
+    }
+
+    private async Task EnsureSignalRAsync()
+    {
+        if (_hubConnection != null)
+            return;
+
         await SetupSignalR();
     }
 
@@ -450,11 +493,7 @@ else
         try
         {
             await _hubConnection.StartAsync();
-            
-            if (AuthService.CurrentUser != null)
-            {
-                await _hubConnection.SendAsync("JoinGame", GameId.ToString(), AuthService.CurrentUser.Username);
-            }
+            await JoinGameHubIfNeededAsync();
         }
         catch (Exception ex)
         {
@@ -482,14 +521,15 @@ else
 
     private async Task SelectHero(string heroId)
     {
-        if (_game == null || _currentPlayer == null) return;
+        if (_game == null || _currentPlayer == null || !EnsureCurrentUser()) return;
+        var user = AuthService.CurrentUser!;
         
         // Check if hero is already taken
-        if (_game.Players.Any(p => p.HeroId == heroId && p.UserId != AuthService.CurrentUser!.Id))
+        if (_game.Players.Any(p => p.HeroId == heroId && p.UserId != user.Id))
             return;
 
         _errorMessage = null;
-        var result = await GameService.SelectHeroAsync(GameId, AuthService.CurrentUser!.Id, heroId);
+        var result = await GameService.SelectHeroAsync(GameId, user.Id, heroId);
         
         if (result.Success)
         {
@@ -503,10 +543,11 @@ else
 
     private async Task ToggleReady()
     {
-        if (_currentPlayer == null) return;
+        if (_currentPlayer == null || !EnsureCurrentUser()) return;
+        var user = AuthService.CurrentUser!;
 
         _errorMessage = null;
-        var result = await GameService.SetReadyAsync(GameId, AuthService.CurrentUser!.Id, !_currentPlayer.IsReady);
+        var result = await GameService.SetReadyAsync(GameId, user.Id, !_currentPlayer.IsReady);
         
         if (result.Success)
         {
@@ -520,8 +561,11 @@ else
 
     private async Task StartGame()
     {
+        if (!EnsureCurrentUser()) return;
+        var user = AuthService.CurrentUser!;
+
         _errorMessage = null;
-        var result = await GameService.StartGameAsync(GameId, AuthService.CurrentUser!.Id);
+        var result = await GameService.StartGameAsync(GameId, user.Id);
         
         if (result.Success)
         {
@@ -534,7 +578,7 @@ else
                 // Send individual notifications to all players (they'll receive it via NotificationPanel)
                 foreach (var player in _game.Players)
                 {
-                    if (player.UserId != AuthService.CurrentUser!.Id)
+                    if (player.UserId != user.Id)
                     {
                         await _hubConnection.SendAsync("NotifyUser", player.UserId, "GameStarted", GameId.ToString(), _game.Name, "Game has started!");
                     }
@@ -551,7 +595,10 @@ else
 
     private async Task LeaveGame()
     {
-        var result = await GameService.LeaveGameAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!EnsureCurrentUser()) return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.LeaveGameAsync(GameId, user.Id);
         
         if (result.Success)
         {
@@ -565,7 +612,10 @@ else
 
     private async Task CancelGame()
     {
-        var result = await GameService.CancelGameAsync(GameId, AuthService.CurrentUser!.Id);
+        if (!EnsureCurrentUser()) return;
+        var user = AuthService.CurrentUser!;
+
+        var result = await GameService.CancelGameAsync(GameId, user.Id);
         
         if (result.Success)
         {

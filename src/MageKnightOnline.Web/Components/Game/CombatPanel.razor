@@ -8,6 +8,34 @@
         <span class="combat-phase @GetPhaseClass()">@GetPhaseText()</span>
     </div>
 
+    <div class="phase-roadmap" aria-label="Combat steps">
+        @foreach (var step in GetCombatSteps())
+        {
+            <div class="phase-step @(step.Phase == Combat.Phase ? "active" : "") @(IsPhasePast(step.Phase) ? "complete" : "")">
+                <span class="phase-step-number">@step.Number</span>
+                <span>@step.Label</span>
+            </div>
+        }
+    </div>
+
+    <div class="combat-guide">
+        <strong>How attack is assigned:</strong> play Attack cards to fill your Attack pool, advance to Melee Attack, select an enemy, then press Attack.
+        Ranged and Siege pools are only used in the Ranged/Siege step.
+    </div>
+
+    @if (PlayedCards.Any())
+    {
+        <div class="played-cards-panel">
+            <h4>Played this turn</h4>
+            <div class="played-card-list">
+                @foreach (var cardName in PlayedCards)
+                {
+                    <span class="played-card">@cardName</span>
+                }
+            </div>
+        </div>
+    }
+
     <div class="enemies-section">
         <h4>Enemies</h4>
         <div class="enemy-list">
@@ -191,23 +219,29 @@
                     <p>Use <strong>Ranged/Siege Attack</strong> to attack enemies from range.</p>
                     <p>Your Ranged Attack: <span class="value">@RangedAttack</span></p>
                     <p>Your Siege Attack: <span class="value">@SiegeAttack</span></p>
+                    <p class="hint">@GetPhaseHint()</p>
                 </div>
                 @if (SelectedEnemyIndex.HasValue)
                 {
                     var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
                     @if (!enemy.IsDefeated)
                     {
-                        var requiredAttack = enemy.Armor;
+                        var requiredAttack = GetAttackRequirement(enemy);
                         var needsSiege = enemy.IsFortified;
                         <button class="btn btn-primary" @onclick="() => DoRangedAttack(SelectedEnemyIndex.Value)"
-                                disabled="@(needsSiege ? SiegeAttack < requiredAttack : RangedAttack < requiredAttack)">
+                                disabled="@(!CanTargetDefender(enemy) || (needsSiege ? SiegeAttack < requiredAttack : RangedAttack < requiredAttack))">
                             @(needsSiege ? "Siege" : "Ranged") Attack (@requiredAttack needed)
                             @if (needsSiege)
                             {
                                 <span class="siege-required">🏰</span>
                             }
                         </button>
+                        <p class="action-reason">@GetRangedActionReason(enemy)</p>
                     }
+                }
+                else
+                {
+                    <p class="action-reason">Select an enemy to see the available ranged attack action.</p>
                 }
                 <button class="btn btn-secondary" @onclick="EndPhase">Skip to Block Phase</button>
                 break;
@@ -217,17 +251,20 @@
                     <p>Block enemy attacks to prevent damage.</p>
                     <p>Your Block: <span class="value">@BlockPool</span></p>
                     <p>Incoming Damage: <span class="value damage">@GetIncomingDamage()</span></p>
+                    <p class="hint">@GetPhaseHint()</p>
                 </div>
                 @if (SelectedEnemyIndex.HasValue && BlockPool > 0)
                 {
                     var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
-                    @if (!enemy.IsDefeated && !enemy.IsBlocked && !enemy.IsSwift)
+                    @if (!enemy.IsDefeated && !enemy.IsBlocked)
                     {
-                        <button class="btn btn-primary" @onclick="() => DoBlock(SelectedEnemyIndex.Value)">
-                            Block @enemy.Name (@enemy.Attack @enemy.AttackType damage)
+                        <button class="btn btn-primary" @onclick="() => DoBlock(SelectedEnemyIndex.Value)"
+                                disabled="@(BlockPool < enemy.GetBlockRequirement())">
+                            Block @enemy.Name (@enemy.GetBlockRequirement() block needed)
                         </button>
                     }
                 }
+                <p class="action-reason">@GetBlockActionReason()</p>
                 <button class="btn btn-secondary" @onclick="EndPhase">End Block Phase</button>
                 break;
 
@@ -258,19 +295,26 @@
 
             case CombatPhase.Attack:
                 <div class="phase-info">
-                    <p>Attack enemies with melee.</p>
+                    <p>Attack enemies with melee. This is where normal Attack cards are assigned.</p>
                     <p>Your Attack: <span class="value">@AttackPool</span></p>
+                    <p class="hint">@GetPhaseHint()</p>
                 </div>
-                @if (SelectedEnemyIndex.HasValue && AttackPool > 0)
+                @if (SelectedEnemyIndex.HasValue)
                 {
                     var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
                     @if (!enemy.IsDefeated)
                     {
+                        var requiredAttack = GetAttackRequirement(enemy);
                         <button class="btn btn-primary" @onclick="() => DoAttack(SelectedEnemyIndex.Value)"
-                                disabled="@(AttackPool < enemy.Armor)">
-                            Attack @enemy.Name (@enemy.Armor needed)
+                                disabled="@(AttackPool < requiredAttack || !CanTargetDefender(enemy))">
+                            Attack @enemy.Name (@requiredAttack needed)
                         </button>
+                        <p class="action-reason">@GetMeleeActionReason(enemy)</p>
                     }
+                }
+                else
+                {
+                    <p class="action-reason">Select an enemy, then press Attack to spend your Attack pool.</p>
                 }
                 <button class="btn btn-secondary" @onclick="EndPhase">End Attack Phase</button>
                 break;
@@ -330,6 +374,73 @@
     .combat-phase.damage { background: #ff4444; }
     .combat-phase.attack { background: #cc4444; }
     .combat-phase.resolution { background: #44aa44; }
+
+    .phase-roadmap {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .phase-step {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-sm);
+        border: 1px solid #444;
+        border-radius: var(--radius-md);
+        color: #aaa;
+        font-size: 0.8rem;
+    }
+
+    .phase-step.active {
+        border-color: var(--color-gold);
+        color: var(--color-gold);
+        background: rgba(212, 168, 83, 0.12);
+    }
+
+    .phase-step.complete {
+        color: #77bb77;
+    }
+
+    .phase-step-number {
+        display: inline-flex;
+        width: 20px;
+        height: 20px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12);
+        font-weight: bold;
+    }
+
+    .combat-guide, .played-cards-panel {
+        background: rgba(212, 168, 83, 0.1);
+        border: 1px solid rgba(212, 168, 83, 0.35);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+    }
+
+    .played-cards-panel h4 {
+        margin: 0 0 var(--spacing-sm) 0;
+    }
+
+    .played-card-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .played-card {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid #555;
+        border-radius: var(--radius-sm);
+        padding: 2px 8px;
+        color: #ddd;
+    }
 
     .enemies-section h4, .units-section h4 {
         color: var(--color-text-secondary);
@@ -659,6 +770,12 @@
         margin-bottom: var(--spacing-sm);
     }
 
+    .action-reason {
+        margin: 0 0 var(--spacing-sm) 0;
+        color: #aaa;
+        font-size: 0.82rem;
+    }
+
     .combat-actions, .unit-actions {
         display: flex;
         flex-direction: column;
@@ -716,6 +833,7 @@
     [Parameter] public int SiegeAttack { get; set; }
     [Parameter] public int AttackPool { get; set; }
     [Parameter] public int BlockPool { get; set; }
+    [Parameter] public List<string> PlayedCards { get; set; } = new();
     [Parameter] public List<UnitCombatOption> Units { get; set; } = new();
     
     [Parameter] public EventCallback<(int EnemyIndex, int Value)> OnRangedAttack { get; set; }
@@ -729,6 +847,26 @@
 
     private int? SelectedEnemyIndex { get; set; }
     private int? SelectedUnitIndex { get; set; }
+
+    private sealed record CombatStep(int Number, CombatPhase Phase, string Label);
+
+    private static readonly IReadOnlyList<CombatStep> CombatSteps = new List<CombatStep>
+    {
+        new(1, CombatPhase.RangedAttack, "Ranged/Siege"),
+        new(2, CombatPhase.Block, "Block"),
+        new(3, CombatPhase.AssignDamage, "Damage"),
+        new(4, CombatPhase.Attack, "Melee Attack"),
+        new(5, CombatPhase.Resolution, "Resolution")
+    };
+
+    private IReadOnlyList<CombatStep> GetCombatSteps() => CombatSteps;
+
+    private bool IsPhasePast(CombatPhase phase)
+    {
+        var currentIndex = CombatSteps.ToList().FindIndex(s => s.Phase == Combat.Phase);
+        var phaseIndex = CombatSteps.ToList().FindIndex(s => s.Phase == phase);
+        return currentIndex >= 0 && phaseIndex >= 0 && phaseIndex < currentIndex;
+    }
 
     private string GetPhaseText() => Combat.Phase switch
     {
@@ -792,6 +930,70 @@
         _ when ability.Contains("Summon") => "Can summon additional enemies",
         _ => ability
     };
+
+    private string GetPhaseHint() => Combat.Phase switch
+    {
+        CombatPhase.RangedAttack when AttackPool > 0 => $"You already have {AttackPool} melee Attack. Keep it for the Melee Attack step.",
+        CombatPhase.RangedAttack => "Only Ranged and Siege attack can be assigned in this step.",
+        CombatPhase.Block => "Use Block to prevent wounds. Unblocked enemies deal damage before you can melee attack.",
+        CombatPhase.AssignDamage => "Assign all unblocked damage, then continue to Melee Attack.",
+        CombatPhase.Attack => "Your Attack pool is spent here. Select a target and attack once you meet its requirement.",
+        _ => "Resolve the current combat step before moving on."
+    };
+
+    private int GetAttackRequirement(CombatEnemy enemy)
+    {
+        return enemy.GetAttackRequirement(AreAllEnemyAttacksBlocked());
+    }
+
+    private bool AreAllEnemyAttacksBlocked()
+    {
+        return Combat.Enemies
+            .Where(e => !e.IsDefeated)
+            .All(e => e.IsBlocked);
+    }
+
+    private bool CanTargetDefender(CombatEnemy enemy)
+    {
+        return enemy.IsDefender || !Combat.Enemies.Any(e => !e.IsDefeated && e.IsDefender);
+    }
+
+    private string GetRangedActionReason(CombatEnemy enemy)
+    {
+        var requiredAttack = GetAttackRequirement(enemy);
+        if (!CanTargetDefender(enemy))
+            return "A Defend enemy must be targeted first.";
+        if (enemy.IsFortified && SiegeAttack < requiredAttack)
+            return $"Fortified enemies need Siege Attack. You have {SiegeAttack}, need {requiredAttack}.";
+        if (!enemy.IsFortified && RangedAttack < requiredAttack)
+            return $"You have {RangedAttack} Ranged Attack, need {requiredAttack}.";
+        return "Ready: press the attack button to assign your ranged/siege attack.";
+    }
+
+    private string GetBlockActionReason()
+    {
+        if (!SelectedEnemyIndex.HasValue)
+            return "Select an unblocked enemy to block.";
+
+        var enemy = Combat.Enemies[SelectedEnemyIndex.Value];
+        if (enemy.IsDefeated)
+            return "That enemy is already defeated.";
+        if (enemy.IsBlocked)
+            return "That enemy is already blocked.";
+        if (BlockPool < enemy.GetBlockRequirement())
+            return $"You have {BlockPool} Block, need {enemy.GetBlockRequirement()} to fully block.";
+        return "Ready: press Block to spend block points against this enemy.";
+    }
+
+    private string GetMeleeActionReason(CombatEnemy enemy)
+    {
+        var requiredAttack = GetAttackRequirement(enemy);
+        if (!CanTargetDefender(enemy))
+            return "A Defend enemy must be attacked first.";
+        if (AttackPool < requiredAttack)
+            return $"You have {AttackPool} Attack, need {requiredAttack}. Play more Attack cards or use units before attacking.";
+        return "Ready: press Attack to assign your Attack pool to this enemy.";
+    }
     
     private string GetAbilityTypeIcon(string abilityType) => abilityType switch
     {
@@ -829,9 +1031,9 @@
         if (Combat.Phase == CombatPhase.SwiftAttack)
             return enemy.IsSwift && !enemy.IsBlocked;
         
-        // In block phase, can't target swift enemies (already handled)
+        // Swift enemies are blocked in the normal block phase with doubled block requirement.
         if (Combat.Phase == CombatPhase.Block)
-            return !enemy.IsSwift && !enemy.IsBlocked;
+            return !enemy.IsBlocked;
         
         return true;
     }
@@ -863,8 +1065,8 @@
     private int GetIncomingDamage()
     {
         return Combat.Enemies
-            .Where(e => !e.IsDefeated && !e.IsSwift && !e.IsBlocked)
-            .Sum(e => e.Attack);
+            .Where(e => !e.IsDefeated && !e.IsBlocked)
+            .Sum(e => e.GetDamageDealt(isFullyBlocked: false));
     }
 
     private int GetFleeDamage()
@@ -889,7 +1091,7 @@
     private async Task DoRangedAttack(int enemyIndex)
     {
         var enemy = Combat.Enemies[enemyIndex];
-        var requiredAttack = enemy.Armor;
+        var requiredAttack = GetAttackRequirement(enemy);
         if (OnRangedAttack.HasDelegate)
             await OnRangedAttack.InvokeAsync((enemyIndex, requiredAttack));
     }
@@ -898,14 +1100,14 @@
     {
         var enemy = Combat.Enemies[enemyIndex];
         if (OnBlock.HasDelegate)
-            await OnBlock.InvokeAsync((enemyIndex, enemy.Attack));
+            await OnBlock.InvokeAsync((enemyIndex, enemy.GetBlockRequirement()));
     }
 
     private async Task DoAttack(int enemyIndex)
     {
         var enemy = Combat.Enemies[enemyIndex];
         if (OnAttack.HasDelegate)
-            await OnAttack.InvokeAsync((enemyIndex, enemy.Armor));
+            await OnAttack.InvokeAsync((enemyIndex, GetAttackRequirement(enemy)));
     }
 
     private async Task TakeDamage(int damage)

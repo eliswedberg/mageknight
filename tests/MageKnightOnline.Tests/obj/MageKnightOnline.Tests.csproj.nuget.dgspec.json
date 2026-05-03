@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj": {}
+    "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj": {}
   },
   "projects": {
-    "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+    "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
         "projectName": "MageKnightOnline.Core",
-        "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
+        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj",
         "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\obj\\",
+        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -343,14 +343,14 @@
         }
       }
     },
-    "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj": {
+    "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
+        "projectUniqueName": "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
         "projectName": "MageKnightOnline.Tests",
-        "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
+        "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\MageKnightOnline.Tests.csproj",
         "packagesPath": "C:\\Users\\eliwe\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\tests\\MageKnightOnline.Tests\\obj\\",
+        "outputPath": "C:\\Users\\eliwe\\Source\\mageknight\\tests\\MageKnightOnline.Tests\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\eliwe\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -365,8 +365,8 @@
           "net10.0": {
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
-                "projectPath": "C:\\Users\\eliwe\\Source\\Repos\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
+              "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj": {
+                "projectPath": "C:\\Users\\eliwe\\Source\\mageknight\\src\\MageKnightOnline.Core\\MageKnightOnline.Core.csproj"
               }
             }
           }
